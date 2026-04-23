@@ -342,7 +342,7 @@ function CalendarPage() {
       </div>
 
       {selectedDay ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
           <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
             <div className="flex items-start justify-between gap-3">
               <div>
