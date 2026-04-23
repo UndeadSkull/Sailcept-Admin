@@ -2,11 +2,14 @@ import { useMemo, useState } from 'react'
 import { NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import {
   BadgeIndianRupee,
+  BedDouble,
   CalendarDays,
   ClipboardList,
   FileText,
   LayoutDashboard,
+  Moon,
   Sailboat,
+  Sun,
   Waves,
 } from 'lucide-react'
 import { Switch } from '@headlessui/react'
@@ -201,9 +204,17 @@ function BoatAssetPage() {
 }
 
 function CalendarPage() {
+  type DayBooking = {
+    dayCruise: boolean
+    overnightCruise: boolean
+    nightCruise: boolean
+    details: string
+  }
+
   const [dayCruise, setDayCruise] = useState(true)
   const [overnight, setOvernight] = useState(true)
   const [nightStay, setNightStay] = useState(false)
+  const [selectedDay, setSelectedDay] = useState<number | null>(null)
   const availabilityToggles: Array<{
     label: string
     enabled: boolean
@@ -214,7 +225,47 @@ function CalendarPage() {
     { label: 'Night stay', enabled: nightStay, setEnabled: setNightStay },
   ]
 
+  const bookingsByDay: Record<number, DayBooking> = {
+    2: {
+      dayCruise: true,
+      overnightCruise: false,
+      nightCruise: false,
+      details: 'Corporate day outing for 8 guests.',
+    },
+    5: {
+      dayCruise: true,
+      overnightCruise: true,
+      nightCruise: true,
+      details: 'Wedding group full-day charter with overnight and night cruise extension.',
+    },
+    9: {
+      dayCruise: false,
+      overnightCruise: true,
+      nightCruise: true,
+      details: 'Family overnight package with late night backwater ride.',
+    },
+    13: {
+      dayCruise: true,
+      overnightCruise: true,
+      nightCruise: true,
+      details: 'Festival special complete package booking.',
+    },
+    18: {
+      dayCruise: false,
+      overnightCruise: false,
+      nightCruise: true,
+      details: 'Couple moonlight cruise with dinner.',
+    },
+    24: {
+      dayCruise: true,
+      overnightCruise: false,
+      nightCruise: true,
+      details: 'Private anniversary plan with sunset and night ride.',
+    },
+  }
+
   const days = useMemo(() => Array.from({ length: 31 }, (_, index) => index + 1), [])
+  const selectedBooking = selectedDay ? bookingsByDay[selectedDay] : undefined
 
   return (
     <div className="space-y-6">
@@ -226,14 +277,32 @@ function CalendarPage() {
         <Card title="January 2025">
           <div className="grid grid-cols-7 gap-2">
             {days.map((day) => {
-              const style = day % 5 === 0 ? 'bg-amber-100 text-amber-700' : day % 3 === 0 ? 'bg-slate-100 text-slate-500' : 'bg-emerald-100 text-emerald-700'
+              const booking = bookingsByDay[day]
+              const allCruisesBooked =
+                booking?.dayCruise && booking?.overnightCruise && booking?.nightCruise
+              const anyCruiseBooked =
+                booking?.dayCruise || booking?.overnightCruise || booking?.nightCruise
+              const style = allCruisesBooked
+                ? 'bg-emerald-100 text-emerald-800'
+                : anyCruiseBooked
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-slate-100 text-slate-500'
+
               return (
                 <button
                   key={day}
                   type="button"
-                  className={`rounded-lg px-2 py-3 text-xs font-medium ${style}`}
+                  onClick={() => setSelectedDay(day)}
+                  className={`rounded-lg px-2 py-2 text-xs font-medium ${style} hover:brightness-95`}
                 >
-                  {day}
+                  <div className="flex min-h-10 flex-col items-center justify-between">
+                    <span>{day}</span>
+                    <div className="mt-1 flex items-center justify-center gap-1">
+                      {booking?.dayCruise ? <Sun size={11} /> : null}
+                      {booking?.overnightCruise ? <BedDouble size={11} /> : null}
+                      {booking?.nightCruise ? <Moon size={11} /> : null}
+                    </div>
+                  </div>
                 </button>
               )
             })}
@@ -271,6 +340,55 @@ function CalendarPage() {
           </div>
         </Card>
       </div>
+
+      {selectedDay ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/45 p-4">
+          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 shadow-xl">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-slate-900">{selectedDay} Jan - Day details</h3>
+                {/* <p className="text-sm text-slate-500">
+                  {selectedBooking ? selectedBooking.details : 'No bookings for this day.'}
+                </p> */}
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedDay(null)}
+                className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-medium text-slate-600 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-2 text-sm text-slate-700">
+              <div className="flex items-center justify-between rounded-lg border border-slate-100 p-2">
+                <span className="flex items-center gap-2">
+                  <Sun size={13} /> Day cruise
+                </span>
+                <span className={selectedBooking?.dayCruise ? 'text-emerald-700' : 'text-slate-400'}>
+                  {selectedBooking?.dayCruise ? 'Booked' : 'Not booked'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-100 p-2">
+                <span className="flex items-center gap-2">
+                  <BedDouble size={13} /> Overnight cruise
+                </span>
+                <span className={selectedBooking?.overnightCruise ? 'text-emerald-700' : 'text-slate-400'}>
+                  {selectedBooking?.overnightCruise ? 'Booked' : 'Not booked'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between rounded-lg border border-slate-100 p-2">
+                <span className="flex items-center gap-2">
+                  <Moon size={13} /> Night cruise
+                </span>
+                <span className={selectedBooking?.nightCruise ? 'text-emerald-700' : 'text-slate-400'}>
+                  {selectedBooking?.nightCruise ? 'Booked' : 'Not booked'}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }
@@ -402,7 +520,7 @@ function ContractsPage() {
 
 function AppLayout() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-cyan-50 to-blue-100 text-slate-700">
+    <div className="min-h-screen bg-linear-to-br from-sky-100 via-cyan-50 to-blue-100 text-slate-700">
       <div className="mx-auto grid w-full max-w-7xl gap-4 px-4 py-6 lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="rounded-2xl border border-sky-100 bg-white/80 p-4 shadow-sm backdrop-blur">
           <div className="mb-5 flex items-center gap-2">
