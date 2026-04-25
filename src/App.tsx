@@ -29,12 +29,13 @@ const enquiryStatusClass: Record<Enquiry["status"], string> = {
 
 const navItems = [
   { to: "/dashboard", label: "Overview", icon: LayoutDashboard },
-  { to: "/boat", label: "Boat asset", icon: Sailboat },
   { to: "/calendar", label: "Calendar", icon: CalendarDays },
-  { to: "/pricing", label: "Pricing", icon: BadgeIndianRupee },
+  // { to: "/pricing", label: "Pricing", icon: BadgeIndianRupee },
   { to: "/enquiries", label: "Enquiries", icon: ClipboardList },
-  { to: "/contracts", label: "Contracts", icon: FileText },
+  { to: "/bookings", label: "Bookings", icon: FileText },
 ];
+
+const boatAssetItem = { to: "/boat", label: "Boat asset", icon: Sailboat };
 
 function PageHeader({
   title,
@@ -97,7 +98,7 @@ function DashboardPage() {
         title="Overview"
         sub="Your houseboat performance at a glance"
       />
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 xl:grid-cols-4">
         {[
           ["Open dates this month", "18", "of 31 days"],
           ["Pending enquiries", "3", "Awaiting response"],
@@ -211,7 +212,7 @@ function BoatAssetPage() {
                 Save
               </button>
             </>
-          ) : (
+          ) : false && (
             <button
               type="button"
               onClick={() => setIsEditing(true)}
@@ -763,12 +764,6 @@ function EnquiriesPage() {
             </button>
             <button
               type="button"
-              className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-slate-600"
-            >
-              Suggest alternative
-            </button>
-            <button
-              type="button"
               className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-medium text-white"
             >
               Decline
@@ -780,12 +775,12 @@ function EnquiriesPage() {
   );
 }
 
-function ContractsPage() {
+function BookingsPage() {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Booking contracts"
-        sub="Each accepted booking generates a shared contract. No ambiguity on either side."
+        title="Bookings"
+        sub="Track accepted bookings with complete trip details and guest preferences."
       />
       <Card title="Arjun Menon · Vembanad Crest" sub="#SC-2025-0041">
         <div className="space-y-2 text-sm">
@@ -818,9 +813,9 @@ function ContractsPage() {
 
 function AppLayout() {
   return (
-    <div className="min-h-screen bg-linear-to-br from-sky-100 via-cyan-50 to-blue-100 text-slate-700">
-      <div className="mx-auto grid w-full max-w-7xl gap-4 px-4 py-6 lg:grid-cols-[240px_minmax(0,1fr)]">
-        <aside className="rounded-2xl border border-sky-100 bg-white/80 p-4 shadow-sm backdrop-blur">
+    <div className="min-h-screen md:bg-linear-to-br from-sky-100 via-cyan-50 to-blue-100 text-slate-700">
+      <div className="mx-auto grid w-full max-w-7xl gap-0 px-0 py-0 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-4 lg:px-4 lg:py-6">
+        <aside className="hidden rounded-2xl border border-sky-100 bg-white/80 p-4 shadow-sm backdrop-blur lg:block">
           <div className="mb-5 flex items-center gap-2">
             <div className="rounded-xl bg-sky-600 p-2 text-white">
               <Waves size={18} />
@@ -852,18 +847,67 @@ function AppLayout() {
           </nav>
         </aside>
 
-        <main className="rounded-2xl border border-sky-100 bg-white/80 p-5 shadow-sm backdrop-blur">
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b border-sky-100 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
+          <div className="flex items-center gap-2">
+            <div className="rounded-xl bg-sky-600 p-2 text-white">
+              <Waves size={16} />
+            </div>
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-slate-400">
+                Sailcept
+              </p>
+              <p className="text-sm font-semibold text-slate-900">Admin</p>
+            </div>
+          </div>
+          <NavLink
+            to={boatAssetItem.to}
+            className={({ isActive }) =>
+              `flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                isActive
+                  ? "border-sky-300 bg-sky-100 text-sky-700"
+                  : "border-slate-200 bg-white text-slate-600 hover:border-sky-200 hover:bg-sky-50"
+              }`
+            }
+          >
+            <boatAssetItem.icon size={14} />
+            <span>Profile</span>
+          </NavLink>
+        </header>
+
+        <main className="bg-white/80 p-4 pb-24 lg:rounded-2xl lg:border lg:border-sky-100 lg:p-5 lg:pb-5 lg:shadow-sm lg:backdrop-blur">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/boat" element={<BoatAssetPage />} />
             <Route path="/calendar" element={<CalendarPage />} />
-            <Route path="/pricing" element={<PricingPage />} />
+            {/* <Route path="/pricing" element={<PricingPage />} /> */}
             <Route path="/enquiries" element={<EnquiriesPage />} />
-            <Route path="/contracts" element={<ContractsPage />} />
+            <Route path="/contracts" element={<Navigate to="/bookings" replace />} />
+            <Route path="/bookings" element={<BookingsPage />} />
           </Routes>
         </main>
       </div>
+
+      <nav className="fixed inset-x-4 bottom-4 z-20 border border-sky-100  px-2 py-2 rounded-full shadow-[0_4px_22px_-10px_rgba(2,132,199,0.5)] backdrop-blur lg:hidden">
+        <div className="mx-auto grid max-w-7xl grid-cols-4 gap-1">
+          {navItems.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex flex-col items-center justify-center rounded-full px-1.5 py-1 text-[11px] leading-tight transition active:bg-sky-50 ${
+                  isActive
+                    ? "bg-sky-100 text-sky-700"
+                    : "text-slate-500 hover:bg-sky-50 hover:text-slate-700"
+                }`
+              }
+            >
+              <Icon size={16} />
+              <span className="mt-1 truncate">{label}</span>
+            </NavLink>
+          ))}
+        </div>
+      </nav>
     </div>
   );
 }
