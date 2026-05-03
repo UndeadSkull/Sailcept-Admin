@@ -1,1 +1,1 @@
-import '@testing-library/jest-dom/vitest'
+// Jest setup placeholder for future mocks.

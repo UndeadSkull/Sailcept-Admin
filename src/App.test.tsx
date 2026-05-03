@@ -1,28 +1,19 @@
-import { describe, expect, it } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
-import App from './App'
+import { render } from '@testing-library/react-native';
+import App from './App';
 
-describe('Operator admin routes', () => {
-  it('renders dashboard content by default route redirect', () => {
-    render(
-      <MemoryRouter initialEntries={['/']}>
-        <App />
-      </MemoryRouter>,
-    )
+describe('App', () => {
+  it('shows overview content by default', () => {
+    const { getByText, getAllByText } = render(<App />);
 
-    expect(screen.getByRole('heading', { name: 'Overview' })).toBeInTheDocument()
-    expect(screen.getByText('Your houseboat performance at a glance')).toBeInTheDocument()
-  })
+    expect(getAllByText('Overview').length).toBeGreaterThan(0);
+    expect(getByText('Your houseboat performance at a glance')).toBeTruthy();
+  });
 
-  it('renders boat asset page route', () => {
-    render(
-      <MemoryRouter initialEntries={['/boat']}>
-        <App />
-      </MemoryRouter>,
-    )
+  it('shows main tabs in app shell', () => {
+    const { getByText } = render(<App />);
 
-    expect(screen.getByRole('heading', { name: 'Boat asset definition' })).toBeInTheDocument()
-    expect(screen.getByText('Identity & classification')).toBeInTheDocument()
-  })
-})
+    expect(getByText('Boat')).toBeTruthy();
+    expect(getByText('Calendar')).toBeTruthy();
+    expect(getByText('Bookings')).toBeTruthy();
+  });
+});

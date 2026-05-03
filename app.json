@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Sailcept Admin",
+    "slug": "sailcept-admin",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#f3f8ff"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#f3f8ff"
+      }
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}
