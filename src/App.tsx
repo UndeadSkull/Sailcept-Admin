@@ -888,14 +888,14 @@ function AppLayout() {
         </main>
       </div>
 
-      <nav className="fixed inset-x-4 bottom-4 z-20 border border-sky-100  px-2 py-2 rounded-full shadow-[0_4px_22px_-10px_rgba(2,132,199,0.5)] backdrop-blur lg:hidden">
+      <nav className="fixed inset-x-4 bottom-4 z-20 border border-sky-100 bg-[#ffffff88]  px-2 py-2 rounded-full shadow-[0_4px_22px_-10px_rgba(2,132,199,0.5)] backdrop-blur lg:hidden">
         <div className="mx-auto grid max-w-7xl grid-cols-4 gap-1">
           {navItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
               className={({ isActive }) =>
-                `flex flex-col items-center justify-center rounded-full px-1.5 py-1 text-[11px] leading-tight transition active:bg-sky-50 ${
+                `flex flex-col items-center justify-center rounded-full px-1.5 pt-1.5 pb-0.5 text-[11px] leading-tight transition active:bg-sky-50 ${
                   isActive
                     ? "bg-sky-100 text-sky-700"
                     : "text-slate-500 hover:bg-sky-50 hover:text-slate-700"
