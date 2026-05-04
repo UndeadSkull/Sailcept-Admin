@@ -769,7 +769,7 @@ export default AppLayout;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ecf5ff',
+    backgroundColor: '#ffffff',
   },
   appRoot: {
     flex: 1,
@@ -1251,7 +1251,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#d2e4f8',
     borderRadius: 999,
-    backgroundColor: '#ffffffde',
+    backgroundColor: '#ffffff',
     shadowColor: '#007fd8',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
