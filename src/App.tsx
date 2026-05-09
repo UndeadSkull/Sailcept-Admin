@@ -1,6 +1,7 @@
 import { StatusBar } from 'expo-status-bar';
 import { useMemo, useState } from 'react';
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -466,6 +467,12 @@ function CalendarPage() {
     price?: number;
   };
 
+  type SelectedDate = {
+    year: number;
+    month: number;
+    day: number;
+  };
+
   function normalizeBooking(booking: DayBooking): DayBooking {
     if (booking.overnightCruise && booking.nightCruise) {
       return {
@@ -477,47 +484,57 @@ function CalendarPage() {
     return booking;
   }
 
-  const [selectedDay, setSelectedDay] = useState(15);
+  function getDateKey(year: number, month: number, day: number): string {
+    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  const today = new Date();
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth();
+
+  const [visibleMonth, setVisibleMonth] = useState(() => new Date(todayYear, todayMonth, 1));
   const [isBulkPricingMode, setIsBulkPricingMode] = useState(false);
   const [selectedDates, setSelectedDates] = useState<number[]>([]);
   const [priceInput, setPriceInput] = useState('');
-  const [bookingsByDay, setBookingsByDay] = useState<Record<number, DayBooking>>(() => ({
-    2: normalizeBooking({
+  const [selectedDate, setSelectedDate] = useState<SelectedDate | null>(null);
+  const [modalPriceInput, setModalPriceInput] = useState('');
+  const [bookingsByDate, setBookingsByDate] = useState<Record<string, DayBooking>>(() => ({
+    [getDateKey(todayYear, todayMonth, 2)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: false,
       nightCruise: false,
       details: 'Corporate day outing for 8 guests.',
       price: 12500,
     }),
-    5: normalizeBooking({
+    [getDateKey(todayYear, todayMonth, 5)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: true,
       nightCruise: false,
       details: 'Wedding group full-day charter with overnight extension.',
       price: 28000,
     }),
-    9: normalizeBooking({
+    [getDateKey(todayYear, todayMonth, 9)]: normalizeBooking({
       dayCruise: false,
       overnightCruise: true,
       nightCruise: false,
       details: 'Family overnight package.',
       price: 21000,
     }),
-    13: normalizeBooking({
+    [getDateKey(todayYear, todayMonth, 13)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: false,
       nightCruise: true,
       details: 'Festival special day and night package booking.',
       price: 23500,
     }),
-    18: normalizeBooking({
+    [getDateKey(todayYear, todayMonth, 18)]: normalizeBooking({
       dayCruise: false,
       overnightCruise: false,
       nightCruise: true,
       details: 'Couple moonlight cruise with dinner.',
       price: 14500,
     }),
-    24: normalizeBooking({
+    [getDateKey(todayYear, todayMonth, 24)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: false,
       nightCruise: true,
@@ -526,15 +543,38 @@ function CalendarPage() {
     }),
   }));
 
-  const days = useMemo(() => Array.from({ length: 31 }, (_, index) => index + 1), []);
+  const visibleYear = visibleMonth.getFullYear();
+  const visibleMonthIndex = visibleMonth.getMonth();
+  const daysInVisibleMonth = new Date(visibleYear, visibleMonthIndex + 1, 0).getDate();
+  const firstDayWeekIndex = new Date(visibleYear, visibleMonthIndex, 1).getDay();
 
-  const selectedBooking = bookingsByDay[selectedDay] ?? {
-    dayCruise: false,
-    overnightCruise: false,
-    nightCruise: false,
-    details: 'No bookings for this day.',
-    price: undefined,
-  };
+  const calendarDays = useMemo(() => {
+    const blanks = Array.from({ length: firstDayWeekIndex }, () => null as number | null);
+    const monthDays = Array.from({ length: daysInVisibleMonth }, (_, index) => index + 1);
+    return [...blanks, ...monthDays];
+  }, [firstDayWeekIndex, daysInVisibleMonth]);
+
+  const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const visibleMonthTitle = visibleMonth.toLocaleString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const selectedBooking = selectedDate
+    ? bookingsByDate[getDateKey(selectedDate.year, selectedDate.month, selectedDate.day)] ?? {
+        dayCruise: false,
+        overnightCruise: false,
+        nightCruise: false,
+        details: 'No bookings for this day.',
+        price: undefined,
+      }
+    : {
+        dayCruise: false,
+        overnightCruise: false,
+        nightCruise: false,
+        details: 'No bookings for this day.',
+        price: undefined,
+      };
 
   const availabilityToggles: Array<{
     label: string;
@@ -554,8 +594,14 @@ function CalendarPage() {
     key: 'dayCruise' | 'overnightCruise' | 'nightCruise',
     value: boolean,
   ) {
-    setBookingsByDay((current) => {
-      const currentDayBooking = current[selectedDay] ?? {
+    if (!selectedDate) {
+      return;
+    }
+
+    const selectedDateKey = getDateKey(selectedDate.year, selectedDate.month, selectedDate.day);
+
+    setBookingsByDate((current) => {
+      const currentDayBooking = current[selectedDateKey] ?? {
         dayCruise: false,
         overnightCruise: false,
         nightCruise: false,
@@ -577,7 +623,7 @@ function CalendarPage() {
 
       return {
         ...current,
-        [selectedDay]: normalizeBooking(nextBooking),
+        [selectedDateKey]: normalizeBooking(nextBooking),
       };
     });
   }
@@ -590,7 +636,14 @@ function CalendarPage() {
       return;
     }
 
-    setSelectedDay(day);
+    const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
+    const existingPrice = bookingsByDate[dateKey]?.price;
+    setModalPriceInput(existingPrice ? String(existingPrice) : '');
+    setSelectedDate({
+      year: visibleYear,
+      month: visibleMonthIndex,
+      day,
+    });
   }
 
   function applyPriceToSelectedDates() {
@@ -599,11 +652,12 @@ function CalendarPage() {
       return;
     }
 
-    setBookingsByDay((current) => {
+    setBookingsByDate((current) => {
       const next = { ...current };
 
       selectedDates.forEach((day) => {
-        const existing = current[day] ?? {
+        const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
+        const existing = current[dateKey] ?? {
           dayCruise: false,
           overnightCruise: false,
           nightCruise: false,
@@ -611,7 +665,7 @@ function CalendarPage() {
           price: undefined,
         };
 
-        next[day] = normalizeBooking({
+        next[dateKey] = normalizeBooking({
           ...existing,
           price: parsedPrice,
         });
@@ -622,6 +676,12 @@ function CalendarPage() {
 
     setSelectedDates([]);
     setPriceInput('');
+  }
+
+  function moveMonth(delta: number) {
+    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
+    setSelectedDates([]);
+    setSelectedDate(null);
   }
 
   return (
@@ -675,20 +735,49 @@ function CalendarPage() {
         </View>
       </Card>
 
-      <Card title="January 2025">
+      <Card title="Monthly availability">
+        <View style={styles.calendarMonthRow}>
+          <Pressable onPress={() => moveMonth(-1)} style={styles.monthChevronButton} testID="month-prev">
+            <Text style={styles.monthChevronText}>‹</Text>
+          </Pressable>
+          <Text style={styles.calendarMonthTitle} testID="calendar-month-title">
+            {visibleMonthTitle}
+          </Text>
+          <Pressable onPress={() => moveMonth(1)} style={styles.monthChevronButton} testID="month-next">
+            <Text style={styles.monthChevronText}>›</Text>
+          </Pressable>
+        </View>
+
+        <View style={styles.weekdayHeaderRow}>
+          {weekdayLabels.map((label) => (
+            <Text key={label} style={styles.weekdayHeaderText}>
+              {label}
+            </Text>
+          ))}
+        </View>
+
         <View style={styles.calendarGrid}>
-          {days.map((day) => {
-            const booking = bookingsByDay[day];
+          {calendarDays.map((day, index) => {
+            if (!day) {
+              return <View key={`blank-${index}`} style={styles.dayCellBlank} />;
+            }
+
+            const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
+            const booking = bookingsByDate[dateKey];
             const allCruisesBooked =
               booking?.dayCruise && (booking?.overnightCruise || booking?.nightCruise);
             const anyCruiseBooked = booking?.dayCruise || booking?.overnightCruise || booking?.nightCruise;
             const bulkSelected = selectedDates.includes(day);
+            const isEditingDate =
+              selectedDate?.year === visibleYear &&
+              selectedDate?.month === visibleMonthIndex &&
+              selectedDate?.day === day;
 
             return (
               <Pressable
                 key={day}
                 onPress={() => handleDayPress(day)}
-                testID={`calendar-day-${day}`}
+                testID={`calendar-day-${dateKey}`}
                 style={[
                   styles.dayCell,
                   allCruisesBooked
@@ -697,7 +786,7 @@ function CalendarPage() {
                       ? styles.dayCellPartial
                       : styles.dayCellEmpty,
                   bulkSelected ? styles.dayCellBulkSelected : null,
-                  selectedDay === day ? styles.dayCellSelected : null,
+                  isEditingDate ? styles.dayCellSelected : null,
                 ]}
               >
                 <Text style={styles.dayCellNumber}>{day}</Text>
@@ -706,34 +795,79 @@ function CalendarPage() {
                   {booking?.overnightCruise ? ' ⌂' : ''}
                   {booking?.nightCruise ? ' ☾' : ''}
                 </Text>
-                {booking?.price ? <Text style={styles.dayCellPrice}>INR {booking.price}</Text> : null}
+                {booking?.price ? <Text style={styles.dayCellPrice}>₹ {booking.price}</Text> : null}
               </Pressable>
             );
           })}
         </View>
       </Card>
 
-      <Card title={`${selectedDay} Jan - edit availability`}>
-        <View style={styles.verticalGap10}>
-          <Text style={styles.calendarRuleText}>Overnight stay and Night stay cannot be booked together.</Text>
-          <Text style={styles.calendarRuleText}>
-            Assigned price: {selectedBooking.price ? `INR ${selectedBooking.price}` : 'Not set'}
-          </Text>
-          {availabilityToggles.map(({ label, enabled, key }) => (
-            <View key={label} style={styles.featureRow}>
-              <Text style={styles.featureRowText}>{label}</Text>
-              <Switch
-                value={enabled}
-                onValueChange={(value) => updateSelectedDayAvailability(key, value)}
-                testID={`availability-switch-${key}`}
-              />
+      <Modal
+        visible={Boolean(selectedDate) && !isBulkPricingMode}
+        animationType="fade"
+        transparent
+        onRequestClose={() => setSelectedDate(null)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard} testID="day-edit-modal">
+            <Text style={styles.modalTitle}>
+              {selectedDate
+                ? `${selectedDate.day} ${new Date(
+                    selectedDate.year,
+                    selectedDate.month,
+                    selectedDate.day,
+                  ).toLocaleString('en-US', { month: 'short', year: 'numeric' })}`
+                : ''}
+            </Text>
+            <Text style={styles.calendarRuleText}>Overnight stay and Night stay cannot be booked together.</Text>
+            <TextInput
+              value={modalPriceInput}
+              onChangeText={(value) => setModalPriceInput(value.replace(/[^0-9]/g, ''))}
+              keyboardType="numeric"
+              placeholder="Price in INR (optional)"
+              style={styles.input}
+              testID="modal-price-input"
+            />
+            <View style={styles.verticalGap10}>
+              {availabilityToggles.map(({ label, enabled, key }) => (
+                <View key={label} style={styles.featureRow}>
+                  <Text style={styles.featureRowText}>{label}</Text>
+                  <Switch
+                    value={enabled}
+                    onValueChange={(value) => updateSelectedDayAvailability(key, value)}
+                    testID={`availability-switch-${key}`}
+                  />
+                </View>
+              ))}
             </View>
-          ))}
-          <Pressable style={styles.primaryButton}>
-            <Text style={styles.primaryButtonText}>Save changes</Text>
-          </Pressable>
+            <Pressable
+              onPress={() => {
+                if (selectedDate) {
+                  const dateKey = getDateKey(selectedDate.year, selectedDate.month, selectedDate.day);
+                  const parsedPrice = modalPriceInput ? Number(modalPriceInput) : undefined;
+                  setBookingsByDate((current) => {
+                    const existing = current[dateKey] ?? {
+                      dayCruise: false,
+                      overnightCruise: false,
+                      nightCruise: false,
+                      details: 'No bookings for this day.',
+                      price: undefined,
+                    };
+                    return {
+                      ...current,
+                      [dateKey]: normalizeBooking({ ...existing, price: parsedPrice }),
+                    };
+                  });
+                }
+                setSelectedDate(null);
+              }}
+              style={styles.primaryButton}
+            >
+              <Text style={styles.primaryButtonText}>Done</Text>
+            </Pressable>
+          </View>
         </View>
-      </Card>
+      </Modal>
     </ScrollView>
   );
 }
@@ -1277,11 +1411,18 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   dayCellBulkSelected: {
+    borderColor: '#0f74cf',
+    borderWidth: 2,
+    backgroundColor: '#d9ecff',
     shadowColor: '#0b61b0',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.18,
+    shadowOpacity: 0.24,
     shadowRadius: 4,
     elevation: 3,
+  },
+  dayCellBlank: {
+    width: '13.5%',
+    minHeight: 44,
   },
   dayCellNumber: {
     fontSize: 11,
@@ -1296,6 +1437,50 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: '#0f5f9f',
     fontWeight: '700',
+  },
+  dayCellBulkBadge: {
+    fontSize: 10,
+    color: '#0c63b2',
+    fontWeight: '800',
+  },
+  calendarMonthRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  monthChevronButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#cfddea',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ffffff',
+  },
+  monthChevronText: {
+    color: '#1b4e7e',
+    fontSize: 20,
+    lineHeight: 22,
+    fontWeight: '700',
+  },
+  calendarMonthTitle: {
+    color: '#102949',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  weekdayHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  weekdayHeaderText: {
+    width: '13.5%',
+    textAlign: 'center',
+    color: '#62768f',
+    fontSize: 11,
+    fontWeight: '600',
   },
   primaryButton: {
     marginTop: 4,
@@ -1326,6 +1511,25 @@ const styles = StyleSheet.create({
   calendarRuleText: {
     color: '#5a6d82',
     fontSize: 12,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: '#12253d66',
+    justifyContent: 'center',
+    paddingHorizontal: 18,
+  },
+  modalCard: {
+    borderRadius: 14,
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#d4e5f8',
+    padding: 14,
+    gap: 10,
+  },
+  modalTitle: {
+    color: '#102949',
+    fontSize: 16,
+    fontWeight: '700',
   },
   inlineWrapRow: {
     flexDirection: 'row',
