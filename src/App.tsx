@@ -748,7 +748,7 @@ function CalendarPage() {
           </Pressable>
         </View>
 
-        <View style={styles.weekdayHeaderRow}>
+        <View style={styles.calendarWeekRow}>
           {weekdayLabels.map((label) => (
             <Text key={label} style={styles.weekdayHeaderText}>
               {label}
@@ -757,48 +757,54 @@ function CalendarPage() {
         </View>
 
         <View style={styles.calendarGrid}>
-          {calendarDays.map((day, index) => {
-            if (!day) {
-              return <View key={`blank-${index}`} style={styles.dayCellBlank} />;
-            }
+          {Array.from({ length: Math.ceil(calendarDays.length / 7) }, (_, weekIndex) => (
+            <View key={weekIndex} style={styles.calendarWeekRow}>
+              {calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7).map((day, cellIndex) => {
+                if (!day) {
+                  return <View key={`blank-${weekIndex}-${cellIndex}`} style={styles.dayCellBlank} />;
+                }
 
-            const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
-            const booking = bookingsByDate[dateKey];
-            const allCruisesBooked =
-              booking?.dayCruise && (booking?.overnightCruise || booking?.nightCruise);
-            const anyCruiseBooked = booking?.dayCruise || booking?.overnightCruise || booking?.nightCruise;
-            const bulkSelected = selectedDates.includes(day);
-            const isEditingDate =
-              selectedDate?.year === visibleYear &&
-              selectedDate?.month === visibleMonthIndex &&
-              selectedDate?.day === day;
+                const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
+                const booking = bookingsByDate[dateKey];
+                const allCruisesBooked =
+                  booking?.dayCruise && (booking?.overnightCruise || booking?.nightCruise);
+                const anyCruiseBooked =
+                  booking?.dayCruise || booking?.overnightCruise || booking?.nightCruise;
+                const bulkSelected = selectedDates.includes(day);
+                const isEditingDate =
+                  selectedDate?.year === visibleYear &&
+                  selectedDate?.month === visibleMonthIndex &&
+                  selectedDate?.day === day;
 
-            return (
-              <Pressable
-                key={day}
-                onPress={() => handleDayPress(day)}
-                testID={`calendar-day-${dateKey}`}
-                style={[
-                  styles.dayCell,
-                  allCruisesBooked
-                    ? styles.dayCellFull
-                    : anyCruiseBooked
-                      ? styles.dayCellPartial
-                      : styles.dayCellEmpty,
-                  bulkSelected ? styles.dayCellBulkSelected : null,
-                  isEditingDate ? styles.dayCellSelected : null,
-                ]}
-              >
-                <Text style={styles.dayCellNumber}>{day}</Text>
-                <Text style={styles.dayCellIcons}>
-                  {booking?.dayCruise ? '☀' : ''}
-                  {booking?.overnightCruise ? ' ⌂' : ''}
-                  {booking?.nightCruise ? ' ☾' : ''}
-                </Text>
-                {booking?.price ? <Text style={styles.dayCellPrice}>₹ {booking.price}</Text> : null}
-              </Pressable>
-            );
-          })}
+                return (
+                  <Pressable
+                    key={day}
+                    onPress={() => handleDayPress(day)}
+                    testID={`calendar-day-${dateKey}`}
+                    style={[
+                      styles.dayCell,
+                      allCruisesBooked
+                        ? styles.dayCellFull
+                        : anyCruiseBooked
+                          ? styles.dayCellPartial
+                          : styles.dayCellEmpty,
+                      bulkSelected ? styles.dayCellBulkSelected : null,
+                      isEditingDate ? styles.dayCellSelected : null,
+                    ]}
+                  >
+                    <Text style={styles.dayCellNumber}>{day}</Text>
+                    <Text style={styles.dayCellIcons}>
+                      {booking?.dayCruise ? '☀' : ''}
+                      {booking?.overnightCruise ? ' ⌂' : ''}
+                      {booking?.nightCruise ? ' ☾' : ''}
+                    </Text>
+                    {bulkSelected ? <Text style={styles.dayCellBulkBadge}>●</Text> : null}
+                    {booking?.price ? <Text style={styles.dayCellPrice}>₹ {booking.price}</Text> : null}
+                  </Pressable>
+                );
+              })}
+            </View>
+          ))}
         </View>
       </Card>
 
@@ -1381,15 +1387,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
   },
   calendarGrid: {
+    gap: 4,
+  },
+  calendarWeekRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 7,
+    gap: 4,
   },
   dayCell: {
-    width: '13.5%',
-    minHeight: 44,
+    flex: 1,
+    minHeight: 48,
     borderRadius: 8,
-    paddingVertical: 6,
+    paddingVertical: 4,
     alignItems: 'center',
     justifyContent: 'space-between',
     borderWidth: 1,
@@ -1421,8 +1429,8 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   dayCellBlank: {
-    width: '13.5%',
-    minHeight: 44,
+    flex: 1,
+    minHeight: 48,
   },
   dayCellNumber: {
     fontSize: 11,
@@ -1470,17 +1478,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '700',
   },
-  weekdayHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
   weekdayHeaderText: {
-    width: '13.5%',
+    flex: 1,
     textAlign: 'center',
     color: '#62768f',
     fontSize: 11,
     fontWeight: '600',
+    paddingBottom: 4,
   },
   primaryButton: {
     marginTop: 4,
