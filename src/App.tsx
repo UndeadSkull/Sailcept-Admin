@@ -463,47 +463,68 @@ function CalendarPage() {
     overnightCruise: boolean;
     nightCruise: boolean;
     details: string;
+    price?: number;
   };
 
+  function normalizeBooking(booking: DayBooking): DayBooking {
+    if (booking.overnightCruise && booking.nightCruise) {
+      return {
+        ...booking,
+        nightCruise: false,
+      };
+    }
+
+    return booking;
+  }
+
   const [selectedDay, setSelectedDay] = useState(15);
-  const [bookingsByDay, setBookingsByDay] = useState<Record<number, DayBooking>>({
-    2: {
+  const [isBulkPricingMode, setIsBulkPricingMode] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<number[]>([]);
+  const [priceInput, setPriceInput] = useState('');
+  const [bookingsByDay, setBookingsByDay] = useState<Record<number, DayBooking>>(() => ({
+    2: normalizeBooking({
       dayCruise: true,
       overnightCruise: false,
       nightCruise: false,
       details: 'Corporate day outing for 8 guests.',
-    },
-    5: {
+      price: 12500,
+    }),
+    5: normalizeBooking({
       dayCruise: true,
       overnightCruise: true,
-      nightCruise: true,
-      details: 'Wedding group full-day charter with overnight and night cruise extension.',
-    },
-    9: {
+      nightCruise: false,
+      details: 'Wedding group full-day charter with overnight extension.',
+      price: 28000,
+    }),
+    9: normalizeBooking({
       dayCruise: false,
       overnightCruise: true,
-      nightCruise: true,
-      details: 'Family overnight package with late night backwater ride.',
-    },
-    13: {
+      nightCruise: false,
+      details: 'Family overnight package.',
+      price: 21000,
+    }),
+    13: normalizeBooking({
       dayCruise: true,
-      overnightCruise: true,
+      overnightCruise: false,
       nightCruise: true,
-      details: 'Festival special complete package booking.',
-    },
-    18: {
+      details: 'Festival special day and night package booking.',
+      price: 23500,
+    }),
+    18: normalizeBooking({
       dayCruise: false,
       overnightCruise: false,
       nightCruise: true,
       details: 'Couple moonlight cruise with dinner.',
-    },
-    24: {
+      price: 14500,
+    }),
+    24: normalizeBooking({
       dayCruise: true,
       overnightCruise: false,
       nightCruise: true,
       details: 'Private anniversary plan with sunset and night ride.',
-    },
-  });
+      price: 26000,
+    }),
+  }));
 
   const days = useMemo(() => Array.from({ length: 31 }, (_, index) => index + 1), []);
 
@@ -512,6 +533,7 @@ function CalendarPage() {
     overnightCruise: false,
     nightCruise: false,
     details: 'No bookings for this day.',
+    price: undefined,
   };
 
   const availabilityToggles: Array<{
@@ -538,36 +560,135 @@ function CalendarPage() {
         overnightCruise: false,
         nightCruise: false,
         details: 'No bookings for this day.',
+        price: undefined,
       };
+
+      const nextBooking: DayBooking = {
+        ...currentDayBooking,
+        [key]: value,
+      };
+
+      if (value && key === 'overnightCruise') {
+        nextBooking.nightCruise = false;
+      }
+      if (value && key === 'nightCruise') {
+        nextBooking.overnightCruise = false;
+      }
 
       return {
         ...current,
-        [selectedDay]: {
-          ...currentDayBooking,
-          [key]: value,
-        },
+        [selectedDay]: normalizeBooking(nextBooking),
       };
     });
+  }
+
+  function handleDayPress(day: number) {
+    if (isBulkPricingMode) {
+      setSelectedDates((current) =>
+        current.includes(day) ? current.filter((item) => item !== day) : [...current, day],
+      );
+      return;
+    }
+
+    setSelectedDay(day);
+  }
+
+  function applyPriceToSelectedDates() {
+    const parsedPrice = Number(priceInput);
+    if (!parsedPrice || parsedPrice <= 0 || selectedDates.length === 0) {
+      return;
+    }
+
+    setBookingsByDay((current) => {
+      const next = { ...current };
+
+      selectedDates.forEach((day) => {
+        const existing = current[day] ?? {
+          dayCruise: false,
+          overnightCruise: false,
+          nightCruise: false,
+          details: 'No bookings for this day.',
+          price: undefined,
+        };
+
+        next[day] = normalizeBooking({
+          ...existing,
+          price: parsedPrice,
+        });
+      });
+
+      return next;
+    });
+
+    setSelectedDates([]);
+    setPriceInput('');
   }
 
   return (
     <ScrollView contentContainerStyle={styles.pageScrollContent}>
       <PageHeader
         title="Availability calendar"
-        sub="One calendar, three independent layers. Open or close each cruise type per date."
+        sub="Set bulk prices for multiple dates and manage cruise availability by date."
       />
+
+      <Card title="Bulk price assignment" sub="Select dates, assign one price, and overwrite existing rates.">
+        <View style={styles.verticalGap10}>
+          <Pressable
+            onPress={() => {
+              setIsBulkPricingMode((current) => {
+                const nextMode = !current;
+                if (!nextMode) {
+                  setSelectedDates([]);
+                  setPriceInput('');
+                }
+                return nextMode;
+              });
+            }}
+            style={[styles.outlineButton, isBulkPricingMode ? styles.bulkModeButtonActive : null]}
+          >
+            <Text style={[styles.outlineButtonText, isBulkPricingMode ? styles.bulkModeButtonTextActive : null]}>
+              {isBulkPricingMode ? 'Exit bulk price mode' : 'Enable bulk price mode'}
+            </Text>
+          </Pressable>
+
+          {isBulkPricingMode ? (
+            <>
+              <Text style={styles.bulkInfoText}>{selectedDates.length} dates selected</Text>
+              <TextInput
+                value={priceInput}
+                onChangeText={(value) => setPriceInput(value.replace(/[^0-9]/g, ''))}
+                keyboardType="numeric"
+                placeholder="Enter price in INR"
+                style={styles.input}
+              />
+              <Pressable
+                onPress={applyPriceToSelectedDates}
+                style={[
+                  styles.primaryButton,
+                  selectedDates.length === 0 || !priceInput ? styles.primaryButtonDisabled : null,
+                ]}
+              >
+                <Text style={styles.primaryButtonText}>Apply price to selected dates</Text>
+              </Pressable>
+            </>
+          ) : null}
+        </View>
+      </Card>
 
       <Card title="January 2025">
         <View style={styles.calendarGrid}>
           {days.map((day) => {
             const booking = bookingsByDay[day];
-            const allCruisesBooked = booking?.dayCruise && booking?.overnightCruise && booking?.nightCruise;
+            const allCruisesBooked =
+              booking?.dayCruise && (booking?.overnightCruise || booking?.nightCruise);
             const anyCruiseBooked = booking?.dayCruise || booking?.overnightCruise || booking?.nightCruise;
+            const bulkSelected = selectedDates.includes(day);
 
             return (
               <Pressable
                 key={day}
-                onPress={() => setSelectedDay(day)}
+                onPress={() => handleDayPress(day)}
+                testID={`calendar-day-${day}`}
                 style={[
                   styles.dayCell,
                   allCruisesBooked
@@ -575,6 +696,7 @@ function CalendarPage() {
                     : anyCruiseBooked
                       ? styles.dayCellPartial
                       : styles.dayCellEmpty,
+                  bulkSelected ? styles.dayCellBulkSelected : null,
                   selectedDay === day ? styles.dayCellSelected : null,
                 ]}
               >
@@ -584,6 +706,7 @@ function CalendarPage() {
                   {booking?.overnightCruise ? ' ⌂' : ''}
                   {booking?.nightCruise ? ' ☾' : ''}
                 </Text>
+                {booking?.price ? <Text style={styles.dayCellPrice}>INR {booking.price}</Text> : null}
               </Pressable>
             );
           })}
@@ -592,10 +715,18 @@ function CalendarPage() {
 
       <Card title={`${selectedDay} Jan - edit availability`}>
         <View style={styles.verticalGap10}>
+          <Text style={styles.calendarRuleText}>Overnight stay and Night stay cannot be booked together.</Text>
+          <Text style={styles.calendarRuleText}>
+            Assigned price: {selectedBooking.price ? `INR ${selectedBooking.price}` : 'Not set'}
+          </Text>
           {availabilityToggles.map(({ label, enabled, key }) => (
             <View key={label} style={styles.featureRow}>
               <Text style={styles.featureRowText}>{label}</Text>
-              <Switch value={enabled} onValueChange={(value) => updateSelectedDayAvailability(key, value)} />
+              <Switch
+                value={enabled}
+                onValueChange={(value) => updateSelectedDayAvailability(key, value)}
+                testID={`availability-switch-${key}`}
+              />
             </View>
           ))}
           <Pressable style={styles.primaryButton}>
@@ -1145,6 +1276,13 @@ const styles = StyleSheet.create({
     borderColor: '#2f8ae3',
     borderWidth: 2,
   },
+  dayCellBulkSelected: {
+    shadowColor: '#0b61b0',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   dayCellNumber: {
     fontSize: 11,
     fontWeight: '600',
@@ -1154,6 +1292,11 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: '#516980',
   },
+  dayCellPrice: {
+    fontSize: 8,
+    color: '#0f5f9f',
+    fontWeight: '700',
+  },
   primaryButton: {
     marginTop: 4,
     borderRadius: 10,
@@ -1161,10 +1304,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
   },
+  primaryButtonDisabled: {
+    backgroundColor: '#9bc1e7',
+  },
   primaryButtonText: {
     color: '#ffffff',
     fontSize: 13,
     fontWeight: '600',
+  },
+  bulkModeButtonActive: {
+    borderColor: '#9fc6ec',
+    backgroundColor: '#e6f2ff',
+  },
+  bulkModeButtonTextActive: {
+    color: '#0c5eac',
+  },
+  bulkInfoText: {
+    color: '#5a6d82',
+    fontSize: 12,
+  },
+  calendarRuleText: {
+    color: '#5a6d82',
+    fontSize: 12,
   },
   inlineWrapRow: {
     flexDirection: 'row',
