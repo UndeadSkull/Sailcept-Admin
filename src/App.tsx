@@ -12,7 +12,9 @@ import {
   X,
 } from "lucide-react-native";
 import {
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -627,7 +629,6 @@ function CalendarPage() {
     () => new Date(todayYear, todayMonth, 1),
   );
   const [isBulkPricingMode, setIsBulkPricingMode] = useState(false);
-  const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
   const [selectedDates, setSelectedDates] = useState<number[]>([]);
   const [priceInput, setPriceInput] = useState("");
   const [selectedDate, setSelectedDate] = useState<SelectedDate | null>(null);
@@ -842,7 +843,6 @@ function CalendarPage() {
 
     setSelectedDates([]);
     setPriceInput("");
-    setIsBulkPriceModalOpen(false);
   }
 
   function moveMonth(delta: number) {
@@ -858,11 +858,13 @@ function CalendarPage() {
     setIsBulkPricingMode(false);
     setSelectedDates([]);
     setPriceInput("");
-    setIsBulkPriceModalOpen(false);
   }
 
   return (
-    <View style={styles.calendarPageRoot}>
+    <KeyboardAvoidingView
+      style={styles.calendarPageRoot}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
       <ScrollView contentContainerStyle={styles.pageScrollContent}>
         <PageHeader
           title="Availability calendar"
@@ -901,44 +903,6 @@ function CalendarPage() {
               </Text>
             </Pressable>
           </View>
-          {isBulkPricingMode && (
-            <View style={styles.bottomSheet}>
-              <View style={styles.bottomSheetHeader}>
-                <View style={styles.bottomSheetInfo}>
-                  <Text style={styles.bottomSheetTitle}>
-                    {selectedDates.length}{" "}
-                    {selectedDates.length === 1 ? "date" : "dates"} selected
-                  </Text>
-                  <Text style={styles.bottomSheetSub}>
-                    {selectedDates.length === 0
-                      ? "Select dates on the calendar"
-                      : "Tap more dates or open pricing"}
-                  </Text>
-                </View>
-                <Pressable
-                  onPress={cancelBulkMode}
-                  style={styles.bottomSheetCloseButton}
-                >
-                  <X size={16} color="#5a6d82" strokeWidth={2.2} />
-                </Pressable>
-              </View>
-              <View style={styles.bottomSheetInputRow}>
-                <Pressable
-                  onPress={() => setIsBulkPriceModalOpen(true)}
-                  disabled={selectedDates.length === 0}
-                  style={[
-                    styles.bulkPricingOpenButton,
-                    selectedDates.length === 0
-                      ? styles.bulkPricingOpenButtonDisabled
-                      : null,
-                  ]}
-                >
-                  <Text style={styles.applyPriceButtonText}>Open Pricing</Text>
-                </Pressable>
-              </View>
-            </View>
-          )}
-
           <View style={styles.calendarMonthRow}>
             <Pressable
               onPress={() => moveMonth(-1)}
@@ -1065,166 +1029,148 @@ function CalendarPage() {
           </View>
         </Card>
 
-        <Modal
-          visible={Boolean(selectedDate) && !isBulkPricingMode}
-          animationType="slide"
-          transparent
-          onRequestClose={() => setSelectedDate(null)}
-        >
-          <View style={styles.modalOverlay}>
-            <Pressable
-              style={styles.modalBackdrop}
-              onPress={() => setSelectedDate(null)}
-            />
-            <View style={styles.modalCard} testID="day-edit-modal">
-              <View style={styles.modalDragHandle} />
-              <View style={styles.modalTitleRow}>
-                <Text style={styles.modalTitle}>
-                  {selectedDate
-                    ? `${selectedDate.day} ${new Date(
-                        selectedDate.year,
-                        selectedDate.month,
-                        selectedDate.day,
-                      ).toLocaleString("en-US", {
-                        month: "short",
-                        year: "numeric",
-                      })}`
-                    : ""}
-                </Text>
-                <Pressable
-                  onPress={() => setSelectedDate(null)}
-                  style={styles.bottomSheetCloseButton}
-                >
-                  <X size={16} color="#5a6d82" strokeWidth={2.2} />
-                </Pressable>
-              </View>
-              <Text style={styles.calendarRuleText}>
-                Overnight stay and Night stay cannot be booked together.
-              </Text>
-              <View style={styles.bottomSheetPriceField}>
-                <Text style={styles.bottomSheetRupee}>₹</Text>
-                <TextInput
-                  value={modalPriceInput}
-                  onChangeText={(value) =>
-                    setModalPriceInput(value.replace(/[^0-9]/g, ""))
-                  }
-                  keyboardType="numeric"
-                  placeholder="Enter price (optional)"
-                  placeholderTextColor="#9aafbf"
-                  style={styles.bottomSheetInput}
-                  testID="modal-price-input"
-                />
-              </View>
-              <View style={styles.verticalGap10}>
-                {availabilityToggles.map(({ label, enabled, key }) => (
-                  <View key={label} style={styles.featureRow}>
-                    <Text style={styles.featureRowText}>{label}</Text>
-                    <Switch
-                      value={enabled}
-                      onValueChange={(value) =>
-                        updateSelectedDayAvailability(key, value)
-                      }
-                      testID={`availability-switch-${key}`}
-                    />
-                  </View>
-                ))}
-              </View>
-              <Pressable
-                onPress={() => {
-                  if (selectedDate) {
-                    const dateKey = getDateKey(
-                      selectedDate.year,
-                      selectedDate.month,
-                      selectedDate.day,
-                    );
-                    const parsedPrice = modalPriceInput
-                      ? Number(modalPriceInput)
-                      : undefined;
-                    setBookingsByDate((current) => {
-                      const existing = current[dateKey] ?? {
-                        dayCruise: false,
-                        overnightCruise: false,
-                        nightCruise: false,
-                        details: "No bookings for this day.",
-                        price: undefined,
-                      };
-                      return {
-                        ...current,
-                        [dateKey]: normalizeBooking({
-                          ...existing,
-                          price: parsedPrice,
-                        }),
-                      };
-                    });
-                  }
-                  setSelectedDate(null);
-                }}
-                style={styles.primaryButton}
-              >
-                <Text style={styles.primaryButtonText}>Done</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Modal>
       </ScrollView>
 
-      <Modal
-        visible={isBulkPricingMode && isBulkPriceModalOpen}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setIsBulkPriceModalOpen(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <Pressable
-            style={styles.modalBackdrop}
-            onPress={() => setIsBulkPriceModalOpen(false)}
-          />
-          <View style={styles.bulkPriceModalCard}>
-            <View style={styles.modalDragHandle} />
-            <View style={styles.modalTitleRow}>
-              <Text style={styles.modalTitle}>Bulk pricing</Text>
-              <Pressable
-                onPress={() => setIsBulkPriceModalOpen(false)}
-                style={styles.bottomSheetCloseButton}
-              >
-                <X size={16} color="#5a6d82" strokeWidth={2.2} />
-              </Pressable>
+      {isBulkPricingMode ? (
+        <View style={styles.bulkPricingPanel}>
+          <View style={styles.bottomSheetHeader}>
+            <View style={styles.bottomSheetInfo}>
+              <Text style={styles.bottomSheetTitle}>
+                {selectedDates.length}{" "}
+                {selectedDates.length === 1 ? "date" : "dates"} selected
+              </Text>
+              <Text style={styles.bottomSheetSub}>
+                {selectedDates.length === 0
+                  ? "Select dates on the calendar"
+                  : "Tap more dates or apply price"}
+              </Text>
             </View>
-            <Text style={styles.calendarRuleText}>
-              {selectedDates.length}{" "}
-              {selectedDates.length === 1 ? "date" : "dates"} selected
-            </Text>
-            <View style={styles.bottomSheetInputRow}>
-              <View style={styles.bottomSheetPriceField}>
-                <Text style={styles.bottomSheetRupee}>₹</Text>
-                <TextInput
-                  value={priceInput}
-                  onChangeText={(value) =>
-                    setPriceInput(value.replace(/[^0-9]/g, ""))
-                  }
-                  keyboardType="numeric"
-                  placeholder="Enter price"
-                  placeholderTextColor="#9aafbf"
-                  style={styles.bottomSheetInput}
-                />
-              </View>
-              <Pressable
-                onPress={applyPriceToSelectedDates}
-                disabled={selectedDates.length === 0 || !priceInput}
-                style={[
-                  styles.applyPriceButton,
-                  selectedDates.length === 0 || !priceInput
-                    ? styles.applyPriceButtonDisabled
-                    : null,
-                ]}
-              >
-                <Text style={styles.applyPriceButtonText}>Apply Price</Text>
-              </Pressable>
+            <Pressable
+              onPress={cancelBulkMode}
+              style={styles.bottomSheetCloseButton}
+            >
+              <X size={16} color="#5a6d82" strokeWidth={2.2} />
+            </Pressable>
+          </View>
+          <View style={styles.bottomSheetInputRow}>
+            <View style={styles.bottomSheetPriceField}>
+              <Text style={styles.bottomSheetRupee}>₹</Text>
+              <TextInput
+                value={priceInput}
+                onChangeText={(value) =>
+                  setPriceInput(value.replace(/[^0-9]/g, ""))
+                }
+                keyboardType="numeric"
+                placeholder="Enter price"
+                placeholderTextColor="#9aafbf"
+                style={styles.bottomSheetInput}
+              />
             </View>
+            <Pressable
+              onPress={applyPriceToSelectedDates}
+              disabled={selectedDates.length === 0 || !priceInput}
+              style={[
+                styles.applyPriceButton,
+                selectedDates.length === 0 || !priceInput
+                  ? styles.applyPriceButtonDisabled
+                  : null,
+              ]}
+            >
+              <Text style={styles.applyPriceButtonText}>Apply Price</Text>
+            </Pressable>
           </View>
         </View>
-      </Modal>
-    </View>
+      ) : null}
+
+      {selectedDate && !isBulkPricingMode ? (
+        <View style={styles.dayEditPanel} testID="day-edit-modal">
+          <View style={styles.modalDragHandle} />
+          <View style={styles.modalTitleRow}>
+            <Text style={styles.modalTitle}>
+              {`${selectedDate.day} ${new Date(
+                selectedDate.year,
+                selectedDate.month,
+                selectedDate.day,
+              ).toLocaleString("en-US", {
+                month: "short",
+                year: "numeric",
+              })}`}
+            </Text>
+            <Pressable
+              onPress={() => setSelectedDate(null)}
+              style={styles.bottomSheetCloseButton}
+            >
+              <X size={16} color="#5a6d82" strokeWidth={2.2} />
+            </Pressable>
+          </View>
+          <Text style={styles.calendarRuleText}>
+            Overnight stay and Night stay cannot be booked together.
+          </Text>
+          <View style={styles.bottomSheetPriceField}>
+            <Text style={styles.bottomSheetRupee}>₹</Text>
+            <TextInput
+              value={modalPriceInput}
+              onChangeText={(value) =>
+                setModalPriceInput(value.replace(/[^0-9]/g, ""))
+              }
+              keyboardType="numeric"
+              placeholder="Enter price (optional)"
+              placeholderTextColor="#9aafbf"
+              style={styles.bottomSheetInput}
+              testID="modal-price-input"
+            />
+          </View>
+          <View style={styles.verticalGap10}>
+            {availabilityToggles.map(({ label, enabled, key }) => (
+              <View key={label} style={styles.featureRow}>
+                <Text style={styles.featureRowText}>{label}</Text>
+                <Switch
+                  value={enabled}
+                  onValueChange={(value) =>
+                    updateSelectedDayAvailability(key, value)
+                  }
+                  testID={`availability-switch-${key}`}
+                />
+              </View>
+            ))}
+          </View>
+          <Pressable
+            onPress={() => {
+              if (selectedDate) {
+                const dateKey = getDateKey(
+                  selectedDate.year,
+                  selectedDate.month,
+                  selectedDate.day,
+                );
+                const parsedPrice = modalPriceInput
+                  ? Number(modalPriceInput)
+                  : undefined;
+                setBookingsByDate((current) => {
+                  const existing = current[dateKey] ?? {
+                    dayCruise: false,
+                    overnightCruise: false,
+                    nightCruise: false,
+                    details: "No bookings for this day.",
+                    price: undefined,
+                  };
+                  return {
+                    ...current,
+                    [dateKey]: normalizeBooking({
+                      ...existing,
+                      price: parsedPrice,
+                    }),
+                  };
+                });
+              }
+              setSelectedDate(null);
+            }}
+            style={styles.primaryButton}
+          >
+            <Text style={styles.primaryButtonText}>Done</Text>
+          </Pressable>
+        </View>
+      ) : null}
+    </KeyboardAvoidingView>
   );
 }
 
@@ -2054,6 +2000,34 @@ const styles = StyleSheet.create({
   calendarRuleText: {
     color: "#5a6d82",
     fontSize: 12,
+  },
+  bulkPricingPanel: {
+    backgroundColor: "#ffffff",
+    borderTopWidth: 1,
+    borderTopColor: "#d4e5f8",
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 96,
+    gap: 10,
+    shadowColor: "#0b3d70",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  dayEditPanel: {
+    backgroundColor: "#ffffff",
+    borderTopWidth: 1,
+    borderTopColor: "#d4e5f8",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 96,
+    gap: 12,
+    shadowColor: "#0b3d70",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.12,
+    shadowRadius: 8,
+    elevation: 8,
   },
   modalOverlay: {
     flex: 1,
