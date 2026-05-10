@@ -1,5 +1,16 @@
-import { StatusBar } from 'expo-status-bar';
-import { useMemo, useState } from 'react';
+import { StatusBar } from "expo-status-bar";
+import { useMemo, useState } from "react";
+import {
+  BookCheck,
+  CalendarDays,
+  Check,
+  House,
+  LayoutGrid,
+  Menu,
+  Moon,
+  Sun,
+  X,
+} from "lucide-react-native";
 import {
   Modal,
   Pressable,
@@ -9,15 +20,15 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-type RouteKey = 'dashboard' | 'boat' | 'calendar' | 'enquiries' | 'bookings';
+type RouteKey = "dashboard" | "boat" | "calendar" | "enquiries" | "bookings";
 
 type Enquiry = {
   name: string;
   dateLine: string;
-  status: 'Date locked' | 'Confirmed' | 'Pending';
+  status: "Date locked" | "Confirmed" | "Pending";
   config: string;
 };
 
@@ -29,21 +40,60 @@ type SelectOption = {
 const navItems: Array<{
   key: RouteKey;
   label: string;
-  icon: string;
 }> = [
-  { key: 'dashboard', label: 'Overview', icon: '▦' },
-  { key: 'calendar', label: 'Calendar', icon: '◫' },
-  { key: 'enquiries', label: 'Enquiries', icon: '☰' },
-  { key: 'bookings', label: 'Bookings', icon: '▤' },
+  { key: "dashboard", label: "Overview" },
+  { key: "calendar", label: "Calendar" },
+  { key: "enquiries", label: "Enquiries" },
+  { key: "bookings", label: "Bookings" },
 ];
 
-const enquiryStatusStyle: Record<Enquiry['status'], { bg: string; text: string; border: string }> = {
-  'Date locked': { bg: '#fff1d6', text: '#8f6300', border: '#f5d392' },
-  Confirmed: { bg: '#dcfce8', text: '#0f7a4f', border: '#9dd8bc' },
-  Pending: { bg: '#e0f2ff', text: '#1a5f94', border: '#aad1ef' },
+function BottomNavIcon({
+  route,
+  active,
+}: {
+  route: RouteKey;
+  active: boolean;
+}) {
+  const color = active ? "#0d63b4" : "#6d8299";
+  const size = 14;
+
+  if (route === "dashboard") {
+    return <LayoutGrid size={size} color={color} strokeWidth={2.2} />;
+  }
+
+  if (route === "calendar") {
+    return <CalendarDays size={size} color={color} strokeWidth={2.2} />;
+  }
+
+  if (route === "enquiries") {
+    return <Menu size={size} color={color} strokeWidth={2.2} />;
+  }
+
+  if (route === "bookings") {
+    return <BookCheck size={size} color={color} strokeWidth={2.2} />;
+  }
+
+  return null;
+}
+
+const enquiryStatusStyle: Record<
+  Enquiry["status"],
+  { bg: string; text: string; border: string }
+> = {
+  "Date locked": { bg: "#fff1d6", text: "#8f6300", border: "#f5d392" },
+  Confirmed: { bg: "#dcfce8", text: "#0f7a4f", border: "#9dd8bc" },
+  Pending: { bg: "#e0f2ff", text: "#1a5f94", border: "#aad1ef" },
 };
 
-function PageHeader({ title, sub, children }: { title: string; sub: string; children?: React.ReactNode }) {
+function PageHeader({
+  title,
+  sub,
+  children,
+}: {
+  title: string;
+  sub: string;
+  children?: React.ReactNode;
+}) {
   return (
     <View style={styles.pageHeader}>
       <View style={styles.flex1}>
@@ -55,7 +105,15 @@ function PageHeader({ title, sub, children }: { title: string; sub: string; chil
   );
 }
 
-function Card({ title, sub, children }: { title: string; sub?: string; children: React.ReactNode }) {
+function Card({
+  title,
+  sub,
+  children,
+}: {
+  title: string;
+  sub?: string;
+  children: React.ReactNode;
+}) {
   return (
     <View style={styles.card}>
       <Text style={styles.cardTitle}>{title}</Text>
@@ -90,16 +148,24 @@ function OptionSelect({
         const next = (index + 1) % options.length;
         onChange(options[next].value);
       }}
-      style={[styles.selectButton, disabled ? styles.selectButtonDisabled : null]}
+      style={[
+        styles.selectButton,
+        disabled ? styles.selectButtonDisabled : null,
+      ]}
     >
-      <Text style={[styles.selectButtonText, disabled ? styles.selectButtonTextDisabled : null]}>
+      <Text
+        style={[
+          styles.selectButtonText,
+          disabled ? styles.selectButtonTextDisabled : null,
+        ]}
+      >
         {options[index].label}
       </Text>
     </Pressable>
   );
 }
 
-function StatusPill({ status }: { status: Enquiry['status'] }) {
+function StatusPill({ status }: { status: Enquiry["status"] }) {
   return (
     <View
       style={[
@@ -110,7 +176,14 @@ function StatusPill({ status }: { status: Enquiry['status'] }) {
         },
       ]}
     >
-      <Text style={[styles.statusPillText, { color: enquiryStatusStyle[status].text }]}>{status}</Text>
+      <Text
+        style={[
+          styles.statusPillText,
+          { color: enquiryStatusStyle[status].text },
+        ]}
+      >
+        {status}
+      </Text>
     </View>
   );
 }
@@ -118,29 +191,33 @@ function StatusPill({ status }: { status: Enquiry['status'] }) {
 function DashboardPage() {
   const enquiries: Enquiry[] = [
     {
-      name: 'Arjun Menon',
-      dateLine: 'Day cruise · 15 Jan 2025',
-      status: 'Date locked',
-      config: 'Premium · Private · 2 adults · 1 room · Full upper deck · INR 12,500',
+      name: "Arjun Menon",
+      dateLine: "Day cruise · 15 Jan 2025",
+      status: "Date locked",
+      config:
+        "Premium · Private · 2 adults · 1 room · Full upper deck · INR 12,500",
     },
     {
-      name: 'Priya Sharma',
-      dateLine: 'Overnight stay · 18 Jan 2025',
-      status: 'Confirmed',
-      config: 'Luxury · Private · 4 adults · 2 rooms · INR 28,000',
+      name: "Priya Sharma",
+      dateLine: "Overnight stay · 18 Jan 2025",
+      status: "Confirmed",
+      config: "Luxury · Private · 4 adults · 2 rooms · INR 28,000",
     },
   ];
 
   return (
     <ScrollView contentContainerStyle={styles.pageScrollContent}>
-      <PageHeader title="Overview" sub="Your houseboat performance at a glance" />
+      <PageHeader
+        title="Overview"
+        sub="Your houseboat performance at a glance"
+      />
 
       <View style={styles.statsGrid}>
         {[
-          ['Open dates this month', '18', 'of 31 days'],
-          ['Pending enquiries', '3', 'Awaiting response'],
-          ['Confirmed bookings', '11', 'This month'],
-          ['Revenue (month)', 'INR 1.4L', 'Normal + peak'],
+          ["Open dates this month", "18", "of 31 days"],
+          ["Pending enquiries", "3", "Awaiting response"],
+          ["Confirmed bookings", "11", "This month"],
+          ["Revenue (month)", "INR 1.4L", "Normal + peak"],
         ].map(([label, value, caption]) => (
           <View key={label} style={styles.statCard}>
             <Text style={styles.statLabel}>{label}</Text>
@@ -173,30 +250,38 @@ function DashboardPage() {
 function BoatAssetPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [identity, setIdentity] = useState({
-    boatName: 'Vembanad Crest',
-    experienceTier: 'Premium',
-    bookingType: 'Private only',
+    boatName: "Vembanad Crest",
+    experienceTier: "Premium",
+    bookingType: "Private only",
     maxGuests: 6,
     bedrooms: 2,
-    maxGuestsPerRoom: '2 + 1 extra bed',
+    maxGuestsPerRoom: "2 + 1 extra bed",
   });
-  const [features, setFeatures] = useState<string[]>(['Full upper deck', 'Sundeck']);
+  const [features, setFeatures] = useState<string[]>([
+    "Full upper deck",
+    "Sundeck",
+  ]);
   const [cruiseTypes, setCruiseTypes] = useState([
-    { label: 'Day cruise', on: true },
-    { label: 'Overnight stay', on: true },
-    { label: 'Night stay', on: false },
+    { label: "Day cruise", on: true },
+    { label: "Overnight stay", on: true },
+    { label: "Night stay", on: false },
   ]);
   const [roomSettings, setRoomSettings] = useState({
-    maxGuests: '2 guests',
-    extraBed: 'Allowed',
-    children: 'Allowed',
+    maxGuests: "2 guests",
+    extraBed: "Allowed",
+    children: "Allowed",
   });
 
-  const allStructuralFeatures = ['Full upper deck', 'Partial deck', 'Sundeck', 'Balcony'];
+  const allStructuralFeatures = [
+    "Full upper deck",
+    "Partial deck",
+    "Sundeck",
+    "Balcony",
+  ];
   const roomRules: Array<{ label: string; options: string[] }> = [
-    { label: 'Max guests', options: ['2 guests', '3 guests'] },
-    { label: 'Extra bed', options: ['Allowed', 'Not allowed'] },
-    { label: 'Children', options: ['Allowed', 'Not allowed'] },
+    { label: "Max guests", options: ["2 guests", "3 guests"] },
+    { label: "Extra bed", options: ["Allowed", "Not allowed"] },
+    { label: "Children", options: ["Allowed", "Not allowed"] },
   ];
 
   function toggleFeature(feature: string) {
@@ -216,15 +301,24 @@ function BoatAssetPage() {
         <View style={styles.rowGap8}>
           {isEditing ? (
             <>
-              <Pressable onPress={() => setIsEditing(false)} style={styles.outlineButton}>
+              <Pressable
+                onPress={() => setIsEditing(false)}
+                style={styles.outlineButton}
+              >
                 <Text style={styles.outlineButtonText}>Cancel</Text>
               </Pressable>
-              <Pressable onPress={() => setIsEditing(false)} style={styles.softBlueButton}>
+              <Pressable
+                onPress={() => setIsEditing(false)}
+                style={styles.softBlueButton}
+              >
                 <Text style={styles.softBlueButtonText}>Save</Text>
               </Pressable>
             </>
           ) : (
-            <Pressable onPress={() => setIsEditing(true)} style={styles.softBlueButton}>
+            <Pressable
+              onPress={() => setIsEditing(true)}
+              style={styles.softBlueButton}
+            >
               <Text style={styles.softBlueButtonText}>Edit</Text>
             </Pressable>
           )}
@@ -238,7 +332,9 @@ function BoatAssetPage() {
             {isEditing ? (
               <TextInput
                 value={identity.boatName}
-                onChangeText={(text) => setIdentity((current) => ({ ...current, boatName: text }))}
+                onChangeText={(text) =>
+                  setIdentity((current) => ({ ...current, boatName: text }))
+                }
                 style={styles.input}
               />
             ) : (
@@ -251,11 +347,16 @@ function BoatAssetPage() {
             {isEditing ? (
               <OptionSelect
                 value={identity.experienceTier}
-                onChange={(value) => setIdentity((current) => ({ ...current, experienceTier: value }))}
+                onChange={(value) =>
+                  setIdentity((current) => ({
+                    ...current,
+                    experienceTier: value,
+                  }))
+                }
                 options={[
-                  { label: 'Premium', value: 'Premium' },
-                  { label: 'Luxury', value: 'Luxury' },
-                  { label: 'Standard', value: 'Standard' },
+                  { label: "Premium", value: "Premium" },
+                  { label: "Luxury", value: "Luxury" },
+                  { label: "Standard", value: "Standard" },
                 ]}
               />
             ) : (
@@ -268,11 +369,13 @@ function BoatAssetPage() {
             {isEditing ? (
               <OptionSelect
                 value={identity.bookingType}
-                onChange={(value) => setIdentity((current) => ({ ...current, bookingType: value }))}
+                onChange={(value) =>
+                  setIdentity((current) => ({ ...current, bookingType: value }))
+                }
                 options={[
-                  { label: 'Private only', value: 'Private only' },
-                  { label: 'Shared', value: 'Shared' },
-                  { label: 'Private + shared', value: 'Private + shared' },
+                  { label: "Private only", value: "Private only" },
+                  { label: "Shared", value: "Shared" },
+                  { label: "Private + shared", value: "Private + shared" },
                 ]}
               />
             ) : (
@@ -345,9 +448,16 @@ function BoatAssetPage() {
               const enabled = features.includes(feature);
 
               return (
-                <Pressable key={feature} style={styles.featureRow} onPress={() => toggleFeature(feature)}>
+                <Pressable
+                  key={feature}
+                  style={styles.featureRow}
+                  onPress={() => toggleFeature(feature)}
+                >
                   <Text style={styles.featureRowText}>{feature}</Text>
-                  <Switch value={enabled} onValueChange={() => toggleFeature(feature)} />
+                  <Switch
+                    value={enabled}
+                    onValueChange={() => toggleFeature(feature)}
+                  />
                 </Pressable>
               );
             })}
@@ -362,10 +472,18 @@ function BoatAssetPage() {
                   key={feature}
                   style={[
                     styles.featurePill,
-                    enabled ? styles.featurePillEnabled : styles.featurePillDisabled,
+                    enabled
+                      ? styles.featurePillEnabled
+                      : styles.featurePillDisabled,
                   ]}
                 >
-                  <Text style={enabled ? styles.featurePillEnabledText : styles.featurePillDisabledText}>
+                  <Text
+                    style={
+                      enabled
+                        ? styles.featurePillEnabledText
+                        : styles.featurePillDisabledText
+                    }
+                  >
                     {feature}
                   </Text>
                 </View>
@@ -389,7 +507,9 @@ function BoatAssetPage() {
                   onValueChange={(value) =>
                     setCruiseTypes((current) =>
                       current.map((item) =>
-                        item.label === type.label ? { ...item, on: value } : item,
+                        item.label === type.label
+                          ? { ...item, on: value }
+                          : item,
                       ),
                     )
                   }
@@ -404,10 +524,18 @@ function BoatAssetPage() {
                 key={type.label}
                 style={[
                   styles.featurePill,
-                  type.on ? styles.cruisePillEnabled : styles.cruisePillDisabled,
+                  type.on
+                    ? styles.cruisePillEnabled
+                    : styles.cruisePillDisabled,
                 ]}
               >
-                <Text style={type.on ? styles.cruisePillEnabledText : styles.cruisePillDisabledText}>
+                <Text
+                  style={
+                    type.on
+                      ? styles.cruisePillEnabledText
+                      : styles.cruisePillDisabledText
+                  }
+                >
                   {type.label}
                 </Text>
               </View>
@@ -422,9 +550,9 @@ function BoatAssetPage() {
           <View style={styles.verticalGap10}>
             {roomRules.map(({ label, options }) => {
               const selectedValue =
-                label === 'Max guests'
+                label === "Max guests"
                   ? roomSettings.maxGuests
-                  : label === 'Extra bed'
+                  : label === "Extra bed"
                     ? roomSettings.extraBed
                     : roomSettings.children;
 
@@ -436,17 +564,20 @@ function BoatAssetPage() {
                     disabled={!isEditing}
                     onChange={(value) => {
                       setRoomSettings((current) => {
-                        if (label === 'Max guests') {
+                        if (label === "Max guests") {
                           return { ...current, maxGuests: value };
                         }
-                        if (label === 'Extra bed') {
+                        if (label === "Extra bed") {
                           return { ...current, extraBed: value };
                         }
 
                         return { ...current, children: value };
                       });
                     }}
-                    options={options.map((option) => ({ label: option, value: option }))}
+                    options={options.map((option) => ({
+                      label: option,
+                      value: option,
+                    }))}
                   />
                 </View>
               );
@@ -485,127 +616,160 @@ function CalendarPage() {
   }
 
   function getDateKey(year: number, month: number, day: number): string {
-    return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   }
 
   const today = new Date();
   const todayYear = today.getFullYear();
   const todayMonth = today.getMonth();
 
-  const [visibleMonth, setVisibleMonth] = useState(() => new Date(todayYear, todayMonth, 1));
+  const [visibleMonth, setVisibleMonth] = useState(
+    () => new Date(todayYear, todayMonth, 1),
+  );
   const [isBulkPricingMode, setIsBulkPricingMode] = useState(false);
+  const [isBulkPriceModalOpen, setIsBulkPriceModalOpen] = useState(false);
   const [selectedDates, setSelectedDates] = useState<number[]>([]);
-  const [priceInput, setPriceInput] = useState('');
+  const [priceInput, setPriceInput] = useState("");
   const [selectedDate, setSelectedDate] = useState<SelectedDate | null>(null);
-  const [modalPriceInput, setModalPriceInput] = useState('');
-  const [bookingsByDate, setBookingsByDate] = useState<Record<string, DayBooking>>(() => ({
+  const [modalPriceInput, setModalPriceInput] = useState("");
+  const [bookingsByDate, setBookingsByDate] = useState<
+    Record<string, DayBooking>
+  >(() => ({
     [getDateKey(todayYear, todayMonth, 2)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: false,
       nightCruise: false,
-      details: 'Corporate day outing for 8 guests.',
+      details: "Corporate day outing for 8 guests.",
       price: 12500,
     }),
     [getDateKey(todayYear, todayMonth, 5)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: true,
       nightCruise: false,
-      details: 'Wedding group full-day charter with overnight extension.',
+      details: "Wedding group full-day charter with overnight extension.",
       price: 28000,
     }),
     [getDateKey(todayYear, todayMonth, 9)]: normalizeBooking({
       dayCruise: false,
       overnightCruise: true,
       nightCruise: false,
-      details: 'Family overnight package.',
+      details: "Family overnight package.",
       price: 21000,
     }),
     [getDateKey(todayYear, todayMonth, 13)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: false,
       nightCruise: true,
-      details: 'Festival special day and night package booking.',
+      details: "Festival special day and night package booking.",
       price: 23500,
     }),
     [getDateKey(todayYear, todayMonth, 18)]: normalizeBooking({
       dayCruise: false,
       overnightCruise: false,
       nightCruise: true,
-      details: 'Couple moonlight cruise with dinner.',
+      details: "Couple moonlight cruise with dinner.",
       price: 14500,
     }),
     [getDateKey(todayYear, todayMonth, 24)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: false,
       nightCruise: true,
-      details: 'Private anniversary plan with sunset and night ride.',
+      details: "Private anniversary plan with sunset and night ride.",
       price: 26000,
     }),
   }));
 
   const visibleYear = visibleMonth.getFullYear();
   const visibleMonthIndex = visibleMonth.getMonth();
-  const daysInVisibleMonth = new Date(visibleYear, visibleMonthIndex + 1, 0).getDate();
-  const firstDayWeekIndex = new Date(visibleYear, visibleMonthIndex, 1).getDay();
+  const daysInVisibleMonth = new Date(
+    visibleYear,
+    visibleMonthIndex + 1,
+    0,
+  ).getDate();
+  const firstDayWeekIndex = new Date(
+    visibleYear,
+    visibleMonthIndex,
+    1,
+  ).getDay();
 
   const calendarDays = useMemo(() => {
-    const blanks = Array.from({ length: firstDayWeekIndex }, () => null as number | null);
-    const monthDays = Array.from({ length: daysInVisibleMonth }, (_, index) => index + 1);
+    const blanks = Array.from(
+      { length: firstDayWeekIndex },
+      () => null as number | null,
+    );
+    const monthDays = Array.from(
+      { length: daysInVisibleMonth },
+      (_, index) => index + 1,
+    );
     return [...blanks, ...monthDays];
   }, [firstDayWeekIndex, daysInVisibleMonth]);
 
-  const weekdayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const visibleMonthTitle = visibleMonth.toLocaleString('en-US', {
-    month: 'long',
-    year: 'numeric',
+  const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const visibleMonthTitle = visibleMonth.toLocaleString("en-US", {
+    month: "long",
+    year: "numeric",
   });
 
   const selectedBooking = selectedDate
-    ? bookingsByDate[getDateKey(selectedDate.year, selectedDate.month, selectedDate.day)] ?? {
+    ? (bookingsByDate[
+        getDateKey(selectedDate.year, selectedDate.month, selectedDate.day)
+      ] ?? {
         dayCruise: false,
         overnightCruise: false,
         nightCruise: false,
-        details: 'No bookings for this day.',
+        details: "No bookings for this day.",
         price: undefined,
-      }
+      })
     : {
         dayCruise: false,
         overnightCruise: false,
         nightCruise: false,
-        details: 'No bookings for this day.',
+        details: "No bookings for this day.",
         price: undefined,
       };
 
   const availabilityToggles: Array<{
     label: string;
     enabled: boolean;
-    key: 'dayCruise' | 'overnightCruise' | 'nightCruise';
+    key: "dayCruise" | "overnightCruise" | "nightCruise";
   }> = [
-    { label: 'Day cruise', enabled: selectedBooking.dayCruise, key: 'dayCruise' },
     {
-      label: 'Overnight stay',
-      enabled: selectedBooking.overnightCruise,
-      key: 'overnightCruise',
+      label: "Day cruise",
+      enabled: selectedBooking.dayCruise,
+      key: "dayCruise",
     },
-    { label: 'Night stay', enabled: selectedBooking.nightCruise, key: 'nightCruise' },
+    {
+      label: "Overnight stay",
+      enabled: selectedBooking.overnightCruise,
+      key: "overnightCruise",
+    },
+    {
+      label: "Night stay",
+      enabled: selectedBooking.nightCruise,
+      key: "nightCruise",
+    },
   ];
 
   function updateSelectedDayAvailability(
-    key: 'dayCruise' | 'overnightCruise' | 'nightCruise',
+    key: "dayCruise" | "overnightCruise" | "nightCruise",
     value: boolean,
   ) {
     if (!selectedDate) {
       return;
     }
 
-    const selectedDateKey = getDateKey(selectedDate.year, selectedDate.month, selectedDate.day);
+    const selectedDateKey = getDateKey(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+    );
 
     setBookingsByDate((current) => {
       const currentDayBooking = current[selectedDateKey] ?? {
         dayCruise: false,
         overnightCruise: false,
         nightCruise: false,
-        details: 'No bookings for this day.',
+        details: "No bookings for this day.",
         price: undefined,
       };
 
@@ -614,10 +778,10 @@ function CalendarPage() {
         [key]: value,
       };
 
-      if (value && key === 'overnightCruise') {
+      if (value && key === "overnightCruise") {
         nextBooking.nightCruise = false;
       }
-      if (value && key === 'nightCruise') {
+      if (value && key === "nightCruise") {
         nextBooking.overnightCruise = false;
       }
 
@@ -631,14 +795,16 @@ function CalendarPage() {
   function handleDayPress(day: number) {
     if (isBulkPricingMode) {
       setSelectedDates((current) =>
-        current.includes(day) ? current.filter((item) => item !== day) : [...current, day],
+        current.includes(day)
+          ? current.filter((item) => item !== day)
+          : [...current, day],
       );
       return;
     }
 
     const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
     const existingPrice = bookingsByDate[dateKey]?.price;
-    setModalPriceInput(existingPrice ? String(existingPrice) : '');
+    setModalPriceInput(existingPrice ? String(existingPrice) : "");
     setSelectedDate({
       year: visibleYear,
       month: visibleMonthIndex,
@@ -661,7 +827,7 @@ function CalendarPage() {
           dayCruise: false,
           overnightCruise: false,
           nightCruise: false,
-          details: 'No bookings for this day.',
+          details: "No bookings for this day.",
           price: undefined,
         };
 
@@ -675,229 +841,416 @@ function CalendarPage() {
     });
 
     setSelectedDates([]);
-    setPriceInput('');
+    setPriceInput("");
+    setIsBulkPriceModalOpen(false);
   }
 
   function moveMonth(delta: number) {
-    setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1));
+    setVisibleMonth(
+      (current) =>
+        new Date(current.getFullYear(), current.getMonth() + delta, 1),
+    );
     setSelectedDates([]);
     setSelectedDate(null);
   }
 
+  function cancelBulkMode() {
+    setIsBulkPricingMode(false);
+    setSelectedDates([]);
+    setPriceInput("");
+    setIsBulkPriceModalOpen(false);
+  }
+
   return (
-    <ScrollView contentContainerStyle={styles.pageScrollContent}>
-      <PageHeader
-        title="Availability calendar"
-        sub="Set bulk prices for multiple dates and manage cruise availability by date."
-      />
+    <View style={styles.calendarPageRoot}>
+      <ScrollView contentContainerStyle={styles.pageScrollContent}>
+        <PageHeader
+          title="Availability calendar"
+          sub="Set bulk prices for multiple dates and manage cruise availability by date."
+        />
 
-      <Card title="Bulk price assignment" sub="Select dates, assign one price, and overwrite existing rates.">
-        <View style={styles.verticalGap10}>
-          <Pressable
-            onPress={() => {
-              setIsBulkPricingMode((current) => {
-                const nextMode = !current;
-                if (!nextMode) {
-                  setSelectedDates([]);
-                  setPriceInput('');
-                }
-                return nextMode;
-              });
-            }}
-            style={[styles.outlineButton, isBulkPricingMode ? styles.bulkModeButtonActive : null]}
-          >
-            <Text style={[styles.outlineButtonText, isBulkPricingMode ? styles.bulkModeButtonTextActive : null]}>
-              {isBulkPricingMode ? 'Exit bulk price mode' : 'Enable bulk price mode'}
-            </Text>
-          </Pressable>
-
-          {isBulkPricingMode ? (
-            <>
-              <Text style={styles.bulkInfoText}>{selectedDates.length} dates selected</Text>
-              <TextInput
-                value={priceInput}
-                onChangeText={(value) => setPriceInput(value.replace(/[^0-9]/g, ''))}
-                keyboardType="numeric"
-                placeholder="Enter price in INR"
-                style={styles.input}
-              />
-              <Pressable
-                onPress={applyPriceToSelectedDates}
-                style={[
-                  styles.primaryButton,
-                  selectedDates.length === 0 || !priceInput ? styles.primaryButtonDisabled : null,
-                ]}
-              >
-                <Text style={styles.primaryButtonText}>Apply price to selected dates</Text>
-              </Pressable>
-            </>
-          ) : null}
-        </View>
-      </Card>
-
-      <Card title="Monthly availability">
-        <View style={styles.calendarMonthRow}>
-          <Pressable onPress={() => moveMonth(-1)} style={styles.monthChevronButton} testID="month-prev">
-            <Text style={styles.monthChevronText}>‹</Text>
-          </Pressable>
-          <Text style={styles.calendarMonthTitle} testID="calendar-month-title">
-            {visibleMonthTitle}
-          </Text>
-          <Pressable onPress={() => moveMonth(1)} style={styles.monthChevronButton} testID="month-next">
-            <Text style={styles.monthChevronText}>›</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.calendarWeekRow}>
-          {weekdayLabels.map((label) => (
-            <Text key={label} style={styles.weekdayHeaderText}>
-              {label}
-            </Text>
-          ))}
-        </View>
-
-        <View style={styles.calendarGrid}>
-          {Array.from({ length: Math.ceil(calendarDays.length / 7) }, (_, weekIndex) => (
-            <View key={weekIndex} style={styles.calendarWeekRow}>
-              {calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7).map((day, cellIndex) => {
-                if (!day) {
-                  return <View key={`blank-${weekIndex}-${cellIndex}`} style={styles.dayCellBlank} />;
-                }
-
-                const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
-                const booking = bookingsByDate[dateKey];
-                const allCruisesBooked =
-                  booking?.dayCruise && (booking?.overnightCruise || booking?.nightCruise);
-                const anyCruiseBooked =
-                  booking?.dayCruise || booking?.overnightCruise || booking?.nightCruise;
-                const bulkSelected = selectedDates.includes(day);
-                const isEditingDate =
-                  selectedDate?.year === visibleYear &&
-                  selectedDate?.month === visibleMonthIndex &&
-                  selectedDate?.day === day;
-
-                return (
-                  <Pressable
-                    key={day}
-                    onPress={() => handleDayPress(day)}
-                    testID={`calendar-day-${dateKey}`}
-                    style={[
-                      styles.dayCell,
-                      allCruisesBooked
-                        ? styles.dayCellFull
-                        : anyCruiseBooked
-                          ? styles.dayCellPartial
-                          : styles.dayCellEmpty,
-                      bulkSelected ? styles.dayCellBulkSelected : null,
-                      isEditingDate ? styles.dayCellSelected : null,
-                    ]}
-                  >
-                    <Text style={styles.dayCellNumber}>{day}</Text>
-                    <Text style={styles.dayCellIcons}>
-                      {booking?.dayCruise ? '☀' : ''}
-                      {booking?.overnightCruise ? ' ⌂' : ''}
-                      {booking?.nightCruise ? ' ☾' : ''}
-                    </Text>
-                    {bulkSelected ? <Text style={styles.dayCellBulkBadge}>●</Text> : null}
-                    {booking?.price ? <Text style={styles.dayCellPrice}>₹ {booking.price}</Text> : null}
-                  </Pressable>
-                );
-              })}
-            </View>
-          ))}
-        </View>
-      </Card>
-
-      <Modal
-        visible={Boolean(selectedDate) && !isBulkPricingMode}
-        animationType="fade"
-        transparent
-        onRequestClose={() => setSelectedDate(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard} testID="day-edit-modal">
-            <Text style={styles.modalTitle}>
-              {selectedDate
-                ? `${selectedDate.day} ${new Date(
-                    selectedDate.year,
-                    selectedDate.month,
-                    selectedDate.day,
-                  ).toLocaleString('en-US', { month: 'short', year: 'numeric' })}`
-                : ''}
-            </Text>
-            <Text style={styles.calendarRuleText}>Overnight stay and Night stay cannot be booked together.</Text>
-            <TextInput
-              value={modalPriceInput}
-              onChangeText={(value) => setModalPriceInput(value.replace(/[^0-9]/g, ''))}
-              keyboardType="numeric"
-              placeholder="Price in INR (optional)"
-              style={styles.input}
-              testID="modal-price-input"
-            />
-            <View style={styles.verticalGap10}>
-              {availabilityToggles.map(({ label, enabled, key }) => (
-                <View key={label} style={styles.featureRow}>
-                  <Text style={styles.featureRowText}>{label}</Text>
-                  <Switch
-                    value={enabled}
-                    onValueChange={(value) => updateSelectedDayAvailability(key, value)}
-                    testID={`availability-switch-${key}`}
-                  />
-                </View>
-              ))}
+        <Card title="Monthly availability">
+          <View style={styles.bulkPricingRow}>
+            <CalendarDays size={16} color="#0f74cf" strokeWidth={2.2} />
+            <View style={styles.bulkPricingTextBlock}>
+              <Text style={styles.bulkPricingLabel}>Bulk price editing</Text>
+              <Text style={styles.bulkPricingSubLabel}>
+                Select multiple dates and apply one price.
+              </Text>
             </View>
             <Pressable
               onPress={() => {
-                if (selectedDate) {
-                  const dateKey = getDateKey(selectedDate.year, selectedDate.month, selectedDate.day);
-                  const parsedPrice = modalPriceInput ? Number(modalPriceInput) : undefined;
-                  setBookingsByDate((current) => {
-                    const existing = current[dateKey] ?? {
-                      dayCruise: false,
-                      overnightCruise: false,
-                      nightCruise: false,
-                      details: 'No bookings for this day.',
-                      price: undefined,
-                    };
-                    return {
-                      ...current,
-                      [dateKey]: normalizeBooking({ ...existing, price: parsedPrice }),
-                    };
-                  });
+                if (isBulkPricingMode) {
+                  cancelBulkMode();
+                } else {
+                  setIsBulkPricingMode(true);
                 }
-                setSelectedDate(null);
               }}
-              style={styles.primaryButton}
+              style={[
+                styles.bulkToggleButton,
+                isBulkPricingMode ? styles.bulkToggleButtonCancel : null,
+              ]}
             >
-              <Text style={styles.primaryButtonText}>Done</Text>
+              <Text
+                style={[
+                  styles.bulkToggleButtonText,
+                  isBulkPricingMode ? styles.bulkToggleButtonCancelText : null,
+                ]}
+              >
+                {isBulkPricingMode ? "Cancel" : "Enable"}
+              </Text>
             </Pressable>
+          </View>
+          {isBulkPricingMode && (
+            <View style={styles.bottomSheet}>
+              <View style={styles.bottomSheetHeader}>
+                <View style={styles.bottomSheetInfo}>
+                  <Text style={styles.bottomSheetTitle}>
+                    {selectedDates.length}{" "}
+                    {selectedDates.length === 1 ? "date" : "dates"} selected
+                  </Text>
+                  <Text style={styles.bottomSheetSub}>
+                    {selectedDates.length === 0
+                      ? "Select dates on the calendar"
+                      : "Tap more dates or open pricing"}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={cancelBulkMode}
+                  style={styles.bottomSheetCloseButton}
+                >
+                  <X size={16} color="#5a6d82" strokeWidth={2.2} />
+                </Pressable>
+              </View>
+              <View style={styles.bottomSheetInputRow}>
+                <Pressable
+                  onPress={() => setIsBulkPriceModalOpen(true)}
+                  disabled={selectedDates.length === 0}
+                  style={[
+                    styles.bulkPricingOpenButton,
+                    selectedDates.length === 0
+                      ? styles.bulkPricingOpenButtonDisabled
+                      : null,
+                  ]}
+                >
+                  <Text style={styles.applyPriceButtonText}>Open Pricing</Text>
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          <View style={styles.calendarMonthRow}>
+            <Pressable
+              onPress={() => moveMonth(-1)}
+              style={styles.monthChevronButton}
+              testID="month-prev"
+            >
+              <Text style={styles.monthChevronText}>‹</Text>
+            </Pressable>
+            <Text
+              style={styles.calendarMonthTitle}
+              testID="calendar-month-title"
+            >
+              {visibleMonthTitle}
+            </Text>
+            <Pressable
+              onPress={() => moveMonth(1)}
+              style={styles.monthChevronButton}
+              testID="month-next"
+            >
+              <Text style={styles.monthChevronText}>›</Text>
+            </Pressable>
+          </View>
+
+          <View style={styles.calendarWeekRow}>
+            {weekdayLabels.map((label) => (
+              <Text key={label} style={styles.weekdayHeaderText}>
+                {label}
+              </Text>
+            ))}
+          </View>
+
+          <View style={styles.calendarGrid}>
+            {Array.from(
+              { length: Math.ceil(calendarDays.length / 7) },
+              (_, weekIndex) => (
+                <View key={weekIndex} style={styles.calendarWeekRow}>
+                  {calendarDays
+                    .slice(weekIndex * 7, weekIndex * 7 + 7)
+                    .map((day, cellIndex) => {
+                      if (!day) {
+                        return (
+                          <View
+                            key={`blank-${weekIndex}-${cellIndex}`}
+                            style={styles.dayCellBlank}
+                          />
+                        );
+                      }
+
+                      const dateKey = getDateKey(
+                        visibleYear,
+                        visibleMonthIndex,
+                        day,
+                      );
+                      const booking = bookingsByDate[dateKey];
+                      const allCruisesBooked =
+                        booking?.dayCruise &&
+                        (booking?.overnightCruise || booking?.nightCruise);
+                      const anyCruiseBooked =
+                        booking?.dayCruise ||
+                        booking?.overnightCruise ||
+                        booking?.nightCruise;
+                      const bulkSelected = selectedDates.includes(day);
+                      const isEditingDate =
+                        selectedDate?.year === visibleYear &&
+                        selectedDate?.month === visibleMonthIndex &&
+                        selectedDate?.day === day;
+
+                      return (
+                        <Pressable
+                          key={day}
+                          onPress={() => handleDayPress(day)}
+                          testID={`calendar-day-${dateKey}`}
+                          style={[
+                            styles.dayCell,
+                            allCruisesBooked
+                              ? styles.dayCellFull
+                              : anyCruiseBooked
+                                ? styles.dayCellPartial
+                                : styles.dayCellEmpty,
+                            bulkSelected ? styles.dayCellBulkSelected : null,
+                            isEditingDate ? styles.dayCellSelected : null,
+                          ]}
+                        >
+                          {bulkSelected ? (
+                            <View style={styles.bulkCheckBadge}>
+                              <Check size={8} color="#ffffff" strokeWidth={3} />
+                            </View>
+                          ) : null}
+                          <Text style={styles.dayCellNumber}>{day}</Text>
+                          <View style={styles.dayCellIcons}>
+                            {booking?.dayCruise ? (
+                              <Sun
+                                size={10}
+                                color="#7c5d1f"
+                                strokeWidth={2.2}
+                              />
+                            ) : null}
+                            {booking?.overnightCruise ? (
+                              <House
+                                size={10}
+                                color="#7c5d1f"
+                                strokeWidth={2.2}
+                              />
+                            ) : null}
+                            {booking?.nightCruise ? (
+                              <Moon
+                                size={10}
+                                color="#1a5f94"
+                                strokeWidth={2.2}
+                              />
+                            ) : null}
+                          </View>
+                          {booking?.price ? (
+                            <Text style={styles.dayCellPrice}>
+                              ₹ {booking.price}
+                            </Text>
+                          ) : null}
+                        </Pressable>
+                      );
+                    })}
+                </View>
+              ),
+            )}
+          </View>
+        </Card>
+
+        <Modal
+          visible={Boolean(selectedDate) && !isBulkPricingMode}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setSelectedDate(null)}
+        >
+          <View style={styles.modalOverlay}>
+            <Pressable
+              style={styles.modalBackdrop}
+              onPress={() => setSelectedDate(null)}
+            />
+            <View style={styles.modalCard} testID="day-edit-modal">
+              <View style={styles.modalDragHandle} />
+              <View style={styles.modalTitleRow}>
+                <Text style={styles.modalTitle}>
+                  {selectedDate
+                    ? `${selectedDate.day} ${new Date(
+                        selectedDate.year,
+                        selectedDate.month,
+                        selectedDate.day,
+                      ).toLocaleString("en-US", {
+                        month: "short",
+                        year: "numeric",
+                      })}`
+                    : ""}
+                </Text>
+                <Pressable
+                  onPress={() => setSelectedDate(null)}
+                  style={styles.bottomSheetCloseButton}
+                >
+                  <X size={16} color="#5a6d82" strokeWidth={2.2} />
+                </Pressable>
+              </View>
+              <Text style={styles.calendarRuleText}>
+                Overnight stay and Night stay cannot be booked together.
+              </Text>
+              <View style={styles.bottomSheetPriceField}>
+                <Text style={styles.bottomSheetRupee}>₹</Text>
+                <TextInput
+                  value={modalPriceInput}
+                  onChangeText={(value) =>
+                    setModalPriceInput(value.replace(/[^0-9]/g, ""))
+                  }
+                  keyboardType="numeric"
+                  placeholder="Enter price (optional)"
+                  placeholderTextColor="#9aafbf"
+                  style={styles.bottomSheetInput}
+                  testID="modal-price-input"
+                />
+              </View>
+              <View style={styles.verticalGap10}>
+                {availabilityToggles.map(({ label, enabled, key }) => (
+                  <View key={label} style={styles.featureRow}>
+                    <Text style={styles.featureRowText}>{label}</Text>
+                    <Switch
+                      value={enabled}
+                      onValueChange={(value) =>
+                        updateSelectedDayAvailability(key, value)
+                      }
+                      testID={`availability-switch-${key}`}
+                    />
+                  </View>
+                ))}
+              </View>
+              <Pressable
+                onPress={() => {
+                  if (selectedDate) {
+                    const dateKey = getDateKey(
+                      selectedDate.year,
+                      selectedDate.month,
+                      selectedDate.day,
+                    );
+                    const parsedPrice = modalPriceInput
+                      ? Number(modalPriceInput)
+                      : undefined;
+                    setBookingsByDate((current) => {
+                      const existing = current[dateKey] ?? {
+                        dayCruise: false,
+                        overnightCruise: false,
+                        nightCruise: false,
+                        details: "No bookings for this day.",
+                        price: undefined,
+                      };
+                      return {
+                        ...current,
+                        [dateKey]: normalizeBooking({
+                          ...existing,
+                          price: parsedPrice,
+                        }),
+                      };
+                    });
+                  }
+                  setSelectedDate(null);
+                }}
+                style={styles.primaryButton}
+              >
+                <Text style={styles.primaryButtonText}>Done</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+      </ScrollView>
+
+      <Modal
+        visible={isBulkPricingMode && isBulkPriceModalOpen}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setIsBulkPriceModalOpen(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <Pressable
+            style={styles.modalBackdrop}
+            onPress={() => setIsBulkPriceModalOpen(false)}
+          />
+          <View style={styles.bulkPriceModalCard}>
+            <View style={styles.modalDragHandle} />
+            <View style={styles.modalTitleRow}>
+              <Text style={styles.modalTitle}>Bulk pricing</Text>
+              <Pressable
+                onPress={() => setIsBulkPriceModalOpen(false)}
+                style={styles.bottomSheetCloseButton}
+              >
+                <X size={16} color="#5a6d82" strokeWidth={2.2} />
+              </Pressable>
+            </View>
+            <Text style={styles.calendarRuleText}>
+              {selectedDates.length}{" "}
+              {selectedDates.length === 1 ? "date" : "dates"} selected
+            </Text>
+            <View style={styles.bottomSheetInputRow}>
+              <View style={styles.bottomSheetPriceField}>
+                <Text style={styles.bottomSheetRupee}>₹</Text>
+                <TextInput
+                  value={priceInput}
+                  onChangeText={(value) =>
+                    setPriceInput(value.replace(/[^0-9]/g, ""))
+                  }
+                  keyboardType="numeric"
+                  placeholder="Enter price"
+                  placeholderTextColor="#9aafbf"
+                  style={styles.bottomSheetInput}
+                />
+              </View>
+              <Pressable
+                onPress={applyPriceToSelectedDates}
+                disabled={selectedDates.length === 0 || !priceInput}
+                style={[
+                  styles.applyPriceButton,
+                  selectedDates.length === 0 || !priceInput
+                    ? styles.applyPriceButtonDisabled
+                    : null,
+                ]}
+              >
+                <Text style={styles.applyPriceButtonText}>Apply Price</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </Modal>
-    </ScrollView>
+    </View>
   );
 }
 
 function EnquiriesPage() {
-  const cards: Array<Enquiry & { subtitle: string; details: string; request?: string }> = [
+  const cards: Array<
+    Enquiry & { subtitle: string; details: string; request?: string }
+  > = [
     {
-      name: 'Arjun Menon',
-      dateLine: 'Received 2 hrs ago - Date held until 6 PM today',
-      subtitle: 'Day cruise · 15 Jan 2025',
-      status: 'Date locked',
-      config: 'Price shown to guest: INR 12,500',
+      name: "Arjun Menon",
+      dateLine: "Received 2 hrs ago - Date held until 6 PM today",
+      subtitle: "Day cruise · 15 Jan 2025",
+      status: "Date locked",
+      config: "Price shown to guest: INR 12,500",
       details:
-        'Premium · Private · 2 adults, 0 children · 1 room · 2 guests per room · No extra bed',
-      request: 'Special request: Vegetarian meals preferred. Celebrating anniversary.',
+        "Premium · Private · 2 adults, 0 children · 1 room · 2 guests per room · No extra bed",
+      request:
+        "Special request: Vegetarian meals preferred. Celebrating anniversary.",
     },
     {
-      name: 'Ritu Nair',
-      dateLine: 'Received yesterday - Overnight stay · 22 Jan',
-      subtitle: 'Overnight stay · 22 Jan 2025',
-      status: 'Pending',
-      config: 'Price shown to guest: INR 21,000',
+      name: "Ritu Nair",
+      dateLine: "Received yesterday - Overnight stay · 22 Jan",
+      subtitle: "Overnight stay · 22 Jan 2025",
+      status: "Pending",
+      config: "Price shown to guest: INR 21,000",
       details:
-        'Premium · Private · 4 adults, 1 child · 2 rooms · Room 1: 2 guests · Room 2: 2 guests + 1 extra bed',
+        "Premium · Private · 4 adults, 1 child · 2 rooms · Room 1: 2 guests · Room 2: 2 guests + 1 extra bed",
     },
   ];
 
@@ -916,7 +1269,9 @@ function EnquiriesPage() {
           </View>
           <Text style={styles.detailText}>{card.details}</Text>
           <Text style={styles.detailStrong}>{card.config}</Text>
-          {card.request ? <Text style={styles.detailMuted}>{card.request}</Text> : null}
+          {card.request ? (
+            <Text style={styles.detailMuted}>{card.request}</Text>
+          ) : null}
           <View style={styles.rowGap8}>
             <Pressable style={styles.acceptButton}>
               <Text style={styles.actionButtonText}>Accept booking</Text>
@@ -942,13 +1297,13 @@ function BookingsPage() {
       <Card title="Arjun Menon · Vembanad Crest" sub="#SC-2025-0041">
         <View style={styles.verticalGap8}>
           {[
-            ['Cruise type', 'Day cruise'],
-            ['Date & time', '15 Jan 2025 · 11:00 AM - 5:00 PM'],
-            ['Configuration', '2 adults · 1 room · Private · Premium'],
-            ['Total agreed price', 'INR 12,500'],
-            ['Inclusions', 'Meals, water, A/C, fishing equipment'],
-            ['Pickup arranged', 'Taxi confirmed · Alleppey Jetty'],
-            ['Meal preference', 'Vegetarian · Anniversary decoration'],
+            ["Cruise type", "Day cruise"],
+            ["Date & time", "15 Jan 2025 · 11:00 AM - 5:00 PM"],
+            ["Configuration", "2 adults · 1 room · Private · Premium"],
+            ["Total agreed price", "INR 12,500"],
+            ["Inclusions", "Meals, water, A/C, fishing equipment"],
+            ["Pickup arranged", "Taxi confirmed · Alleppey Jetty"],
+            ["Meal preference", "Vegetarian · Anniversary decoration"],
           ].map(([key, value]) => (
             <View key={key} style={styles.bookingRow}>
               <Text style={styles.bookingRowKey}>{key}</Text>
@@ -959,8 +1314,9 @@ function BookingsPage() {
 
         <View style={styles.noteBox}>
           <Text style={styles.noteText}>
-            Sailcept commitments: cruise-time support, check-in coordination, taxi pickup,
-            operator compliance enforcement, backup boat if required.
+            Sailcept commitments: cruise-time support, check-in coordination,
+            taxi pickup, operator compliance enforcement, backup boat if
+            required.
           </Text>
         </View>
       </Card>
@@ -969,7 +1325,7 @@ function BookingsPage() {
 }
 
 function AppLayout() {
-  const [activeRoute, setActiveRoute] = useState<RouteKey>('dashboard');
+  const [activeRoute, setActiveRoute] = useState<RouteKey>("dashboard");
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -988,24 +1344,29 @@ function AppLayout() {
           </View>
 
           <Pressable
-            onPress={() => setActiveRoute('boat')}
+            onPress={() => setActiveRoute("boat")}
             style={[
               styles.profileChip,
-              activeRoute === 'boat' ? styles.profileChipActive : null,
+              activeRoute === "boat" ? styles.profileChipActive : null,
             ]}
           >
-            <Text style={[styles.profileChipText, activeRoute === 'boat' ? styles.profileChipTextActive : null]}>
+            <Text
+              style={[
+                styles.profileChipText,
+                activeRoute === "boat" ? styles.profileChipTextActive : null,
+              ]}
+            >
               Boat
             </Text>
           </Pressable>
         </View>
 
         <View style={styles.mainArea}>
-          {activeRoute === 'dashboard' ? <DashboardPage /> : null}
-          {activeRoute === 'boat' ? <BoatAssetPage /> : null}
-          {activeRoute === 'calendar' ? <CalendarPage /> : null}
-          {activeRoute === 'enquiries' ? <EnquiriesPage /> : null}
-          {activeRoute === 'bookings' ? <BookingsPage /> : null}
+          {activeRoute === "dashboard" ? <DashboardPage /> : null}
+          {activeRoute === "boat" ? <BoatAssetPage /> : null}
+          {activeRoute === "calendar" ? <CalendarPage /> : null}
+          {activeRoute === "enquiries" ? <EnquiriesPage /> : null}
+          {activeRoute === "bookings" ? <BookingsPage /> : null}
         </View>
 
         <View style={styles.bottomNavShell}>
@@ -1017,12 +1378,20 @@ function AppLayout() {
                 <Pressable
                   key={item.key}
                   onPress={() => setActiveRoute(item.key)}
-                  style={[styles.bottomNavItem, isActive ? styles.bottomNavItemActive : null]}
+                  style={[
+                    styles.bottomNavItem,
+                    isActive ? styles.bottomNavItemActive : null,
+                  ]}
                 >
-                  <Text style={[styles.bottomNavIcon, isActive ? styles.bottomNavIconActive : null]}>
-                    {item.icon}
-                  </Text>
-                  <Text style={[styles.bottomNavLabel, isActive ? styles.bottomNavLabelActive : null]}>
+                  <View style={styles.bottomNavIcon}>
+                    <BottomNavIcon route={item.key} active={isActive} />
+                  </View>
+                  <Text
+                    style={[
+                      styles.bottomNavLabel,
+                      isActive ? styles.bottomNavLabelActive : null,
+                    ]}
+                  >
                     {item.label}
                   </Text>
                 </Pressable>
@@ -1040,76 +1409,76 @@ export default AppLayout;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
   },
   appRoot: {
     flex: 1,
-    backgroundColor: '#eff7ff',
+    backgroundColor: "#eff7ff",
   },
   mobileTopBar: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     zIndex: 10,
-    backgroundColor: '#fffffff2',
+    backgroundColor: "#fffffff2",
     borderBottomWidth: 1,
-    borderBottomColor: '#d7e7fb',
+    borderBottomColor: "#d7e7fb",
     paddingHorizontal: 16,
     paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   logoBox: {
     width: 30,
     height: 30,
     borderRadius: 9,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#0f74cf',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0f74cf",
   },
   logoText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 20,
     lineHeight: 22,
-    fontWeight: '800',
+    fontWeight: "800",
   },
   brandOverline: {
-    color: '#8193ac',
+    color: "#8193ac",
     fontSize: 10,
     letterSpacing: 1,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
   },
   brandTitle: {
-    color: '#0f274d',
-    fontWeight: '700',
+    color: "#0f274d",
+    fontWeight: "700",
     fontSize: 14,
   },
   profileChip: {
     borderWidth: 1,
-    borderColor: '#cfdbe8',
-    backgroundColor: '#ffffff',
+    borderColor: "#cfdbe8",
+    backgroundColor: "#ffffff",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
   },
   profileChipActive: {
-    borderColor: '#9fc6ec',
-    backgroundColor: '#e6f2ff',
+    borderColor: "#9fc6ec",
+    backgroundColor: "#e6f2ff",
   },
   profileChipText: {
     fontSize: 12,
-    color: '#5d7089',
-    fontWeight: '600',
+    color: "#5d7089",
+    fontWeight: "600",
   },
   profileChipTextActive: {
-    color: '#0c5eac',
+    color: "#0c5eac",
   },
   mainArea: {
     flex: 1,
@@ -1122,34 +1491,34 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   pageHeader: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   pageTitle: {
-    color: '#0f284e',
+    color: "#0f284e",
     fontSize: 26,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   pageSub: {
-    color: '#60748e',
+    color: "#60748e",
     fontSize: 13,
     marginTop: 2,
   },
   card: {
     borderWidth: 1,
-    borderColor: '#d8e8fb',
-    backgroundColor: '#ffffffee',
+    borderColor: "#d8e8fb",
+    backgroundColor: "#ffffffee",
     borderRadius: 16,
     padding: 14,
   },
   cardTitle: {
-    color: '#102949',
+    color: "#102949",
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   cardSub: {
-    color: '#6b8099',
+    color: "#6b8099",
     fontSize: 12,
     marginTop: 3,
   },
@@ -1157,30 +1526,30 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 10,
   },
   statCard: {
-    width: '48%',
+    width: "48%",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#d8e8fb',
-    backgroundColor: '#ffffffee',
+    borderColor: "#d8e8fb",
+    backgroundColor: "#ffffffee",
     padding: 12,
   },
   statLabel: {
-    color: '#697b93',
+    color: "#697b93",
     fontSize: 11,
   },
   statValue: {
-    color: '#102949',
+    color: "#102949",
     fontSize: 24,
-    fontWeight: '700',
+    fontWeight: "700",
     marginTop: 6,
   },
   statCaption: {
-    color: '#8ea0b6',
+    color: "#8ea0b6",
     fontSize: 11,
   },
   verticalGap12: {
@@ -1188,29 +1557,29 @@ const styles = StyleSheet.create({
   },
   listCard: {
     borderWidth: 1,
-    borderColor: '#d8e8fb',
+    borderColor: "#d8e8fb",
     borderRadius: 12,
     padding: 12,
     gap: 8,
   },
   rowBetweenTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
     gap: 8,
   },
   listCardTitle: {
-    color: '#0f2748',
-    fontWeight: '600',
+    color: "#0f2748",
+    fontWeight: "600",
     fontSize: 14,
   },
   listCardSub: {
-    color: '#64788f',
+    color: "#64788f",
     fontSize: 12,
     marginTop: 2,
   },
   listCardMeta: {
-    color: '#546b86',
+    color: "#546b86",
     fontSize: 13,
   },
   statusPill: {
@@ -1221,37 +1590,37 @@ const styles = StyleSheet.create({
   },
   statusPillText: {
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   rowGap8: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 8,
   },
   outlineButton: {
     borderWidth: 1,
-    borderColor: '#d2dbe6',
+    borderColor: "#d2dbe6",
     borderRadius: 8,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   outlineButtonText: {
-    color: '#5d7289',
+    color: "#5d7289",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   softBlueButton: {
     borderWidth: 1,
-    borderColor: '#abd0f2',
+    borderColor: "#abd0f2",
     borderRadius: 8,
-    backgroundColor: '#dff1ff',
+    backgroundColor: "#dff1ff",
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   softBlueButtonText: {
-    color: '#0d63b4',
+    color: "#0d63b4",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   verticalGap10: {
     gap: 10,
@@ -1261,28 +1630,28 @@ const styles = StyleSheet.create({
   },
   metaBox: {
     borderWidth: 1,
-    borderColor: '#d8e8fb',
+    borderColor: "#d8e8fb",
     borderRadius: 12,
     padding: 10,
-    backgroundColor: '#f5faff',
+    backgroundColor: "#f5faff",
   },
   metaLabel: {
-    color: '#6a7f97',
+    color: "#6a7f97",
     fontSize: 11,
   },
   metaValue: {
-    color: '#0f284d',
+    color: "#0f284d",
     fontSize: 14,
     marginTop: 4,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   input: {
     marginTop: 6,
     borderWidth: 1,
-    borderColor: '#cfddea',
+    borderColor: "#cfddea",
     borderRadius: 9,
-    backgroundColor: '#ffffff',
-    color: '#102949',
+    backgroundColor: "#ffffff",
+    color: "#102949",
     fontSize: 14,
     paddingHorizontal: 10,
     paddingVertical: 8,
@@ -1290,42 +1659,42 @@ const styles = StyleSheet.create({
   selectButton: {
     marginTop: 6,
     borderWidth: 1,
-    borderColor: '#cfddea',
+    borderColor: "#cfddea",
     borderRadius: 9,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     paddingHorizontal: 10,
     paddingVertical: 10,
   },
   selectButtonDisabled: {
-    backgroundColor: '#eef4fa',
+    backgroundColor: "#eef4fa",
   },
   selectButtonText: {
-    color: '#13345a',
+    color: "#13345a",
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   selectButtonTextDisabled: {
-    color: '#7d8fa4',
+    color: "#7d8fa4",
   },
   featureRow: {
     borderWidth: 1,
-    borderColor: '#d5e2ef',
+    borderColor: "#d5e2ef",
     borderRadius: 10,
-    backgroundColor: '#ffffff',
+    backgroundColor: "#ffffff",
     paddingHorizontal: 12,
     paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
   },
   featureRowText: {
-    color: '#234058',
+    color: "#234058",
     fontSize: 13,
   },
   pillWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 8,
   },
   featurePill: {
@@ -1335,62 +1704,62 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   featurePillEnabled: {
-    borderColor: '#a8cdf0',
-    backgroundColor: '#e4f1ff',
+    borderColor: "#a8cdf0",
+    backgroundColor: "#e4f1ff",
   },
   featurePillDisabled: {
-    borderColor: '#d3dde7',
-    backgroundColor: '#eff4f9',
+    borderColor: "#d3dde7",
+    backgroundColor: "#eff4f9",
   },
   featurePillEnabledText: {
-    color: '#0d62b2',
+    color: "#0d62b2",
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   featurePillDisabledText: {
-    color: '#6f8195',
+    color: "#6f8195",
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   cruisePillEnabled: {
-    borderColor: '#9dd8bc',
-    backgroundColor: '#dcfce8',
+    borderColor: "#9dd8bc",
+    backgroundColor: "#dcfce8",
   },
   cruisePillDisabled: {
-    borderColor: '#d3dde7',
-    backgroundColor: '#eff4f9',
+    borderColor: "#d3dde7",
+    backgroundColor: "#eff4f9",
   },
   cruisePillEnabledText: {
-    color: '#0f7a4f',
+    color: "#0f7a4f",
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   cruisePillDisabledText: {
-    color: '#6f8195',
+    color: "#6f8195",
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   innerPanel: {
     borderWidth: 1,
-    borderColor: '#d8e8fb',
+    borderColor: "#d8e8fb",
     borderRadius: 12,
     padding: 10,
   },
   innerPanelTitle: {
-    color: '#102949',
+    color: "#102949",
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 8,
   },
   fieldLabel: {
-    color: '#6a7f97',
+    color: "#6a7f97",
     fontSize: 11,
   },
   calendarGrid: {
     gap: 4,
   },
   calendarWeekRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 4,
   },
   dayCell: {
@@ -1398,31 +1767,31 @@ const styles = StyleSheet.create({
     minHeight: 48,
     borderRadius: 8,
     paddingVertical: 4,
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    alignItems: "center",
+    justifyContent: "space-between",
     borderWidth: 1,
   },
   dayCellFull: {
-    backgroundColor: '#dbf8ea',
-    borderColor: '#9dd8bc',
+    backgroundColor: "#dbf8ea",
+    borderColor: "#9dd8bc",
   },
   dayCellPartial: {
-    backgroundColor: '#fff1d6',
-    borderColor: '#f5d392',
+    backgroundColor: "#fff1d6",
+    borderColor: "#f5d392",
   },
   dayCellEmpty: {
-    backgroundColor: '#eff4f9',
-    borderColor: '#d3dde7',
+    backgroundColor: "#eff4f9",
+    borderColor: "#d3dde7",
   },
   dayCellSelected: {
-    borderColor: '#2f8ae3',
+    borderColor: "#2f8ae3",
     borderWidth: 2,
   },
   dayCellBulkSelected: {
-    borderColor: '#0f74cf',
+    borderColor: "#0f74cf",
     borderWidth: 2,
-    backgroundColor: '#d9ecff',
-    shadowColor: '#0b61b0',
+    backgroundColor: "#d9ecff",
+    shadowColor: "#0b61b0",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.24,
     shadowRadius: 4,
@@ -1434,27 +1803,197 @@ const styles = StyleSheet.create({
   },
   dayCellNumber: {
     fontSize: 11,
-    fontWeight: '600',
-    color: '#1d3450',
+    fontWeight: "600",
+    color: "#1d3450",
   },
   dayCellIcons: {
-    fontSize: 9,
-    color: '#516980',
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    minHeight: 12,
   },
   dayCellPrice: {
     fontSize: 8,
-    color: '#0f5f9f',
-    fontWeight: '700',
+    color: "#0f5f9f",
+    fontWeight: "700",
   },
   dayCellBulkBadge: {
     fontSize: 10,
-    color: '#0c63b2',
-    fontWeight: '800',
+    color: "#0c63b2",
+    fontWeight: "800",
+  },
+  bulkCheckBadge: {
+    position: "absolute",
+    top: 2,
+    right: 2,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#0f74cf",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  calendarPageRoot: {
+    flex: 1,
+  },
+  bulkPricingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingBottom: 12,
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#e8f0f8",
+  },
+  bulkPricingTextBlock: {
+    flex: 1,
+  },
+  bulkPricingLabel: {
+    color: "#102949",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  bulkPricingSubLabel: {
+    color: "#6b8099",
+    fontSize: 11,
+    marginTop: 1,
+  },
+  bulkToggleButton: {
+    borderWidth: 1,
+    borderColor: "#d2dbe6",
+    borderRadius: 8,
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  bulkToggleButtonCancel: {
+    borderColor: "#9fc6ec",
+    backgroundColor: "#e6f2ff",
+  },
+  bulkToggleButtonText: {
+    color: "#5d7289",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  bulkToggleButtonCancelText: {
+    color: "#0c5eac",
+  },
+  bottomSheet: {
+    backgroundColor: "#ffffff",
+    borderTopWidth: 1,
+    borderTopColor: "#d4e5f8",
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 20,
+    gap: 10,
+    shadowColor: "#0b3d70",
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  bulkPriceModalCard: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    backgroundColor: "#ffffff",
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: "#d4e5f8",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 28,
+    gap: 12,
+  },
+  bottomSheetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  bottomSheetInfo: {
+    flex: 1,
+  },
+  bottomSheetTitle: {
+    color: "#102949",
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  bottomSheetSub: {
+    color: "#6b8099",
+    fontSize: 11,
+    marginTop: 1,
+  },
+  bottomSheetCloseButton: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#d2dce8",
+    backgroundColor: "#f4f8fc",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bottomSheetInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  bottomSheetPriceField: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#cfddea",
+    borderRadius: 9,
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 4,
+  },
+  bottomSheetRupee: {
+    color: "#5a7090",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  bottomSheetInput: {
+    flex: 1,
+    color: "#102949",
+    fontSize: 14,
+    padding: 0,
+  },
+  applyPriceButton: {
+    borderRadius: 10,
+    backgroundColor: "#1175ce",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  applyPriceButtonDisabled: {
+    backgroundColor: "#9bc1e7",
+  },
+  applyPriceButtonText: {
+    color: "#ffffff",
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  bulkPricingOpenButton: {
+    borderRadius: 10,
+    backgroundColor: "#1175ce",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    minWidth: 120,
+  },
+  bulkPricingOpenButtonDisabled: {
+    backgroundColor: "#9bc1e7",
   },
   calendarMonthRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 10,
   },
   monthChevronButton: {
@@ -1462,166 +2001,188 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: '#cfddea',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
+    borderColor: "#cfddea",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#ffffff",
   },
   monthChevronText: {
-    color: '#1b4e7e',
+    color: "#1b4e7e",
     fontSize: 20,
     lineHeight: 22,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   calendarMonthTitle: {
-    color: '#102949',
+    color: "#102949",
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   weekdayHeaderText: {
     flex: 1,
-    textAlign: 'center',
-    color: '#62768f',
+    textAlign: "center",
+    color: "#62768f",
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     paddingBottom: 4,
   },
   primaryButton: {
     marginTop: 4,
     borderRadius: 10,
-    backgroundColor: '#1175ce',
-    alignItems: 'center',
+    backgroundColor: "#1175ce",
+    alignItems: "center",
     paddingVertical: 10,
   },
   primaryButtonDisabled: {
-    backgroundColor: '#9bc1e7',
+    backgroundColor: "#9bc1e7",
   },
   primaryButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   bulkModeButtonActive: {
-    borderColor: '#9fc6ec',
-    backgroundColor: '#e6f2ff',
+    borderColor: "#9fc6ec",
+    backgroundColor: "#e6f2ff",
   },
   bulkModeButtonTextActive: {
-    color: '#0c5eac',
+    color: "#0c5eac",
   },
   bulkInfoText: {
-    color: '#5a6d82',
+    color: "#5a6d82",
     fontSize: 12,
   },
   calendarRuleText: {
-    color: '#5a6d82',
+    color: "#5a6d82",
     fontSize: 12,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: '#12253d66',
-    justifyContent: 'center',
-    paddingHorizontal: 18,
+    backgroundColor: "#12253d66",
+    justifyContent: "flex-end",
+  },
+  modalBackdrop: {
+    flex: 1,
   },
   modalCard: {
-    borderRadius: 14,
-    backgroundColor: '#ffffff',
-    borderWidth: 1,
-    borderColor: '#d4e5f8',
-    padding: 14,
-    gap: 10,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    backgroundColor: "#ffffff",
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: "#d4e5f8",
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 28,
+    gap: 12,
+  },
+  modalDragHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "#d0dce8",
+    alignSelf: "center",
+    marginBottom: 4,
+  },
+  modalTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   modalTitle: {
-    color: '#102949',
+    color: "#102949",
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   inlineWrapRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    alignItems: 'center',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
     gap: 8,
   },
   inlineMuted: {
-    color: '#6c8098',
+    color: "#6c8098",
     fontSize: 11,
   },
   detailText: {
     marginTop: 10,
-    color: '#5a6d82',
+    color: "#5a6d82",
     fontSize: 13,
   },
   detailStrong: {
     marginTop: 8,
-    color: '#334b67',
+    color: "#334b67",
     fontSize: 13,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   detailMuted: {
     marginTop: 8,
-    color: '#7a8da4',
+    color: "#7a8da4",
     fontSize: 12,
   },
   acceptButton: {
     marginTop: 10,
     borderRadius: 8,
-    backgroundColor: '#109c61',
+    backgroundColor: "#109c61",
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   declineButton: {
     marginTop: 10,
     borderRadius: 8,
-    backgroundColor: '#cf3850',
+    backgroundColor: "#cf3850",
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   actionButtonText: {
-    color: '#ffffff',
+    color: "#ffffff",
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   bookingRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: '#edf2f7',
+    borderBottomColor: "#edf2f7",
     paddingVertical: 6,
     gap: 8,
   },
   bookingRowKey: {
-    color: '#6b8098',
+    color: "#6b8098",
     fontSize: 12,
     flex: 1,
   },
   bookingRowValue: {
-    color: '#193555',
+    color: "#193555",
     fontSize: 12,
-    fontWeight: '500',
-    textAlign: 'right',
+    fontWeight: "500",
+    textAlign: "right",
     flex: 1,
   },
   noteBox: {
     marginTop: 10,
     borderRadius: 12,
-    backgroundColor: '#eaf5ff',
+    backgroundColor: "#eaf5ff",
     padding: 10,
   },
   noteText: {
-    color: '#5a6d82',
+    color: "#5a6d82",
     fontSize: 11,
     lineHeight: 17,
   },
   bottomNavShell: {
-    position: 'absolute',
+    position: "absolute",
     left: 14,
     right: 14,
     bottom: 14,
     borderWidth: 1,
-    borderColor: '#d2e4f8',
+    borderColor: "#d2e4f8",
     borderRadius: 999,
-    backgroundColor: '#ffffff',
-    shadowColor: '#007fd8',
+    backgroundColor: "#ffffff",
+    shadowColor: "#007fd8",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
@@ -1630,36 +2191,33 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
   },
   bottomNavRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
   bottomNavItem: {
     flex: 1,
     borderRadius: 999,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 6,
     gap: 1,
   },
   bottomNavItemActive: {
-    backgroundColor: '#e1f1ff',
+    backgroundColor: "#e1f1ff",
   },
   bottomNavIcon: {
-    fontSize: 14,
-    color: '#6d8299',
-    fontWeight: '700',
-  },
-  bottomNavIconActive: {
-    color: '#0d63b4',
+    minHeight: 16,
+    alignItems: "center",
+    justifyContent: "center",
   },
   bottomNavLabel: {
     fontSize: 10,
-    color: '#6d8299',
-    fontWeight: '500',
+    color: "#6d8299",
+    fontWeight: "500",
   },
   bottomNavLabelActive: {
-    color: '#0d63b4',
-    fontWeight: '700',
+    color: "#0d63b4",
+    fontWeight: "700",
   },
   flex1: {
     flex: 1,
