@@ -1,10 +1,10 @@
 import { StatusBar } from "expo-status-bar";
 import { useMemo, useState } from "react";
 import {
+  Bed,
   BookCheck,
   CalendarDays,
   Check,
-  House,
   LayoutGrid,
   Menu,
   Moon,
@@ -112,13 +112,13 @@ function Card({
   sub,
   children,
 }: {
-  title: string;
+  title?: string;
   sub?: string;
   children: React.ReactNode;
 }) {
   return (
     <View style={styles.card}>
-      <Text style={styles.cardTitle}>{title}</Text>
+      {title ? <Text style={styles.cardTitle}>{title}</Text> : null}
       {sub ? <Text style={styles.cardSub}>{sub}</Text> : null}
       <View style={styles.cardBody}>{children}</View>
     </View>
@@ -597,7 +597,9 @@ function CalendarPage() {
     overnightCruise: boolean;
     nightCruise: boolean;
     details: string;
-    price?: number;
+    dayCruisePrice?: number;
+    overnightCruisePrice?: number;
+    nightCruisePrice?: number;
   };
 
   type SelectedDate = {
@@ -630,9 +632,13 @@ function CalendarPage() {
   );
   const [isBulkPricingMode, setIsBulkPricingMode] = useState(false);
   const [selectedDates, setSelectedDates] = useState<number[]>([]);
-  const [priceInput, setPriceInput] = useState("");
+  const [bulkDayCruisePrice, setBulkDayCruisePrice] = useState("");
+  const [bulkOvernightPrice, setBulkOvernightPrice] = useState("");
+  const [bulkNightPrice, setBulkNightPrice] = useState("");
   const [selectedDate, setSelectedDate] = useState<SelectedDate | null>(null);
-  const [modalPriceInput, setModalPriceInput] = useState("");
+  const [modalDayCruisePrice, setModalDayCruisePrice] = useState("");
+  const [modalOvernightPrice, setModalOvernightPrice] = useState("");
+  const [modalNightPrice, setModalNightPrice] = useState("");
   const [bookingsByDate, setBookingsByDate] = useState<
     Record<string, DayBooking>
   >(() => ({
@@ -641,42 +647,45 @@ function CalendarPage() {
       overnightCruise: false,
       nightCruise: false,
       details: "Corporate day outing for 8 guests.",
-      price: 12500,
+      dayCruisePrice: 12500,
     }),
     [getDateKey(todayYear, todayMonth, 5)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: true,
       nightCruise: false,
       details: "Wedding group full-day charter with overnight extension.",
-      price: 28000,
+      dayCruisePrice: 14000,
+      overnightCruisePrice: 14000,
     }),
     [getDateKey(todayYear, todayMonth, 9)]: normalizeBooking({
       dayCruise: false,
       overnightCruise: true,
       nightCruise: false,
       details: "Family overnight package.",
-      price: 21000,
+      overnightCruisePrice: 21000,
     }),
     [getDateKey(todayYear, todayMonth, 13)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: false,
       nightCruise: true,
       details: "Festival special day and night package booking.",
-      price: 23500,
+      dayCruisePrice: 11500,
+      nightCruisePrice: 12000,
     }),
     [getDateKey(todayYear, todayMonth, 18)]: normalizeBooking({
       dayCruise: false,
       overnightCruise: false,
       nightCruise: true,
       details: "Couple moonlight cruise with dinner.",
-      price: 14500,
+      nightCruisePrice: 14500,
     }),
     [getDateKey(todayYear, todayMonth, 24)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: false,
       nightCruise: true,
       details: "Private anniversary plan with sunset and night ride.",
-      price: 26000,
+      dayCruisePrice: 12000,
+      nightCruisePrice: 14000,
     }),
   }));
 
@@ -719,14 +728,12 @@ function CalendarPage() {
         overnightCruise: false,
         nightCruise: false,
         details: "No bookings for this day.",
-        price: undefined,
       })
     : {
         dayCruise: false,
         overnightCruise: false,
         nightCruise: false,
         details: "No bookings for this day.",
-        price: undefined,
       };
 
   const availabilityToggles: Array<{
@@ -771,7 +778,6 @@ function CalendarPage() {
         overnightCruise: false,
         nightCruise: false,
         details: "No bookings for this day.",
-        price: undefined,
       };
 
       const nextBooking: DayBooking = {
@@ -804,8 +810,22 @@ function CalendarPage() {
     }
 
     const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
-    const existingPrice = bookingsByDate[dateKey]?.price;
-    setModalPriceInput(existingPrice ? String(existingPrice) : "");
+    const existingBooking = bookingsByDate[dateKey];
+    setModalDayCruisePrice(
+      existingBooking?.dayCruisePrice
+        ? String(existingBooking.dayCruisePrice)
+        : "",
+    );
+    setModalOvernightPrice(
+      existingBooking?.overnightCruisePrice
+        ? String(existingBooking.overnightCruisePrice)
+        : "",
+    );
+    setModalNightPrice(
+      existingBooking?.nightCruisePrice
+        ? String(existingBooking.nightCruisePrice)
+        : "",
+    );
     setSelectedDate({
       year: visibleYear,
       month: visibleMonthIndex,
@@ -813,9 +833,29 @@ function CalendarPage() {
     });
   }
 
+  function handleDayLongPress(day: number) {
+    setSelectedDate(null);
+    setIsBulkPricingMode(true);
+    setSelectedDates((current) =>
+      current.includes(day) ? current : [...current, day],
+    );
+  }
+
   function applyPriceToSelectedDates() {
-    const parsedPrice = Number(priceInput);
-    if (!parsedPrice || parsedPrice <= 0 || selectedDates.length === 0) {
+    const parsedDayCruise = bulkDayCruisePrice
+      ? Number(bulkDayCruisePrice)
+      : undefined;
+    const parsedOvernight = bulkOvernightPrice
+      ? Number(bulkOvernightPrice)
+      : undefined;
+    const parsedNight = bulkNightPrice ? Number(bulkNightPrice) : undefined;
+
+    const hasAnyPrice =
+      (parsedDayCruise && parsedDayCruise > 0) ||
+      (parsedOvernight && parsedOvernight > 0) ||
+      (parsedNight && parsedNight > 0);
+
+    if (!hasAnyPrice || selectedDates.length === 0) {
       return;
     }
 
@@ -829,12 +869,19 @@ function CalendarPage() {
           overnightCruise: false,
           nightCruise: false,
           details: "No bookings for this day.",
-          price: undefined,
         };
 
         next[dateKey] = normalizeBooking({
           ...existing,
-          price: parsedPrice,
+          ...(parsedDayCruise && parsedDayCruise > 0
+            ? { dayCruisePrice: parsedDayCruise }
+            : {}),
+          ...(parsedOvernight && parsedOvernight > 0
+            ? { overnightCruisePrice: parsedOvernight }
+            : {}),
+          ...(parsedNight && parsedNight > 0
+            ? { nightCruisePrice: parsedNight }
+            : {}),
         });
       });
 
@@ -842,7 +889,9 @@ function CalendarPage() {
     });
 
     setSelectedDates([]);
-    setPriceInput("");
+    setBulkDayCruisePrice("");
+    setBulkOvernightPrice("");
+    setBulkNightPrice("");
   }
 
   function moveMonth(delta: number) {
@@ -857,7 +906,9 @@ function CalendarPage() {
   function cancelBulkMode() {
     setIsBulkPricingMode(false);
     setSelectedDates([]);
-    setPriceInput("");
+    setBulkDayCruisePrice("");
+    setBulkOvernightPrice("");
+    setBulkNightPrice("");
   }
 
   return (
@@ -871,38 +922,7 @@ function CalendarPage() {
           sub="Set bulk prices for multiple dates and manage cruise availability by date."
         />
 
-        <Card title="Monthly availability">
-          <View style={styles.bulkPricingRow}>
-            <CalendarDays size={16} color="#0f74cf" strokeWidth={2.2} />
-            <View style={styles.bulkPricingTextBlock}>
-              <Text style={styles.bulkPricingLabel}>Bulk price editing</Text>
-              <Text style={styles.bulkPricingSubLabel}>
-                Select multiple dates and apply one price.
-              </Text>
-            </View>
-            <Pressable
-              onPress={() => {
-                if (isBulkPricingMode) {
-                  cancelBulkMode();
-                } else {
-                  setIsBulkPricingMode(true);
-                }
-              }}
-              style={[
-                styles.bulkToggleButton,
-                isBulkPricingMode ? styles.bulkToggleButtonCancel : null,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.bulkToggleButtonText,
-                  isBulkPricingMode ? styles.bulkToggleButtonCancelText : null,
-                ]}
-              >
-                {isBulkPricingMode ? "Cancel" : "Enable"}
-              </Text>
-            </Pressable>
-          </View>
+        <Card title="">
           <View style={styles.calendarMonthRow}>
             <Pressable
               onPress={() => moveMonth(-1)}
@@ -974,6 +994,8 @@ function CalendarPage() {
                         <Pressable
                           key={day}
                           onPress={() => handleDayPress(day)}
+                          onLongPress={() => handleDayLongPress(day)}
+                          delayLongPress={220}
                           testID={`calendar-day-${dateKey}`}
                           style={[
                             styles.dayCell,
@@ -992,34 +1014,88 @@ function CalendarPage() {
                             </View>
                           ) : null}
                           <Text style={styles.dayCellNumber}>{day}</Text>
-                          <View style={styles.dayCellIcons}>
-                            {booking?.dayCruise ? (
-                              <Sun
-                                size={10}
-                                color="#7c5d1f"
-                                strokeWidth={2.2}
-                              />
+                          <View style={styles.dayCellCruiseRows}>
+                            {booking?.dayCruise || booking?.dayCruisePrice ? (
+                              <View style={styles.dayCellCruiseRow}>
+                                <Sun
+                                  size={8}
+                                  color="#7c5d1f"
+                                  strokeWidth={2.2}
+                                />
+                                <Text
+                                  style={styles.dayCellCruisePrice}
+                                  numberOfLines={1}
+                                >
+                                  {booking.dayCruisePrice
+                                    ? `₹${Math.round(booking.dayCruisePrice / 1000)}k`
+                                    : "—"}
+                                </Text>
+                                {booking.dayCruise ? (
+                                  <Check
+                                    size={7}
+                                    color="#0f7a4f"
+                                    strokeWidth={3}
+                                  />
+                                ) : (
+                                  <View style={styles.dayCellTickPlaceholder} />
+                                )}
+                              </View>
                             ) : null}
-                            {booking?.overnightCruise ? (
-                              <House
-                                size={10}
-                                color="#7c5d1f"
-                                strokeWidth={2.2}
-                              />
+                            {booking?.overnightCruise ||
+                            booking?.overnightCruisePrice ? (
+                              <View style={styles.dayCellCruiseRow}>
+                                <Bed
+                                  size={8}
+                                  color="#7c5d1f"
+                                  strokeWidth={2.2}
+                                />
+                                <Text
+                                  style={styles.dayCellCruisePrice}
+                                  numberOfLines={1}
+                                >
+                                  {booking.overnightCruisePrice
+                                    ? `₹${Math.round(booking.overnightCruisePrice / 1000)}k`
+                                    : "—"}
+                                </Text>
+                                {booking.overnightCruise ? (
+                                  <Check
+                                    size={7}
+                                    color="#0f7a4f"
+                                    strokeWidth={3}
+                                  />
+                                ) : (
+                                  <View style={styles.dayCellTickPlaceholder} />
+                                )}
+                              </View>
                             ) : null}
-                            {booking?.nightCruise ? (
-                              <Moon
-                                size={10}
-                                color="#1a5f94"
-                                strokeWidth={2.2}
-                              />
+                            {booking?.nightCruise ||
+                            booking?.nightCruisePrice ? (
+                              <View style={styles.dayCellCruiseRow}>
+                                <Moon
+                                  size={8}
+                                  color="#1a5f94"
+                                  strokeWidth={2.2}
+                                />
+                                <Text
+                                  style={styles.dayCellCruisePrice}
+                                  numberOfLines={1}
+                                >
+                                  {booking.nightCruisePrice
+                                    ? `₹${Math.round(booking.nightCruisePrice / 1000)}k`
+                                    : "—"}
+                                </Text>
+                                {booking.nightCruise ? (
+                                  <Check
+                                    size={7}
+                                    color="#0f7a4f"
+                                    strokeWidth={3}
+                                  />
+                                ) : (
+                                  <View style={styles.dayCellTickPlaceholder} />
+                                )}
+                              </View>
                             ) : null}
                           </View>
-                          {booking?.price ? (
-                            <Text style={styles.dayCellPrice}>
-                              ₹ {booking.price}
-                            </Text>
-                          ) : null}
                         </Pressable>
                       );
                     })}
@@ -1027,8 +1103,38 @@ function CalendarPage() {
               ),
             )}
           </View>
+          <View style={styles.bulkPricingRow}>
+            <CalendarDays size={16} color="#0f74cf" strokeWidth={2.2} />
+            <View style={styles.bulkPricingTextBlock}>
+              <Text style={styles.bulkPricingLabel}>Bulk price editing</Text>
+              <Text style={styles.bulkPricingSubLabel}>
+                Select multiple dates and apply one price.
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => {
+                if (isBulkPricingMode) {
+                  cancelBulkMode();
+                } else {
+                  setIsBulkPricingMode(true);
+                }
+              }}
+              style={[
+                styles.bulkToggleButton,
+                isBulkPricingMode ? styles.bulkToggleButtonCancel : null,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.bulkToggleButtonText,
+                  isBulkPricingMode ? styles.bulkToggleButtonCancelText : null,
+                ]}
+              >
+                {isBulkPricingMode ? "Cancel" : "Enable"}
+              </Text>
+            </Pressable>
+          </View>
         </Card>
-
       </ScrollView>
 
       {isBulkPricingMode ? (
@@ -1052,26 +1158,71 @@ function CalendarPage() {
               <X size={16} color="#5a6d82" strokeWidth={2.2} />
             </Pressable>
           </View>
-          <View style={styles.bottomSheetInputRow}>
-            <View style={styles.bottomSheetPriceField}>
-              <Text style={styles.bottomSheetRupee}>₹</Text>
-              <TextInput
-                value={priceInput}
-                onChangeText={(value) =>
-                  setPriceInput(value.replace(/[^0-9]/g, ""))
-                }
-                keyboardType="numeric"
-                placeholder="Enter price"
-                placeholderTextColor="#9aafbf"
-                style={styles.bottomSheetInput}
-              />
+          <View style={styles.verticalGap8}>
+            <View style={styles.cruisePriceRow}>
+              <Sun size={14} color="#7c5d1f" strokeWidth={2.2} />
+              <Text style={styles.cruisePriceLabel}>Day cruise</Text>
+              <View style={styles.cruisePriceField}>
+                <Text style={styles.bottomSheetRupee}>₹</Text>
+                <TextInput
+                  value={bulkDayCruisePrice}
+                  onChangeText={(value) =>
+                    setBulkDayCruisePrice(value.replace(/[^0-9]/g, ""))
+                  }
+                  keyboardType="numeric"
+                  placeholder="Price"
+                  placeholderTextColor="#9aafbf"
+                  style={styles.bottomSheetInput}
+                  testID="bulk-price-day"
+                />
+              </View>
+            </View>
+            <View style={styles.cruisePriceRow}>
+              <Bed size={14} color="#7c5d1f" strokeWidth={2.2} />
+              <Text style={styles.cruisePriceLabel}>Overnight</Text>
+              <View style={styles.cruisePriceField}>
+                <Text style={styles.bottomSheetRupee}>₹</Text>
+                <TextInput
+                  value={bulkOvernightPrice}
+                  onChangeText={(value) =>
+                    setBulkOvernightPrice(value.replace(/[^0-9]/g, ""))
+                  }
+                  keyboardType="numeric"
+                  placeholder="Price"
+                  placeholderTextColor="#9aafbf"
+                  style={styles.bottomSheetInput}
+                  testID="bulk-price-overnight"
+                />
+              </View>
+            </View>
+            <View style={styles.cruisePriceRow}>
+              <Moon size={14} color="#1a5f94" strokeWidth={2.2} />
+              <Text style={styles.cruisePriceLabel}>Night stay</Text>
+              <View style={styles.cruisePriceField}>
+                <Text style={styles.bottomSheetRupee}>₹</Text>
+                <TextInput
+                  value={bulkNightPrice}
+                  onChangeText={(value) =>
+                    setBulkNightPrice(value.replace(/[^0-9]/g, ""))
+                  }
+                  keyboardType="numeric"
+                  placeholder="Price"
+                  placeholderTextColor="#9aafbf"
+                  style={styles.bottomSheetInput}
+                  testID="bulk-price-night"
+                />
+              </View>
             </View>
             <Pressable
               onPress={applyPriceToSelectedDates}
-              disabled={selectedDates.length === 0 || !priceInput}
+              disabled={
+                selectedDates.length === 0 ||
+                (!bulkDayCruisePrice && !bulkOvernightPrice && !bulkNightPrice)
+              }
               style={[
                 styles.applyPriceButton,
-                selectedDates.length === 0 || !priceInput
+                selectedDates.length === 0 ||
+                (!bulkDayCruisePrice && !bulkOvernightPrice && !bulkNightPrice)
                   ? styles.applyPriceButtonDisabled
                   : null,
               ]}
@@ -1106,19 +1257,61 @@ function CalendarPage() {
           <Text style={styles.calendarRuleText}>
             Overnight stay and Night stay cannot be booked together.
           </Text>
-          <View style={styles.bottomSheetPriceField}>
-            <Text style={styles.bottomSheetRupee}>₹</Text>
-            <TextInput
-              value={modalPriceInput}
-              onChangeText={(value) =>
-                setModalPriceInput(value.replace(/[^0-9]/g, ""))
-              }
-              keyboardType="numeric"
-              placeholder="Enter price (optional)"
-              placeholderTextColor="#9aafbf"
-              style={styles.bottomSheetInput}
-              testID="modal-price-input"
-            />
+          <View style={styles.verticalGap8}>
+            <View style={styles.cruisePriceRow}>
+              <Sun size={14} color="#7c5d1f" strokeWidth={2.2} />
+              <Text style={styles.cruisePriceLabel}>Day cruise</Text>
+              <View style={styles.cruisePriceField}>
+                <Text style={styles.bottomSheetRupee}>₹</Text>
+                <TextInput
+                  value={modalDayCruisePrice}
+                  onChangeText={(value) =>
+                    setModalDayCruisePrice(value.replace(/[^0-9]/g, ""))
+                  }
+                  keyboardType="numeric"
+                  placeholder="Price"
+                  placeholderTextColor="#9aafbf"
+                  style={styles.bottomSheetInput}
+                  testID="modal-price-input-day"
+                />
+              </View>
+            </View>
+            <View style={styles.cruisePriceRow}>
+              <Bed size={14} color="#7c5d1f" strokeWidth={2.2} />
+              <Text style={styles.cruisePriceLabel}>Overnight</Text>
+              <View style={styles.cruisePriceField}>
+                <Text style={styles.bottomSheetRupee}>₹</Text>
+                <TextInput
+                  value={modalOvernightPrice}
+                  onChangeText={(value) =>
+                    setModalOvernightPrice(value.replace(/[^0-9]/g, ""))
+                  }
+                  keyboardType="numeric"
+                  placeholder="Price"
+                  placeholderTextColor="#9aafbf"
+                  style={styles.bottomSheetInput}
+                  testID="modal-price-input-overnight"
+                />
+              </View>
+            </View>
+            <View style={styles.cruisePriceRow}>
+              <Moon size={14} color="#1a5f94" strokeWidth={2.2} />
+              <Text style={styles.cruisePriceLabel}>Night stay</Text>
+              <View style={styles.cruisePriceField}>
+                <Text style={styles.bottomSheetRupee}>₹</Text>
+                <TextInput
+                  value={modalNightPrice}
+                  onChangeText={(value) =>
+                    setModalNightPrice(value.replace(/[^0-9]/g, ""))
+                  }
+                  keyboardType="numeric"
+                  placeholder="Price"
+                  placeholderTextColor="#9aafbf"
+                  style={styles.bottomSheetInput}
+                  testID="modal-price-input-night"
+                />
+              </View>
+            </View>
           </View>
           <View style={styles.verticalGap10}>
             {availabilityToggles.map(({ label, enabled, key }) => (
@@ -1142,8 +1335,14 @@ function CalendarPage() {
                   selectedDate.month,
                   selectedDate.day,
                 );
-                const parsedPrice = modalPriceInput
-                  ? Number(modalPriceInput)
+                const parsedDayCruise = modalDayCruisePrice
+                  ? Number(modalDayCruisePrice)
+                  : undefined;
+                const parsedOvernight = modalOvernightPrice
+                  ? Number(modalOvernightPrice)
+                  : undefined;
+                const parsedNight = modalNightPrice
+                  ? Number(modalNightPrice)
                   : undefined;
                 setBookingsByDate((current) => {
                   const existing = current[dateKey] ?? {
@@ -1151,13 +1350,14 @@ function CalendarPage() {
                     overnightCruise: false,
                     nightCruise: false,
                     details: "No bookings for this day.",
-                    price: undefined,
                   };
                   return {
                     ...current,
                     [dateKey]: normalizeBooking({
                       ...existing,
-                      price: parsedPrice,
+                      dayCruisePrice: parsedDayCruise,
+                      overnightCruisePrice: parsedOvernight,
+                      nightCruisePrice: parsedNight,
                     }),
                   };
                 });
@@ -1710,11 +1910,12 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     flex: 1,
-    minHeight: 48,
+    minHeight: 64,
     borderRadius: 8,
     paddingVertical: 4,
+    paddingHorizontal: 3,
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     borderWidth: 1,
   },
   dayCellFull: {
@@ -1768,6 +1969,54 @@ const styles = StyleSheet.create({
     color: "#0c63b2",
     fontWeight: "800",
   },
+  dayCellCruiseRows: {
+    width: "100%",
+    gap: 2,
+    marginTop: 2,
+  },
+  dayCellCruiseRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+  },
+  dayCellCruisePrice: {
+    flex: 1,
+    fontSize: 7,
+    color: "#0f5f9f",
+    fontWeight: "600",
+  },
+  dayCellTickPlaceholder: {
+    width: 7,
+    height: 7,
+  },
+  cruisePriceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#d5e2ef",
+    borderRadius: 10,
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  cruisePriceLabel: {
+    color: "#234058",
+    fontSize: 13,
+    flex: 1,
+  },
+  cruisePriceField: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#cfddea",
+    borderRadius: 9,
+    backgroundColor: "#f5faff",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    gap: 4,
+    minWidth: 90,
+  },
   bulkCheckBadge: {
     position: "absolute",
     top: 2,
@@ -1786,10 +2035,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingBottom: 12,
-    marginBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#e8f0f8",
+    paddingTop: 12,
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#e8f0f8",
   },
   bulkPricingTextBlock: {
     flex: 1,

@@ -26,21 +26,21 @@ describe('App', () => {
     expect(getByText('Bookings')).toBeTruthy();
   });
 
-  it('applies one price to multiple selected dates in bulk mode', () => {
-    const { getByText, getByPlaceholderText, getByTestId } = render(<App />);
+  it('applies one cruise-type price to multiple selected dates in bulk mode', () => {
+    const { getByText, getByTestId } = render(<App />);
     const day3 = dateKeyForCurrentMonth(3);
     const day4 = dateKeyForCurrentMonth(4);
 
     fireEvent.press(getByText('Calendar'));
-    fireEvent.press(getByText('Enable bulk price mode'));
+    fireEvent.press(getByText('Enable'));
 
     fireEvent.press(getByTestId(`calendar-day-${day3}`));
     fireEvent.press(getByTestId(`calendar-day-${day4}`));
-    fireEvent.changeText(getByPlaceholderText('Enter price in INR'), '15000');
-    fireEvent.press(getByText('Apply price to selected dates'));
+    fireEvent.changeText(getByTestId('bulk-price-day'), '15000');
+    fireEvent.press(getByText('Apply Price'));
 
-    expect(within(getByTestId(`calendar-day-${day3}`)).getByText('₹ 15000')).toBeTruthy();
-    expect(within(getByTestId(`calendar-day-${day4}`)).getByText('₹ 15000')).toBeTruthy();
+    expect(within(getByTestId(`calendar-day-${day3}`)).getByText('₹15k')).toBeTruthy();
+    expect(within(getByTestId(`calendar-day-${day4}`)).getByText('₹15k')).toBeTruthy();
   });
 
   it('keeps overnight and night mutually exclusive', () => {
@@ -55,9 +55,10 @@ describe('App', () => {
 
     fireEvent.press(getByText('Done'));
 
-    const dayCell = getByTestId(`calendar-day-${day5}`);
-    expect(within(dayCell).queryByText(/⌂/)).toBeNull();
-    expect(within(dayCell).getByText(/☾/)).toBeTruthy();
+    fireEvent.press(getByTestId(`calendar-day-${day5}`));
+
+    expect(getByTestId('availability-switch-overnightCruise').props.value).toBe(false);
+    expect(getByTestId('availability-switch-nightCruise').props.value).toBe(true);
   });
 
   it('shows current month title and weekday headers', () => {
@@ -70,5 +71,15 @@ describe('App', () => {
     expect(getByTestId('calendar-month-title').props.children).toBe(expectedMonth);
     expect(getByText('Sun')).toBeTruthy();
     expect(getByText('Sat')).toBeTruthy();
+  });
+
+  it('enables bulk pricing on day long press', () => {
+    const { getByText, getByTestId } = render(<App />);
+    const day6 = dateKeyForCurrentMonth(6);
+
+    fireEvent.press(getByText('Calendar'));
+    fireEvent(getByTestId(`calendar-day-${day6}`), 'longPress');
+
+    expect(getByText('1 date selected')).toBeTruthy();
   });
 });
