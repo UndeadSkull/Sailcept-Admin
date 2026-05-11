@@ -1934,10 +1934,12 @@ const styles = StyleSheet.create({
   },
   calendarGrid: {
     gap: 4,
+    flex: 1,
   },
   calendarWeekRow: {
     flexDirection: "row",
     gap: 4,
+    flex: 1,
   },
   dayCell: {
     flex: 1,
@@ -1979,7 +1981,7 @@ const styles = StyleSheet.create({
   dayCellBlank: {
     flex: 1,
     flexBasis: 0,
-    minHeight: 48,
+    minHeight: 64,
   },
   dayCellNumber: {
     fontSize: 11,
