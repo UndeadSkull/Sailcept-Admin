@@ -1,14 +1,12 @@
 import { StatusBar } from "expo-status-bar";
+import { FontAwesome5 } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import {
-  Bed,
   BookCheck,
   CalendarDays,
   Check,
   LayoutGrid,
   Menu,
-  Moon,
-  Sun,
   X,
 } from "lucide-react-native";
 import {
@@ -187,6 +185,34 @@ function StatusPill({ status }: { status: Enquiry["status"] }) {
         {status}
       </Text>
     </View>
+  );
+}
+
+function CruiseTypeIcon({
+  type,
+  size = "compact",
+}: {
+  type: "day" | "overnight" | "night";
+  size?: "compact" | "regular";
+}) {
+  const iconProps = {
+    size: size === "regular" ? 12 : 7,
+  };
+
+  if (type === "day") {
+    return (
+      <FontAwesome5 name="sun" size={iconProps.size} color={"#1b5f97"} solid />
+    );
+  }
+
+  if (type === "overnight") {
+    return (
+      <FontAwesome5 name="bed" size={iconProps.size} color={"#1b5f97"} solid />
+    );
+  }
+
+  return (
+    <FontAwesome5 name="moon" size={iconProps.size} color={"#1b5f97"} solid />
   );
 }
 
@@ -959,146 +985,144 @@ function CalendarPage() {
               { length: Math.ceil(calendarDays.length / 7) },
               (_, weekIndex) => (
                 <View key={weekIndex} style={styles.calendarWeekRow}>
-                  {calendarDays
-                    .slice(weekIndex * 7, weekIndex * 7 + 7)
-                    .map((day, cellIndex) => {
-                      if (!day) {
-                        return (
-                          <View
-                            key={`blank-${weekIndex}-${cellIndex}`}
-                            style={styles.dayCellBlank}
-                          />
-                        );
-                      }
-
-                      const dateKey = getDateKey(
-                        visibleYear,
-                        visibleMonthIndex,
-                        day,
-                      );
-                      const booking = bookingsByDate[dateKey];
-                      const allCruisesBooked =
-                        booking?.dayCruise &&
-                        (booking?.overnightCruise || booking?.nightCruise);
-                      const anyCruiseBooked =
-                        booking?.dayCruise ||
-                        booking?.overnightCruise ||
-                        booking?.nightCruise;
-                      const bulkSelected = selectedDates.includes(day);
-                      const isEditingDate =
-                        selectedDate?.year === visibleYear &&
-                        selectedDate?.month === visibleMonthIndex &&
-                        selectedDate?.day === day;
-
+                  {[
+                    ...calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7),
+                    ...Array.from(
+                      {
+                        length: Math.max(
+                          0,
+                          7 -
+                            calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7)
+                              .length,
+                        ),
+                      },
+                      () => null as number | null,
+                    ),
+                  ].map((day, cellIndex) => {
+                    if (!day) {
                       return (
-                        <Pressable
-                          key={day}
-                          onPress={() => handleDayPress(day)}
-                          onLongPress={() => handleDayLongPress(day)}
-                          delayLongPress={220}
-                          testID={`calendar-day-${dateKey}`}
-                          style={[
-                            styles.dayCell,
-                            allCruisesBooked
-                              ? styles.dayCellFull
-                              : anyCruiseBooked
-                                ? styles.dayCellPartial
-                                : styles.dayCellEmpty,
-                            bulkSelected ? styles.dayCellBulkSelected : null,
-                            isEditingDate ? styles.dayCellSelected : null,
-                          ]}
-                        >
-                          {bulkSelected ? (
-                            <View style={styles.bulkCheckBadge}>
-                              <Check size={8} color="#ffffff" strokeWidth={3} />
+                        <View
+                          key={`blank-${weekIndex}-${cellIndex}`}
+                          style={styles.dayCellBlank}
+                        />
+                      );
+                    }
+
+                    const dateKey = getDateKey(
+                      visibleYear,
+                      visibleMonthIndex,
+                      day,
+                    );
+                    const booking = bookingsByDate[dateKey];
+                    const allCruisesBooked =
+                      booking?.dayCruise &&
+                      (booking?.overnightCruise || booking?.nightCruise);
+                    const anyCruiseBooked =
+                      booking?.dayCruise ||
+                      booking?.overnightCruise ||
+                      booking?.nightCruise;
+                    const bulkSelected = selectedDates.includes(day);
+                    const isEditingDate =
+                      selectedDate?.year === visibleYear &&
+                      selectedDate?.month === visibleMonthIndex &&
+                      selectedDate?.day === day;
+
+                    return (
+                      <Pressable
+                        key={day}
+                        onPress={() => handleDayPress(day)}
+                        onLongPress={() => handleDayLongPress(day)}
+                        delayLongPress={220}
+                        testID={`calendar-day-${dateKey}`}
+                        style={[
+                          styles.dayCell,
+                          allCruisesBooked
+                            ? styles.dayCellFull
+                            : anyCruiseBooked
+                              ? styles.dayCellPartial
+                              : styles.dayCellEmpty,
+                          bulkSelected ? styles.dayCellBulkSelected : null,
+                          isEditingDate ? styles.dayCellSelected : null,
+                        ]}
+                      >
+                        {bulkSelected ? (
+                          <View style={styles.bulkCheckBadge}>
+                            <Check size={8} color="#ffffff" strokeWidth={3} />
+                          </View>
+                        ) : null}
+                        <Text style={styles.dayCellNumber}>{day}</Text>
+                        <View style={styles.dayCellCruiseRows}>
+                          {booking?.dayCruise || booking?.dayCruisePrice ? (
+                            <View style={styles.dayCellCruiseRow}>
+                              <CruiseTypeIcon type="day" />
+                              <Text
+                                style={styles.dayCellCruisePrice}
+                                numberOfLines={1}
+                              >
+                                {booking.dayCruisePrice
+                                  ? `${Math.round(booking.dayCruisePrice / 1000)}k`
+                                  : "—"}
+                              </Text>
+                              {booking.dayCruise ? (
+                                <Check
+                                  size={6}
+                                  color="#0f7a4f"
+                                  strokeWidth={3}
+                                />
+                              ) : (
+                                <View style={styles.dayCellTickPlaceholder} />
+                              )}
                             </View>
                           ) : null}
-                          <Text style={styles.dayCellNumber}>{day}</Text>
-                          <View style={styles.dayCellCruiseRows}>
-                            {booking?.dayCruise || booking?.dayCruisePrice ? (
-                              <View style={styles.dayCellCruiseRow}>
-                                <Sun
-                                  size={8}
-                                  color="#7c5d1f"
-                                  strokeWidth={2.2}
+                          {booking?.overnightCruise ||
+                          booking?.overnightCruisePrice ? (
+                            <View style={styles.dayCellCruiseRow}>
+                              <CruiseTypeIcon type="overnight" />
+                              <Text
+                                style={styles.dayCellCruisePrice}
+                                numberOfLines={1}
+                              >
+                                {booking.overnightCruisePrice
+                                  ? `${Math.round(booking.overnightCruisePrice / 1000)}k`
+                                  : "—"}
+                              </Text>
+                              {booking.overnightCruise ? (
+                                <Check
+                                  size={6}
+                                  color="#0f7a4f"
+                                  strokeWidth={3}
                                 />
-                                <Text
-                                  style={styles.dayCellCruisePrice}
-                                  numberOfLines={1}
-                                >
-                                  {booking.dayCruisePrice
-                                    ? `₹${Math.round(booking.dayCruisePrice / 1000)}k`
-                                    : "—"}
-                                </Text>
-                                {booking.dayCruise ? (
-                                  <Check
-                                    size={7}
-                                    color="#0f7a4f"
-                                    strokeWidth={3}
-                                  />
-                                ) : (
-                                  <View style={styles.dayCellTickPlaceholder} />
-                                )}
-                              </View>
-                            ) : null}
-                            {booking?.overnightCruise ||
-                            booking?.overnightCruisePrice ? (
-                              <View style={styles.dayCellCruiseRow}>
-                                <Bed
-                                  size={8}
-                                  color="#7c5d1f"
-                                  strokeWidth={2.2}
+                              ) : (
+                                <View style={styles.dayCellTickPlaceholder} />
+                              )}
+                            </View>
+                          ) : null}
+                          {booking?.nightCruise || booking?.nightCruisePrice ? (
+                            <View style={styles.dayCellCruiseRow}>
+                              <CruiseTypeIcon type="night" />
+                              <Text
+                                style={styles.dayCellCruisePrice}
+                                numberOfLines={1}
+                              >
+                                {booking.nightCruisePrice
+                                  ? `${Math.round(booking.nightCruisePrice / 1000)}k`
+                                  : "—"}
+                              </Text>
+                              {booking.nightCruise ? (
+                                <Check
+                                  size={6}
+                                  color="#0f7a4f"
+                                  strokeWidth={3}
                                 />
-                                <Text
-                                  style={styles.dayCellCruisePrice}
-                                  numberOfLines={1}
-                                >
-                                  {booking.overnightCruisePrice
-                                    ? `₹${Math.round(booking.overnightCruisePrice / 1000)}k`
-                                    : "—"}
-                                </Text>
-                                {booking.overnightCruise ? (
-                                  <Check
-                                    size={7}
-                                    color="#0f7a4f"
-                                    strokeWidth={3}
-                                  />
-                                ) : (
-                                  <View style={styles.dayCellTickPlaceholder} />
-                                )}
-                              </View>
-                            ) : null}
-                            {booking?.nightCruise ||
-                            booking?.nightCruisePrice ? (
-                              <View style={styles.dayCellCruiseRow}>
-                                <Moon
-                                  size={8}
-                                  color="#1a5f94"
-                                  strokeWidth={2.2}
-                                />
-                                <Text
-                                  style={styles.dayCellCruisePrice}
-                                  numberOfLines={1}
-                                >
-                                  {booking.nightCruisePrice
-                                    ? `₹${Math.round(booking.nightCruisePrice / 1000)}k`
-                                    : "—"}
-                                </Text>
-                                {booking.nightCruise ? (
-                                  <Check
-                                    size={7}
-                                    color="#0f7a4f"
-                                    strokeWidth={3}
-                                  />
-                                ) : (
-                                  <View style={styles.dayCellTickPlaceholder} />
-                                )}
-                              </View>
-                            ) : null}
-                          </View>
-                        </Pressable>
-                      );
-                    })}
+                              ) : (
+                                <View style={styles.dayCellTickPlaceholder} />
+                              )}
+                            </View>
+                          ) : null}
+                        </View>
+                      </Pressable>
+                    );
+                  })}
                 </View>
               ),
             )}
@@ -1160,7 +1184,7 @@ function CalendarPage() {
           </View>
           <View style={styles.verticalGap8}>
             <View style={styles.cruisePriceRow}>
-              <Sun size={14} color="#7c5d1f" strokeWidth={2.2} />
+              <CruiseTypeIcon type="day" size="regular" />
               <Text style={styles.cruisePriceLabel}>Day cruise</Text>
               <View style={styles.cruisePriceField}>
                 <Text style={styles.bottomSheetRupee}>₹</Text>
@@ -1178,7 +1202,7 @@ function CalendarPage() {
               </View>
             </View>
             <View style={styles.cruisePriceRow}>
-              <Bed size={14} color="#7c5d1f" strokeWidth={2.2} />
+              <CruiseTypeIcon type="overnight" size="regular" />
               <Text style={styles.cruisePriceLabel}>Overnight</Text>
               <View style={styles.cruisePriceField}>
                 <Text style={styles.bottomSheetRupee}>₹</Text>
@@ -1196,7 +1220,7 @@ function CalendarPage() {
               </View>
             </View>
             <View style={styles.cruisePriceRow}>
-              <Moon size={14} color="#1a5f94" strokeWidth={2.2} />
+              <CruiseTypeIcon type="night" size="regular" />
               <Text style={styles.cruisePriceLabel}>Night stay</Text>
               <View style={styles.cruisePriceField}>
                 <Text style={styles.bottomSheetRupee}>₹</Text>
@@ -1258,8 +1282,8 @@ function CalendarPage() {
             Overnight stay and Night stay cannot be booked together.
           </Text>
           <View style={styles.verticalGap8}>
-            <View style={styles.cruisePriceRow}>
-              <Sun size={14} color="#7c5d1f" strokeWidth={2.2} />
+            <View style={styles.cruiseCombinedRow}>
+              <CruiseTypeIcon type="day" size="regular" />
               <Text style={styles.cruisePriceLabel}>Day cruise</Text>
               <View style={styles.cruisePriceField}>
                 <Text style={styles.bottomSheetRupee}>₹</Text>
@@ -1275,9 +1299,16 @@ function CalendarPage() {
                   testID="modal-price-input-day"
                 />
               </View>
+              <Switch
+                value={selectedBooking.dayCruise}
+                onValueChange={(value) =>
+                  updateSelectedDayAvailability("dayCruise", value)
+                }
+                testID="availability-switch-dayCruise"
+              />
             </View>
-            <View style={styles.cruisePriceRow}>
-              <Bed size={14} color="#7c5d1f" strokeWidth={2.2} />
+            <View style={styles.cruiseCombinedRow}>
+              <CruiseTypeIcon type="overnight" size="regular" />
               <Text style={styles.cruisePriceLabel}>Overnight</Text>
               <View style={styles.cruisePriceField}>
                 <Text style={styles.bottomSheetRupee}>₹</Text>
@@ -1293,9 +1324,16 @@ function CalendarPage() {
                   testID="modal-price-input-overnight"
                 />
               </View>
+              <Switch
+                value={selectedBooking.overnightCruise}
+                onValueChange={(value) =>
+                  updateSelectedDayAvailability("overnightCruise", value)
+                }
+                testID="availability-switch-overnightCruise"
+              />
             </View>
-            <View style={styles.cruisePriceRow}>
-              <Moon size={14} color="#1a5f94" strokeWidth={2.2} />
+            <View style={styles.cruiseCombinedRow}>
+              <CruiseTypeIcon type="night" size="regular" />
               <Text style={styles.cruisePriceLabel}>Night stay</Text>
               <View style={styles.cruisePriceField}>
                 <Text style={styles.bottomSheetRupee}>₹</Text>
@@ -1311,21 +1349,14 @@ function CalendarPage() {
                   testID="modal-price-input-night"
                 />
               </View>
+              <Switch
+                value={selectedBooking.nightCruise}
+                onValueChange={(value) =>
+                  updateSelectedDayAvailability("nightCruise", value)
+                }
+                testID="availability-switch-nightCruise"
+              />
             </View>
-          </View>
-          <View style={styles.verticalGap10}>
-            {availabilityToggles.map(({ label, enabled, key }) => (
-              <View key={label} style={styles.featureRow}>
-                <Text style={styles.featureRowText}>{label}</Text>
-                <Switch
-                  value={enabled}
-                  onValueChange={(value) =>
-                    updateSelectedDayAvailability(key, value)
-                  }
-                  testID={`availability-switch-${key}`}
-                />
-              </View>
-            ))}
           </View>
           <Pressable
             onPress={() => {
@@ -1910,6 +1941,7 @@ const styles = StyleSheet.create({
   },
   dayCell: {
     flex: 1,
+    flexBasis: 0,
     minHeight: 64,
     borderRadius: 8,
     paddingVertical: 4,
@@ -1946,6 +1978,7 @@ const styles = StyleSheet.create({
   },
   dayCellBlank: {
     flex: 1,
+    flexBasis: 0,
     minHeight: 48,
   },
   dayCellNumber: {
@@ -1977,19 +2010,43 @@ const styles = StyleSheet.create({
   dayCellCruiseRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
+    gap: 3,
   },
   dayCellCruisePrice: {
     flex: 1,
-    fontSize: 7,
-    color: "#0f5f9f",
-    fontWeight: "600",
+    fontSize: 9,
+    color: "#123a62",
+    fontWeight: "700",
+  },
+  dayCellCruiseIconBadge: {
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  dayCruiseIconBadge: {
+    backgroundColor: "#c79021",
+  },
+  overnightCruiseIconBadge: {
+    backgroundColor: "#2f8a3f",
+  },
+  nightCruiseIconBadge: {
+    backgroundColor: "#1b5f97",
   },
   dayCellTickPlaceholder: {
     width: 7,
     height: 7,
   },
   cruisePriceRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#d5e2ef",
+    borderRadius: 10,
+    backgroundColor: "#ffffff",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  cruiseCombinedRow: {
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
