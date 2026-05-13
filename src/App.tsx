@@ -7,6 +7,7 @@ import {
   Check,
   LayoutGrid,
   Menu,
+  Ship,
   X,
 } from "lucide-react-native";
 import {
@@ -216,20 +217,29 @@ function CruiseTypeIcon({
   );
 }
 
-function DashboardPage() {
-  const enquiries: Enquiry[] = [
+function DashboardPage({
+  onNavigate,
+}: {
+  onNavigate: (route: RouteKey) => void;
+}) {
+  const upcomingCruises: Enquiry[] = [
     {
       name: "Arjun Menon",
       dateLine: "Day cruise · 15 Jan 2025",
-      status: "Date locked",
-      config:
-        "Premium · Private · 2 adults · 1 room · Full upper deck · INR 12,500",
+      status: "Confirmed",
+      config: "Premium · Private · 2 adults",
     },
     {
       name: "Priya Sharma",
       dateLine: "Overnight stay · 18 Jan 2025",
       status: "Confirmed",
-      config: "Luxury · Private · 4 adults · 2 rooms · INR 28,000",
+      config: "Luxury · Private · 4 adults",
+    },
+    {
+      name: "Rajesh Kumar",
+      dateLine: "Night stay · 22 Jan 2025",
+      status: "Confirmed",
+      config: "Premium · Shared · 6 guests",
     },
   ];
 
@@ -242,31 +252,60 @@ function DashboardPage() {
 
       <View style={styles.statsGrid}>
         {[
-          ["Open dates this month", "18", "of 31 days"],
-          ["Pending enquiries", "3", "Awaiting response"],
-          ["Confirmed bookings", "11", "This month"],
-          ["Revenue (month)", "INR 1.4L", "Normal + peak"],
-        ].map(([label, value, caption]) => (
-          <View key={label} style={styles.statCard}>
-            <Text style={styles.statLabel}>{label}</Text>
-            <Text style={styles.statValue}>{value}</Text>
-            <Text style={styles.statCaption}>{caption}</Text>
-          </View>
+          {
+            label: "Open dates this month",
+            value: "18",
+            caption: "of 31 days",
+            onPress: () => onNavigate("calendar"),
+          },
+          {
+            label: "Pending enquiries",
+            value: "3",
+            caption: "Awaiting response",
+            onPress: () => onNavigate("enquiries"),
+            isPending: true,
+          },
+          {
+            label: "Confirmed bookings",
+            value: "11",
+            caption: "This month",
+            onPress: () => onNavigate("bookings"),
+          },
+          {
+            label: "Revenue (month)",
+            value: "INR 1.4L",
+            caption: "Normal + peak",
+            onPress: undefined,
+          },
+        ].map((stat) => (
+          <Pressable
+            key={stat.label}
+            onPress={stat.onPress}
+            disabled={!stat.onPress}
+            style={[
+              styles.statCard,
+              stat.isPending ? styles.statCardPending : null,
+            ]}
+          >
+            <Text style={styles.statLabel}>{stat.label}</Text>
+            <Text style={styles.statValue}>{stat.value}</Text>
+            <Text style={styles.statCaption}>{stat.caption}</Text>
+          </Pressable>
         ))}
       </View>
 
-      <Card title="Recent enquiries">
+      <Card title="Upcoming cruises">
         <View style={styles.verticalGap12}>
-          {enquiries.map((enquiry) => (
-            <View key={enquiry.name} style={styles.listCard}>
+          {upcomingCruises.map((cruise) => (
+            <View key={cruise.name} style={styles.listCard}>
               <View style={styles.rowBetweenTop}>
                 <View style={styles.flex1}>
-                  <Text style={styles.listCardTitle}>{enquiry.name}</Text>
-                  <Text style={styles.listCardSub}>{enquiry.dateLine}</Text>
+                  <Text style={styles.listCardTitle}>{cruise.name}</Text>
+                  <Text style={styles.listCardSub}>{cruise.dateLine}</Text>
                 </View>
-                <StatusPill status={enquiry.status} />
+                {/* <StatusPill status={cruise.status} /> */}
               </View>
-              <Text style={styles.listCardMeta}>{enquiry.config}</Text>
+              <Text style={styles.listCardMeta}>{cruise.config}</Text>
             </View>
           ))}
         </View>
@@ -343,12 +382,13 @@ function BoatAssetPage() {
               </Pressable>
             </>
           ) : (
-            <Pressable
-              onPress={() => setIsEditing(true)}
-              style={styles.softBlueButton}
-            >
-              <Text style={styles.softBlueButtonText}>Edit</Text>
-            </Pressable>
+            null
+            // <Pressable
+            //   onPress={() => setIsEditing(true)}
+            //   style={styles.softBlueButton}
+            // >
+            //   <Text style={styles.softBlueButtonText}>Edit</Text>
+            // </Pressable>
           )}
         </View>
       </PageHeader>
@@ -1463,7 +1503,67 @@ function EnquiriesPage() {
   );
 }
 
+type BookingRecord = {
+  id: string;
+  guestName: string;
+  boatName: string;
+  bookingId: string;
+  details: Array<[string, string]>;
+  notes: string;
+};
+
 function BookingsPage() {
+  const [expandedBookings, setExpandedBookings] = useState<Set<string>>(
+    new Set()
+  );
+
+  const bookings: BookingRecord[] = [
+    {
+      id: "booking-1",
+      guestName: "Arjun Menon",
+      boatName: "Vembanad Crest",
+      bookingId: "#SC-2025-0041",
+      details: [
+        ["Cruise type", "Day cruise"],
+        ["Date & time", "15 Jan 2025 · 11:00 AM - 5:00 PM"],
+        ["Configuration", "2 adults · 1 room · Private · Premium"],
+        ["Total agreed price", "INR 12,500"],
+        ["Inclusions", "Meals, water, A/C, fishing equipment"],
+        ["Pickup arranged", "Taxi confirmed · Alleppey Jetty"],
+        ["Meal preference", "Vegetarian · Anniversary decoration"],
+      ],
+      notes:
+        "Sailcept commitments: cruise-time support, check-in coordination, taxi pickup, operator compliance enforcement, backup boat if required.",
+    },
+    {
+      id: "booking-2",
+      guestName: "Priya Sharma",
+      boatName: "Vembanad Crest",
+      bookingId: "#SC-2025-0042",
+      details: [
+        ["Cruise type", "Overnight stay"],
+        ["Date & time", "18 Jan 2025 · 3:00 PM - Next day 11:00 AM"],
+        ["Configuration", "4 adults · 2 rooms · Private · Luxury"],
+        ["Total agreed price", "INR 28,000"],
+        ["Inclusions", "All meals, spa, sunset deck access"],
+        ["Pickup arranged", "Hotel pickup confirmed"],
+        ["Special requests", "Champagne breakfast on day 2"],
+      ],
+      notes:
+        "Premium service package. Guest is VIP. Ensure extra staff on board.",
+    },
+  ];
+
+  const toggleBooking = (bookingId: string) => {
+    const newExpanded = new Set(expandedBookings);
+    if (newExpanded.has(bookingId)) {
+      newExpanded.delete(bookingId);
+    } else {
+      newExpanded.add(bookingId);
+    }
+    setExpandedBookings(newExpanded);
+  };
+
   return (
     <ScrollView contentContainerStyle={styles.pageScrollContent}>
       <PageHeader
@@ -1471,38 +1571,57 @@ function BookingsPage() {
         sub="Track accepted bookings with complete trip details and guest preferences."
       />
 
-      <Card title="Arjun Menon · Vembanad Crest" sub="#SC-2025-0041">
-        <View style={styles.verticalGap8}>
-          {[
-            ["Cruise type", "Day cruise"],
-            ["Date & time", "15 Jan 2025 · 11:00 AM - 5:00 PM"],
-            ["Configuration", "2 adults · 1 room · Private · Premium"],
-            ["Total agreed price", "INR 12,500"],
-            ["Inclusions", "Meals, water, A/C, fishing equipment"],
-            ["Pickup arranged", "Taxi confirmed · Alleppey Jetty"],
-            ["Meal preference", "Vegetarian · Anniversary decoration"],
-          ].map(([key, value]) => (
-            <View key={key} style={styles.bookingRow}>
-              <Text style={styles.bookingRowKey}>{key}</Text>
-              <Text style={styles.bookingRowValue}>{value}</Text>
-            </View>
-          ))}
-        </View>
+      <View style={styles.verticalGap12}>
+        {bookings.map((booking) => {
+          const isExpanded = expandedBookings.has(booking.id);
+          return (
+            <Pressable
+              key={booking.id}
+              onPress={() => toggleBooking(booking.id)}
+              style={[styles.card, styles.expandableBookingCard]}
+            >
+              <View style={styles.bookingSummaryRow}>
+                <View style={styles.flex1}>
+                  <Text style={styles.cardTitle}>
+                    {booking.guestName} · {booking.boatName}
+                  </Text>
+                  <Text style={styles.cardSub}>{booking.bookingId}</Text>
+                </View>
+                <Text style={styles.expandIcon}>
+                  {isExpanded ? "▼" : "▶"}
+                </Text>
+              </View>
 
-        <View style={styles.noteBox}>
-          <Text style={styles.noteText}>
-            Sailcept commitments: cruise-time support, check-in coordination,
-            taxi pickup, operator compliance enforcement, backup boat if
-            required.
-          </Text>
-        </View>
-      </Card>
+              {isExpanded && (
+                <View style={styles.bookingDetailsContainer}>
+                  <View style={styles.verticalGap8}>
+                    {booking.details.map(([key, value]) => (
+                      <View key={key} style={styles.bookingRow}>
+                        <Text style={styles.bookingRowKey}>{key}</Text>
+                        <Text style={styles.bookingRowValue}>{value}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  <View style={styles.noteBox}>
+                    <Text style={styles.noteText}>{booking.notes}</Text>
+                  </View>
+                </View>
+              )}
+            </Pressable>
+          );
+        })}
+      </View>
     </ScrollView>
   );
 }
 
 function AppLayout() {
   const [activeRoute, setActiveRoute] = useState<RouteKey>("dashboard");
+  const [selectedBoat, setSelectedBoat] = useState<string>("Vembanad Crest");
+  const [boatDropdownOpen, setBoatDropdownOpen] = useState<boolean>(false);
+
+  const boats = ["Vembanad Crest", "Backwater Pearl", "Kerala Dream"];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -1520,26 +1639,78 @@ function AppLayout() {
             </View>
           </View>
 
-          <Pressable
-            onPress={() => setActiveRoute("boat")}
-            style={[
-              styles.profileChip,
-              activeRoute === "boat" ? styles.profileChipActive : null,
-            ]}
-          >
-            <Text
+          <View style={styles.headerRightSection}>
+            <View style={styles.boatSwitcherWrapper}>
+              <Pressable
+                onPress={() => setBoatDropdownOpen(!boatDropdownOpen)}
+                style={[
+                  styles.profileChip,
+                  styles.boatSwitcherChip,
+                ]}
+              >
+                <Text style={styles.profileChipText}>
+                  {selectedBoat.split(" ")[0]}
+                </Text>
+                <Text style={styles.dropdownArrow}>
+                  {boatDropdownOpen ? "▲" : "▼"}
+                </Text>
+              </Pressable>
+
+              {boatDropdownOpen && (
+                <View style={styles.boatDropdown}>
+                  {boats.map((boat) => (
+                    <Pressable
+                      key={boat}
+                      onPress={() => {
+                        setSelectedBoat(boat);
+                        setBoatDropdownOpen(false);
+                      }}
+                      style={[
+                        styles.boatDropdownItem,
+                        selectedBoat === boat
+                          ? styles.boatDropdownItemActive
+                          : null,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.boatDropdownItemText,
+                          selectedBoat === boat
+                            ? styles.boatDropdownItemTextActive
+                            : null,
+                        ]}
+                      >
+                        {boat}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+
+            <Pressable
+              onPress={() => setActiveRoute("boat")}
               style={[
-                styles.profileChipText,
-                activeRoute === "boat" ? styles.profileChipTextActive : null,
+                styles.profileChip,
+                activeRoute === "boat" ? styles.profileChipActive : null,
               ]}
             >
-              Boat
-            </Text>
-          </Pressable>
+              <Text
+                style={[
+                  styles.profileChipText,
+                  activeRoute === "boat" ? styles.profileChipTextActive : null,
+                ]}
+              >
+                <Ship size={12} color={activeRoute === "boat" ? "#0c5eac" : "#5d7089"} />
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         <View style={styles.mainArea}>
-          {activeRoute === "dashboard" ? <DashboardPage /> : null}
+          {activeRoute === "dashboard" ? (
+            <DashboardPage onNavigate={setActiveRoute} />
+          ) : null}
           {activeRoute === "boat" ? <BoatAssetPage /> : null}
           {activeRoute === "calendar" ? <CalendarPage /> : null}
           {activeRoute === "enquiries" ? <EnquiriesPage /> : null}
@@ -1657,6 +1828,57 @@ const styles = StyleSheet.create({
   profileChipTextActive: {
     color: "#0c5eac",
   },
+  headerRightSection: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  boatSwitcherWrapper: {
+    position: "relative",
+  },
+  boatSwitcherChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  dropdownArrow: {
+    fontSize: 10,
+    color: "#5d7089",
+  },
+  boatDropdown: {
+    position: "absolute",
+    top: 38,
+    right: 0,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#cfdbe8",
+    borderRadius: 8,
+    zIndex: 100,
+    minWidth: 160,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  boatDropdownItem: {
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#eef3f8",
+  },
+  boatDropdownItemActive: {
+    backgroundColor: "#e6f2ff",
+  },
+  boatDropdownItemText: {
+    fontSize: 13,
+    color: "#5d7089",
+    fontWeight: "500",
+  },
+  boatDropdownItemTextActive: {
+    color: "#0c5eac",
+    fontWeight: "600",
+  },
   mainArea: {
     flex: 1,
     paddingTop: 66,
@@ -1729,9 +1951,11 @@ const styles = StyleSheet.create({
     color: "#8ea0b6",
     fontSize: 11,
   },
-  verticalGap12: {
-    gap: 12,
+  statCardPending: {
+    borderColor: "#fca5a5",
+    backgroundColor: "#ffe8e8",
   },
+
   listCard: {
     borderWidth: 1,
     borderColor: "#d8e8fb",
@@ -1768,6 +1992,26 @@ const styles = StyleSheet.create({
   statusPillText: {
     fontSize: 10,
     fontWeight: "600",
+  },
+  bookingSummaryRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  expandIcon: {
+    fontSize: 12,
+    color: "#6a7f97",
+    fontWeight: "600",
+  },
+  bookingDetailsContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#e8f0f7",
+  },
+  expandableBookingCard: {
+    marginBottom: 0,
   },
   rowGap8: {
     flexDirection: "row",
@@ -2503,5 +2747,8 @@ const styles = StyleSheet.create({
   },
   flex1: {
     flex: 1,
+  },
+  verticalGap12: {
+    gap: 12,
   },
 });
