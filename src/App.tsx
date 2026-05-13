@@ -1953,16 +1953,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   dayCellFull: {
-    backgroundColor: "#dbf8ea",
-    borderColor: "#9dd8bc",
+    backgroundColor: "#ffe5e5",//light red
+    borderColor: "#ffcccc",//light red
   },
   dayCellPartial: {
     backgroundColor: "#fff1d6",
     borderColor: "#f5d392",
   },
   dayCellEmpty: {
-    backgroundColor: "#eff4f9",
-    borderColor: "#d3dde7",
+    backgroundColor: "#dbf8ea",
+    borderColor: "#9dd8bc",
   },
   dayCellSelected: {
     borderColor: "#2f8ae3",
