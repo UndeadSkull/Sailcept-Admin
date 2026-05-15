@@ -8,6 +8,7 @@ import {
   LayoutGrid,
   Menu,
   Ship,
+  User,
   X,
 } from "lucide-react-native";
 import {
@@ -24,7 +25,13 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-type RouteKey = "dashboard" | "boat" | "calendar" | "enquiries" | "bookings";
+type RouteKey =
+  | "dashboard"
+  | "boat"
+  | "profile"
+  | "calendar"
+  | "enquiries"
+  | "bookings";
 
 type Enquiry = {
   name: string;
@@ -1616,12 +1623,62 @@ function BookingsPage() {
   );
 }
 
+function ProfilePage({
+  user,
+  boats,
+}: {
+  user: { name: string; phone: string; email: string };
+  boats: string[];
+}) {
+  return (
+    <ScrollView contentContainerStyle={styles.pageScrollContent}>
+      <PageHeader
+        title="Profile"
+        sub="View user details and registered boat list."
+      />
+
+      <Card title="User details">
+        <View style={styles.verticalGap10}>
+          <View style={styles.metaBox}>
+            <Text style={styles.metaLabel}>Name</Text>
+            <Text style={styles.metaValue}>{user.name}</Text>
+          </View>
+          <View style={styles.metaBox}>
+            <Text style={styles.metaLabel}>Phone number</Text>
+            <Text style={styles.metaValue}>{user.phone}</Text>
+          </View>
+          <View style={styles.metaBox}>
+            <Text style={styles.metaLabel}>Email</Text>
+            <Text style={styles.metaValue}>{user.email}</Text>
+          </View>
+        </View>
+      </Card>
+
+      <Card title="Boat list">
+        <View style={styles.verticalGap8}>
+          {boats.map((boat) => (
+            <View key={boat} style={styles.profileBoatRow}>
+              <Ship size={13} color="#0c5eac" strokeWidth={2.2} />
+              <Text style={styles.profileBoatText}>{boat}</Text>
+            </View>
+          ))}
+        </View>
+      </Card>
+    </ScrollView>
+  );
+}
+
 function AppLayout() {
   const [activeRoute, setActiveRoute] = useState<RouteKey>("dashboard");
   const [selectedBoat, setSelectedBoat] = useState<string>("Vembanad Crest");
   const [boatDropdownOpen, setBoatDropdownOpen] = useState<boolean>(false);
 
   const boats = ["Vembanad Crest", "Backwater Pearl", "Kerala Dream"];
+  const userProfile = {
+    name: "Arjun Menon",
+    phone: "+91 98765 43210",
+    email: "arjun.menon@sailcept.com",
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -1694,15 +1751,26 @@ function AppLayout() {
                 styles.profileChip,
                 activeRoute === "boat" ? styles.profileChipActive : null,
               ]}
+              testID="header-boat-button"
             >
-              <Text
-                style={[
-                  styles.profileChipText,
-                  activeRoute === "boat" ? styles.profileChipTextActive : null,
-                ]}
-              >
-                <Ship size={12} color={activeRoute === "boat" ? "#0c5eac" : "#5d7089"} />
-              </Text>
+              <Ship
+                size={12}
+                color={activeRoute === "boat" ? "#0c5eac" : "#5d7089"}
+              />
+            </Pressable>
+
+            <Pressable
+              onPress={() => setActiveRoute("profile")}
+              style={[
+                styles.profileChip,
+                activeRoute === "profile" ? styles.profileChipActive : null,
+              ]}
+              testID="header-profile-button"
+            >
+              <User
+                size={12}
+                color={activeRoute === "profile" ? "#0c5eac" : "#5d7089"}
+              />
             </Pressable>
           </View>
         </View>
@@ -1712,6 +1780,9 @@ function AppLayout() {
             <DashboardPage onNavigate={setActiveRoute} />
           ) : null}
           {activeRoute === "boat" ? <BoatAssetPage /> : null}
+          {activeRoute === "profile" ? (
+            <ProfilePage user={userProfile} boats={boats} />
+          ) : null}
           {activeRoute === "calendar" ? <CalendarPage /> : null}
           {activeRoute === "enquiries" ? <EnquiriesPage /> : null}
           {activeRoute === "bookings" ? <BookingsPage /> : null}
@@ -2687,6 +2758,22 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     textAlign: "right",
     flex: 1,
+  },
+  profileBoatRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "#d8e8fb",
+    borderRadius: 10,
+    backgroundColor: "#f5faff",
+    paddingHorizontal: 10,
+    paddingVertical: 9,
+  },
+  profileBoatText: {
+    color: "#13345a",
+    fontSize: 13,
+    fontWeight: "500",
   },
   noteBox: {
     marginTop: 10,
