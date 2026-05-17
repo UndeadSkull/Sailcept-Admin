@@ -1,1 +1,3 @@
-// Jest setup placeholder for future mocks.
+jest.mock("@expo/vector-icons", () => ({
+	FontAwesome5: () => null,
+}));

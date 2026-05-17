@@ -1,6 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import { FontAwesome5 } from "@expo/vector-icons";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   BookCheck,
   CalendarDays,
@@ -227,66 +227,165 @@ function CruiseTypeIcon({
 }
 
 function DashboardPage({
+  selectedBoat,
   onNavigate,
 }: {
+  selectedBoat: string;
   onNavigate: (route: RouteKey) => void;
 }) {
-  const upcomingCruises: Enquiry[] = [
-    {
-      name: "Ethan Walker",
-      dateLine: "Day cruise · 15 Jan 2025",
-      status: "Confirmed",
-      config: "Premium · Private · 2 adults",
-    },
-    {
-      name: "Olivia Bennett",
-      dateLine: "Overnight stay · 18 Jan 2025",
-      status: "Confirmed",
-      config: "Luxury · Private · 4 adults",
-    },
-    {
-      name: "Lucas Martin",
-      dateLine: "Night stay · 22 Jan 2025",
-      status: "Confirmed",
-      config: "Premium · Shared · 6 guests",
-    },
-  ];
+  const statsByBoat: Record<
+    string,
+    Array<{
+      label: string;
+      value: string;
+      caption: string;
+      onPress?: () => void;
+      isPending?: boolean;
+    }>
+  > = {
+    "Vembanad Crest": [
+      {
+        label: "Open dates this month",
+        value: "18",
+        caption: "of 31 days",
+        onPress: () => onNavigate("calendar"),
+      },
+      {
+        label: "Pending enquiries",
+        value: "3",
+        caption: "Awaiting response",
+        onPress: () => onNavigate("enquiries"),
+        isPending: true,
+      },
+      {
+        label: "Confirmed bookings",
+        value: "11",
+        caption: "This month",
+        onPress: () => onNavigate("bookings"),
+      },
+      {
+        label: "Revenue (month)",
+        value: "INR 1.4L",
+        caption: "Normal + peak",
+      },
+    ],
+    "Backwater Pearl": [
+      {
+        label: "Open dates this month",
+        value: "22",
+        caption: "of 31 days",
+        onPress: () => onNavigate("calendar"),
+      },
+      {
+        label: "Pending enquiries",
+        value: "1",
+        caption: "Awaiting response",
+        onPress: () => onNavigate("enquiries"),
+        isPending: true,
+      },
+      {
+        label: "Confirmed bookings",
+        value: "6",
+        caption: "This month",
+        onPress: () => onNavigate("bookings"),
+      },
+      {
+        label: "Revenue (month)",
+        value: "INR 82k",
+        caption: "Normal + peak",
+      },
+    ],
+    "Kerala Dream": [
+      {
+        label: "Open dates this month",
+        value: "14",
+        caption: "of 31 days",
+        onPress: () => onNavigate("calendar"),
+      },
+      {
+        label: "Pending enquiries",
+        value: "4",
+        caption: "Awaiting response",
+        onPress: () => onNavigate("enquiries"),
+        isPending: true,
+      },
+      {
+        label: "Confirmed bookings",
+        value: "13",
+        caption: "This month",
+        onPress: () => onNavigate("bookings"),
+      },
+      {
+        label: "Revenue (month)",
+        value: "INR 1.9L",
+        caption: "Normal + peak",
+      },
+    ],
+  };
+
+  const cruisesByBoat: Record<string, Enquiry[]> = {
+    "Vembanad Crest": [
+      {
+        name: "Ethan Walker",
+        dateLine: "Day cruise · 15 Jan 2025",
+        status: "Confirmed",
+        config: "Premium · Private · 2 adults",
+      },
+      {
+        name: "Olivia Bennett",
+        dateLine: "Overnight stay · 18 Jan 2025",
+        status: "Confirmed",
+        config: "Luxury · Private · 4 adults",
+      },
+      {
+        name: "Lucas Martin",
+        dateLine: "Night stay · 22 Jan 2025",
+        status: "Confirmed",
+        config: "Premium · Shared · 6 guests",
+      },
+    ],
+    "Backwater Pearl": [
+      {
+        name: "Mason Reed",
+        dateLine: "Day cruise · 12 Jan 2025",
+        status: "Confirmed",
+        config: "Standard · Private · 3 adults",
+      },
+      {
+        name: "Ava Stone",
+        dateLine: "Night stay · 20 Jan 2025",
+        status: "Confirmed",
+        config: "Premium · Shared · 5 guests",
+      },
+    ],
+    "Kerala Dream": [
+      {
+        name: "Noah Patel",
+        dateLine: "Overnight stay · 16 Jan 2025",
+        status: "Confirmed",
+        config: "Luxury · Private · 4 adults",
+      },
+      {
+        name: "Liam Carter",
+        dateLine: "Day cruise · 23 Jan 2025",
+        status: "Confirmed",
+        config: "Premium · Private · 2 adults",
+      },
+    ],
+  };
+
+  const upcomingCruises = cruisesByBoat[selectedBoat] ?? cruisesByBoat["Vembanad Crest"];
+  const stats = statsByBoat[selectedBoat] ?? statsByBoat["Vembanad Crest"];
 
   return (
     <ScrollView contentContainerStyle={styles.pageScrollContent}>
       <PageHeader
         title="Overview"
-        sub="Your houseboat performance at a glance"
+        sub={`Your houseboat performance at a glance · Boat: ${selectedBoat}`}
       />
 
       <View style={styles.statsGrid}>
-        {[
-          {
-            label: "Open dates this month",
-            value: "18",
-            caption: "of 31 days",
-            onPress: () => onNavigate("calendar"),
-          },
-          {
-            label: "Pending enquiries",
-            value: "3",
-            caption: "Awaiting response",
-            onPress: () => onNavigate("enquiries"),
-            isPending: true,
-          },
-          {
-            label: "Confirmed bookings",
-            value: "11",
-            caption: "This month",
-            onPress: () => onNavigate("bookings"),
-          },
-          {
-            label: "Revenue (month)",
-            value: "INR 1.4L",
-            caption: "Normal + peak",
-            onPress: undefined,
-          },
-        ].map((stat) => (
+        {stats.map((stat) => (
           <Pressable
             key={stat.label}
             onPress={stat.onPress}
@@ -323,7 +422,7 @@ function DashboardPage({
   );
 }
 
-function BoatAssetPage() {
+function BoatAssetPage({ selectedBoat }: { selectedBoat: string }) {
   const [isEditing, setIsEditing] = useState(false);
   const [identity, setIdentity] = useState({
     boatName: "Vembanad Crest",
@@ -347,6 +446,10 @@ function BoatAssetPage() {
     extraBed: "Allowed",
     children: "Allowed",
   });
+
+  useEffect(() => {
+    setIdentity((current) => ({ ...current, boatName: selectedBoat }));
+  }, [selectedBoat]);
 
   const allStructuralFeatures = [
     "Full upper deck",
@@ -372,7 +475,7 @@ function BoatAssetPage() {
     <ScrollView contentContainerStyle={styles.pageScrollContent}>
       <PageHeader
         title="Boat asset definition"
-        sub="These details are permanent truths about your boat. They drive all matching logic."
+        sub={`These details are permanent truths about your boat. They drive all matching logic. · Boat: ${selectedBoat}`}
       >
         <View style={styles.rowGap8}>
           {isEditing ? (
@@ -666,7 +769,7 @@ function BoatAssetPage() {
   );
 }
 
-function CalendarPage() {
+function CalendarPage({ selectedBoat }: { selectedBoat: string }) {
   type DayBooking = {
     dayCruise: boolean;
     overnightCruise: boolean;
@@ -994,7 +1097,7 @@ function CalendarPage() {
       <ScrollView contentContainerStyle={styles.pageScrollContent}>
         <PageHeader
           title="Availability calendar"
-          sub="Set bulk prices for multiple dates and manage cruise availability by date."
+          sub={`Set bulk prices for multiple dates and manage cruise availability by date. · Boat: ${selectedBoat}`}
         />
 
         <Card title="">
@@ -1454,13 +1557,14 @@ function CalendarPage() {
   );
 }
 
-function EnquiriesPage() {
+function EnquiriesPage({ selectedBoat }: { selectedBoat: string }) {
   const [activeTab, setActiveTab] = useState<"pending" | "history">(
     "pending",
   );
 
   const cards: Array<
     Enquiry & {
+      boatName: string;
       subtitle: string;
       details: string;
       request?: string;
@@ -1470,6 +1574,7 @@ function EnquiriesPage() {
   > = [
     {
       name: "Ethan Walker",
+      boatName: "Vembanad Crest",
       dateLine: "Received 2 hrs ago - Date held until 6 PM today",
       subtitle: "Day cruise · 15 Jan 2025",
       status: "Date locked",
@@ -1481,6 +1586,7 @@ function EnquiriesPage() {
     },
     {
       name: "Emma Collins",
+      boatName: "Kerala Dream",
       dateLine: "Received yesterday - Overnight stay · 22 Jan",
       subtitle: "Overnight stay · 22 Jan 2025",
       status: "Pending",
@@ -1490,6 +1596,7 @@ function EnquiriesPage() {
     },
     {
       name: "Sofia Turner",
+      boatName: "Vembanad Crest",
       dateLine: "Handled 3 days ago - Day cruise · 10 Jan",
       subtitle: "Day cruise · 10 Jan 2025",
       status: "Confirmed",
@@ -1501,6 +1608,7 @@ function EnquiriesPage() {
     },
     {
       name: "Noah Parker",
+      boatName: "Backwater Pearl",
       dateLine: "Handled 4 days ago - Night cruise · 09 Jan",
       subtitle: "Night cruise · 09 Jan 2025",
       status: "Rejected",
@@ -1511,8 +1619,12 @@ function EnquiriesPage() {
     },
   ];
 
-  const pendingCards = cards.filter((card) => !card.outcome);
-  const historyCards = cards.filter((card) => card.outcome);
+  const pendingCards = cards.filter(
+    (card) => !card.outcome && card.boatName === selectedBoat,
+  );
+  const historyCards = cards.filter(
+    (card) => card.outcome && card.boatName === selectedBoat,
+  );
   const visibleCards = activeTab === "pending" ? pendingCards : historyCards;
 
   const swipeResponder = useRef(
@@ -1539,7 +1651,7 @@ function EnquiriesPage() {
     >
       <PageHeader
         title="Enquiries"
-        sub="Temporary date locks are active. Respond to avoid automatic expiry."
+        sub={`Temporary date locks are active. Respond to avoid automatic expiry. · Boat: ${selectedBoat}`}
       />
 
       <View style={styles.enquiryTabRow}>
@@ -1625,7 +1737,7 @@ type BookingRecord = {
   notes: string;
 };
 
-function BookingsPage() {
+function BookingsPage({ selectedBoat }: { selectedBoat: string }) {
   const [expandedBookings, setExpandedBookings] = useState<Set<string>>(
     new Set()
   );
@@ -1665,7 +1777,39 @@ function BookingsPage() {
       notes:
         "Premium service package. Guest is VIP. Ensure extra staff on board.",
     },
+    {
+      id: "booking-3",
+      guestName: "Nora Ali",
+      boatName: "Backwater Pearl",
+      bookingId: "#SC-2025-0050",
+      details: [
+        ["Cruise type", "Day cruise"],
+        ["Date & time", "21 Jan 2025 · 10:00 AM - 4:00 PM"],
+        ["Configuration", "3 adults · 1 room · Private · Standard"],
+        ["Total agreed price", "INR 10,800"],
+        ["Inclusions", "Meals, tea service, local guide"],
+      ],
+      notes: "Standard service package with guided village stop.",
+    },
+    {
+      id: "booking-4",
+      guestName: "Rohan Nair",
+      boatName: "Kerala Dream",
+      bookingId: "#SC-2025-0053",
+      details: [
+        ["Cruise type", "Overnight stay"],
+        ["Date & time", "27 Jan 2025 · 4:00 PM - Next day 10:00 AM"],
+        ["Configuration", "4 adults · 2 rooms · Private · Luxury"],
+        ["Total agreed price", "INR 31,500"],
+        ["Inclusions", "All meals, deck dinner, sunrise cruise"],
+      ],
+      notes: "Luxury package with chef special menu requested.",
+    },
   ];
+
+  const visibleBookings = bookings.filter(
+    (booking) => booking.boatName === selectedBoat,
+  );
 
   const toggleBooking = (bookingId: string) => {
     const newExpanded = new Set(expandedBookings);
@@ -1681,11 +1825,11 @@ function BookingsPage() {
     <ScrollView contentContainerStyle={styles.pageScrollContent}>
       <PageHeader
         title="Bookings"
-        sub="Track accepted bookings with complete trip details and guest preferences."
+        sub={`Track accepted bookings with complete trip details and guest preferences. · Boat: ${selectedBoat}`}
       />
 
       <View style={styles.verticalGap12}>
-        {bookings.map((booking) => {
+        {visibleBookings.map((booking) => {
           const isExpanded = expandedBookings.has(booking.id);
           return (
             <Pressable
@@ -1724,6 +1868,13 @@ function BookingsPage() {
             </Pressable>
           );
         })}
+        {visibleBookings.length === 0 ? (
+          <Card title="No bookings">
+            <Text style={styles.detailMuted}>
+              No confirmed bookings found for {selectedBoat}.
+            </Text>
+          </Card>
+        ) : null}
       </View>
     </ScrollView>
   );
@@ -1791,6 +1942,13 @@ function AppLayout() {
       <StatusBar style="dark" />
 
       <View style={styles.appRoot}>
+        {boatDropdownOpen ? (
+          <Pressable
+            onPress={() => setBoatDropdownOpen(false)}
+            style={styles.dropdownBackdrop}
+            testID="boat-dropdown-backdrop"
+          />
+        ) : null}
         <View style={styles.mobileTopBar}>
           <View style={styles.brandRow}>
             <View style={styles.logoBox}>
@@ -1810,9 +1968,14 @@ function AppLayout() {
                   styles.profileChip,
                   styles.boatSwitcherChip,
                 ]}
+                testID="boat-selector-trigger"
               >
-                <Text style={styles.profileChipText}>
-                  {selectedBoat.split(" ")[0]}
+                <Text
+                  style={[styles.profileChipText, styles.boatSwitcherChipText]}
+                  numberOfLines={1}
+                  ellipsizeMode="tail"
+                >
+                  {selectedBoat}
                 </Text>
                 <Text style={styles.dropdownArrow}>
                   {boatDropdownOpen ? "▲" : "▼"}
@@ -1824,6 +1987,7 @@ function AppLayout() {
                   {boats.map((boat) => (
                     <Pressable
                       key={boat}
+                      testID={`boat-option-${boat.replace(/\s+/g, "-").toLowerCase()}`}
                       onPress={() => {
                         setSelectedBoat(boat);
                         setBoatDropdownOpen(false);
@@ -1852,7 +2016,10 @@ function AppLayout() {
             </View>
 
             <Pressable
-              onPress={() => setActiveRoute("boat")}
+              onPress={() => {
+                setBoatDropdownOpen(false);
+                setActiveRoute("boat");
+              }}
               style={[
                 styles.profileChip,
                 activeRoute === "boat" ? styles.profileChipActive : null,
@@ -1866,7 +2033,10 @@ function AppLayout() {
             </Pressable>
 
             <Pressable
-              onPress={() => setActiveRoute("profile")}
+              onPress={() => {
+                setBoatDropdownOpen(false);
+                setActiveRoute("profile");
+              }}
               style={[
                 styles.profileChip,
                 activeRoute === "profile" ? styles.profileChipActive : null,
@@ -1883,15 +2053,15 @@ function AppLayout() {
 
         <View style={styles.mainArea}>
           {activeRoute === "dashboard" ? (
-            <DashboardPage onNavigate={setActiveRoute} />
+            <DashboardPage selectedBoat={selectedBoat} onNavigate={setActiveRoute} />
           ) : null}
-          {activeRoute === "boat" ? <BoatAssetPage /> : null}
+          {activeRoute === "boat" ? <BoatAssetPage selectedBoat={selectedBoat} /> : null}
           {activeRoute === "profile" ? (
             <ProfilePage user={userProfile} boats={boats} />
           ) : null}
-          {activeRoute === "calendar" ? <CalendarPage /> : null}
-          {activeRoute === "enquiries" ? <EnquiriesPage /> : null}
-          {activeRoute === "bookings" ? <BookingsPage /> : null}
+          {activeRoute === "calendar" ? <CalendarPage selectedBoat={selectedBoat} /> : null}
+          {activeRoute === "enquiries" ? <EnquiriesPage selectedBoat={selectedBoat} /> : null}
+          {activeRoute === "bookings" ? <BookingsPage selectedBoat={selectedBoat} /> : null}
         </View>
 
         <View style={styles.bottomNavShell}>
@@ -1902,7 +2072,10 @@ function AppLayout() {
               return (
                 <Pressable
                   key={item.key}
-                  onPress={() => setActiveRoute(item.key)}
+                  onPress={() => {
+                    setBoatDropdownOpen(false);
+                    setActiveRoute(item.key);
+                  }}
                   style={[
                     styles.bottomNavItem,
                     isActive ? styles.bottomNavItemActive : null,
@@ -1939,6 +2112,10 @@ const styles = StyleSheet.create({
   appRoot: {
     flex: 1,
     backgroundColor: "#eff7ff",
+  },
+  dropdownBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 9,
   },
   mobileTopBar: {
     position: "absolute",
@@ -2017,6 +2194,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
+    maxWidth: 176,
+  },
+  boatSwitcherChipText: {
+    maxWidth: 132,
   },
   dropdownArrow: {
     fontSize: 10,

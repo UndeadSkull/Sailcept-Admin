@@ -15,14 +15,15 @@ describe('App', () => {
     const { getByText, getAllByText } = render(<App />);
 
     expect(getAllByText('Overview').length).toBeGreaterThan(0);
-    expect(getByText('Your houseboat performance at a glance')).toBeTruthy();
+    expect(getByText(/Your houseboat performance at a glance/)).toBeTruthy();
   });
 
   it('shows main tabs in app shell', () => {
-    const { getByText } = render(<App />);
+    const { getAllByText, getByText } = render(<App />);
 
-    expect(getByText('Boat')).toBeTruthy();
+    expect(getAllByText('Overview').length).toBeGreaterThan(0);
     expect(getByText('Calendar')).toBeTruthy();
+    expect(getByText('Enquiries')).toBeTruthy();
     expect(getByText('Bookings')).toBeTruthy();
   });
 
@@ -39,8 +40,8 @@ describe('App', () => {
     fireEvent.changeText(getByTestId('bulk-price-day'), '15000');
     fireEvent.press(getByText('Apply Price'));
 
-    expect(within(getByTestId(`calendar-day-${day3}`)).getByText('₹15k')).toBeTruthy();
-    expect(within(getByTestId(`calendar-day-${day4}`)).getByText('₹15k')).toBeTruthy();
+    expect(within(getByTestId(`calendar-day-${day3}`)).getByText('15k')).toBeTruthy();
+    expect(within(getByTestId(`calendar-day-${day4}`)).getByText('15k')).toBeTruthy();
   });
 
   it('keeps overnight and night mutually exclusive', () => {
@@ -81,5 +82,40 @@ describe('App', () => {
     fireEvent(getByTestId(`calendar-day-${day6}`), 'longPress');
 
     expect(getByText('1 date selected')).toBeTruthy();
+  });
+
+  it('closes boat dropdown on outside tap', () => {
+    const { getByTestId, queryByTestId } = render(<App />);
+
+    fireEvent.press(getByTestId('boat-selector-trigger'));
+    expect(getByTestId('boat-dropdown-backdrop')).toBeTruthy();
+
+    fireEvent.press(getByTestId('boat-dropdown-backdrop'));
+    expect(queryByTestId('boat-dropdown-backdrop')).toBeNull();
+  });
+
+  it('propagates selected boat across all main screens', () => {
+    const { getByText, getByTestId } = render(<App />);
+
+    fireEvent.press(getByTestId('boat-selector-trigger'));
+    fireEvent.press(getByTestId('boat-option-backwater-pearl'));
+
+    expect(getByText(/Boat: Backwater Pearl/)).toBeTruthy();
+
+    fireEvent.press(getByText('Calendar'));
+    expect(getByText(/Availability calendar/)).toBeTruthy();
+    expect(getByText(/Boat: Backwater Pearl/)).toBeTruthy();
+
+    fireEvent.press(getByText('Enquiries'));
+    expect(getByText(/Temporary date locks are active/)).toBeTruthy();
+    expect(getByText(/Boat: Backwater Pearl/)).toBeTruthy();
+
+    fireEvent.press(getByText('Bookings'));
+    expect(getByText(/Track accepted bookings with complete trip details/)).toBeTruthy();
+    expect(getByText(/Boat: Backwater Pearl/)).toBeTruthy();
+
+    fireEvent.press(getByTestId('header-boat-button'));
+    expect(getByText(/Boat asset definition/)).toBeTruthy();
+    expect(getByText(/Boat: Backwater Pearl/)).toBeTruthy();
   });
 });
