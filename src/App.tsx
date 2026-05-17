@@ -1701,12 +1701,12 @@ function EnquiriesPage({ selectedBoat }: { selectedBoat: string }) {
             <Text style={styles.detailMuted}>{card.request}</Text>
           ) : null}
           {activeTab === "pending" ? (
-            <View style={styles.rowGap8}>
-              <Pressable style={styles.acceptButton}>
-                <Text style={styles.actionButtonText}>Accept booking</Text>
-              </Pressable>
+            <View style={styles.buttonRowBetween}>
               <Pressable style={styles.declineButton}>
                 <Text style={styles.actionButtonText}>Decline</Text>
+              </Pressable>
+              <Pressable style={styles.acceptButton}>
+                <Text style={styles.actionButtonText}>Accept booking</Text>
               </Pressable>
             </View>
           ) : (
@@ -3043,20 +3043,30 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderRadius: 8,
     backgroundColor: "#109c61",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    flex: 1,
+    alignItems: "center",
   },
   declineButton: {
     marginTop: 10,
     borderRadius: 8,
     backgroundColor: "#cf3850",
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
+    flex: 1,
+    alignItems: "center",
+    marginRight: 8,
   },
   actionButtonText: {
     color: "#ffffff",
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: "600",
+  },
+  buttonRowBetween: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 10,
   },
   bookingRow: {
     flexDirection: "row",
