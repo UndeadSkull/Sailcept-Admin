@@ -63,7 +63,7 @@ function BottomNavIcon({
   route: RouteKey;
   active: boolean;
 }) {
-  const color = active ? "#0d63b4" : "#6d8299";
+  const color = active ? "#1a7f7f" : "#6d8299";
   const size = 14;
 
   if (route === "dashboard") {
@@ -91,7 +91,7 @@ const enquiryStatusStyle: Record<
 > = {
   "Date locked": { bg: "#fff1d6", text: "#8f6300", border: "#f5d392" },
   Confirmed: { bg: "#dcfce8", text: "#0f7a4f", border: "#9dd8bc" },
-  Pending: { bg: "#e0f2ff", text: "#1a5f94", border: "#aad1ef" },
+  Pending: { bg: "#e6f5f4", text: "#1a7f7f", border: "#9dd8bc" },
   Rejected: { bg: "#ffe5e8", text: "#9f1836", border: "#f3b2c0" },
 };
 
@@ -211,18 +211,18 @@ function CruiseTypeIcon({
 
   if (type === "day") {
     return (
-      <FontAwesome5 name="sun" size={iconProps.size} color={"#1b5f97"} solid />
+      <FontAwesome5 name="sun" size={iconProps.size} color={"#1a7f7f"} solid />
     );
   }
 
   if (type === "overnight") {
     return (
-      <FontAwesome5 name="bed" size={iconProps.size} color={"#1b5f97"} solid />
+      <FontAwesome5 name="bed" size={iconProps.size} color={"#1a7f7f"} solid />
     );
   }
 
   return (
-    <FontAwesome5 name="moon" size={iconProps.size} color={"#1b5f97"} solid />
+    <FontAwesome5 name="moon" size={iconProps.size} color={"#1a7f7f"} solid />
   );
 }
 
@@ -1280,7 +1280,7 @@ function CalendarPage({ selectedBoat }: { selectedBoat: string }) {
             )}
           </View>
           <View style={styles.bulkPricingRow}>
-            <CalendarDays size={16} color="#0f74cf" strokeWidth={2.2} />
+            <CalendarDays size={16} color="#1a7f7f" strokeWidth={2.2} />
             <View style={styles.bulkPricingTextBlock}>
               <Text style={styles.bulkPricingLabel}>Bulk price editing</Text>
               <Text style={styles.bulkPricingSubLabel}>
@@ -1793,7 +1793,7 @@ function BookingsPage({ selectedBoat }: { selectedBoat: string }) {
     },
     {
       id: "booking-4",
-      guestName: "Rohan Nair",
+      guestName: "Rohan P.K",
       boatName: "Kerala Dream",
       bookingId: "#SC-2025-0053",
       details: [
@@ -1950,7 +1950,10 @@ function AppLayout() {
           />
         ) : null}
         <View style={styles.mobileTopBar}>
-          <View style={styles.brandRow}>
+          <Pressable
+            style={styles.brandRow}
+            onPress={() => setActiveRoute("dashboard")}
+          >
             <View style={styles.logoBox}>
               <Text style={styles.logoText}>≈</Text>
             </View>
@@ -1958,7 +1961,7 @@ function AppLayout() {
               <Text style={styles.brandOverline}>Sailcept</Text>
               <Text style={styles.brandTitle}>Admin</Text>
             </View>
-          </View>
+          </Pressable>
 
           <View style={styles.headerRightSection}>
             <View style={styles.boatSwitcherWrapper}>
@@ -2107,11 +2110,11 @@ export default AppLayout;
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
   },
   appRoot: {
     flex: 1,
-    backgroundColor: "#eff7ff",
+    backgroundColor: "#f5f1edff",
   },
   dropdownBackdrop: {
     ...StyleSheet.absoluteFillObject,
@@ -2123,9 +2126,9 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 10,
-    backgroundColor: "#fffffff2",
+    backgroundColor: "#faf6f1f2",
     borderBottomWidth: 1,
-    borderBottomColor: "#d7e7fb",
+    borderBottomColor: "#cde3db",
     paddingHorizontal: 16,
     paddingVertical: 12,
     flexDirection: "row",
@@ -2143,10 +2146,10 @@ const styles = StyleSheet.create({
     borderRadius: 9,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#0f74cf",
+    backgroundColor: "#1a7f7f",
   },
   logoText: {
-    color: "#ffffff",
+    color: "#faf6f1",
     fontSize: 20,
     lineHeight: 22,
     fontWeight: "800",
@@ -2164,15 +2167,15 @@ const styles = StyleSheet.create({
   },
   profileChip: {
     borderWidth: 1,
-    borderColor: "#cfdbe8",
-    backgroundColor: "#ffffff",
+    borderColor: "#bfd5cc",
+    backgroundColor: "#faf6f1",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
   },
   profileChipActive: {
-    borderColor: "#9fc6ec",
-    backgroundColor: "#e6f2ff",
+    borderColor: "#4a9f9f",
+    backgroundColor: "#e6f5f4",
   },
   profileChipText: {
     fontSize: 12,
@@ -2180,7 +2183,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   profileChipTextActive: {
-    color: "#0c5eac",
+    color: "#1a7f7f",
   },
   headerRightSection: {
     flexDirection: "row",
@@ -2207,13 +2210,13 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 38,
     right: 0,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     borderWidth: 1,
-    borderColor: "#cfdbe8",
+    borderColor: "#bfd5cc",
     borderRadius: 8,
     zIndex: 100,
     minWidth: 160,
-    shadowColor: "#000",
+    shadowColor: "#1a7f7f",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
@@ -2223,10 +2226,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#eef3f8",
+    borderBottomColor: "#e8ebe9",
   },
   boatDropdownItemActive: {
-    backgroundColor: "#e6f2ff",
+    backgroundColor: "#e6f5f4",
   },
   boatDropdownItemText: {
     fontSize: 13,
@@ -2234,7 +2237,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   boatDropdownItemTextActive: {
-    color: "#0c5eac",
+    color: "#1a7f7f",
     fontWeight: "600",
   },
   mainArea: {
@@ -2264,8 +2267,8 @@ const styles = StyleSheet.create({
   },
   card: {
     borderWidth: 1,
-    borderColor: "#d8e8fb",
-    backgroundColor: "#ffffffee",
+    borderColor: "#cde3db",
+    backgroundColor: "#faf6f1ee",
     borderRadius: 16,
     padding: 14,
   },
@@ -2291,8 +2294,8 @@ const styles = StyleSheet.create({
     width: "48%",
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#d8e8fb",
-    backgroundColor: "#ffffffee",
+    borderColor: "#cde3db",
+    backgroundColor: "#faf6f1ee",
     padding: 12,
   },
   statLabel: {
@@ -2316,7 +2319,7 @@ const styles = StyleSheet.create({
 
   listCard: {
     borderWidth: 1,
-    borderColor: "#d8e8fb",
+    borderColor: "#cde3db",
     borderRadius: 12,
     padding: 12,
     gap: 8,
@@ -2366,7 +2369,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: "#e8f0f7",
+    borderTopColor: "#e8ebe9",
   },
   expandableBookingCard: {
     marginBottom: 0,
@@ -2377,9 +2380,9 @@ const styles = StyleSheet.create({
   },
   outlineButton: {
     borderWidth: 1,
-    borderColor: "#d2dbe6",
+    borderColor: "#bfd5cc",
     borderRadius: 8,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
@@ -2390,14 +2393,14 @@ const styles = StyleSheet.create({
   },
   softBlueButton: {
     borderWidth: 1,
-    borderColor: "#abd0f2",
+    borderColor: "#4a9f9f",
     borderRadius: 8,
-    backgroundColor: "#dff1ff",
+    backgroundColor: "#e6f5f4",
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   softBlueButtonText: {
-    color: "#0d63b4",
+    color: "#1a7f7f",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -2409,10 +2412,10 @@ const styles = StyleSheet.create({
   },
   metaBox: {
     borderWidth: 1,
-    borderColor: "#d8e8fb",
+    borderColor: "#cde3db",
     borderRadius: 12,
     padding: 10,
-    backgroundColor: "#f5faff",
+    backgroundColor: "#f5f2ed",
   },
   metaLabel: {
     color: "#6a7f97",
@@ -2427,9 +2430,9 @@ const styles = StyleSheet.create({
   input: {
     marginTop: 6,
     borderWidth: 1,
-    borderColor: "#cfddea",
+    borderColor: "#bfd5cc",
     borderRadius: 9,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     color: "#102949",
     fontSize: 14,
     paddingHorizontal: 10,
@@ -2438,14 +2441,14 @@ const styles = StyleSheet.create({
   selectButton: {
     marginTop: 6,
     borderWidth: 1,
-    borderColor: "#cfddea",
+    borderColor: "#bfd5cc",
     borderRadius: 9,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     paddingHorizontal: 10,
     paddingVertical: 10,
   },
   selectButtonDisabled: {
-    backgroundColor: "#eef4fa",
+    backgroundColor: "#ebe8e3",
   },
   selectButtonText: {
     color: "#13345a",
@@ -2457,9 +2460,9 @@ const styles = StyleSheet.create({
   },
   featureRow: {
     borderWidth: 1,
-    borderColor: "#d5e2ef",
+    borderColor: "#cde3db",
     borderRadius: 10,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     paddingHorizontal: 12,
     paddingVertical: 8,
     flexDirection: "row",
@@ -2483,15 +2486,15 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   featurePillEnabled: {
-    borderColor: "#a8cdf0",
-    backgroundColor: "#e4f1ff",
+    borderColor: "#4a9f9f",
+    backgroundColor: "#e6f5f4",
   },
   featurePillDisabled: {
-    borderColor: "#d3dde7",
+    borderColor: "#bfd5cc",
     backgroundColor: "#eff4f9",
   },
   featurePillEnabledText: {
-    color: "#0d62b2",
+    color: "#1a7f7f",
     fontSize: 11,
     fontWeight: "600",
   },
@@ -2505,7 +2508,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#dcfce8",
   },
   cruisePillDisabled: {
-    borderColor: "#d3dde7",
+    borderColor: "#bfd5cc",
     backgroundColor: "#eff4f9",
   },
   cruisePillEnabledText: {
@@ -2520,7 +2523,7 @@ const styles = StyleSheet.create({
   },
   innerPanel: {
     borderWidth: 1,
-    borderColor: "#d8e8fb",
+    borderColor: "#cde3db",
     borderRadius: 12,
     padding: 10,
   },
@@ -2567,14 +2570,14 @@ const styles = StyleSheet.create({
     borderColor: "#9dd8bc",
   },
   dayCellSelected: {
-    borderColor: "#2f8ae3",
+    borderColor: "#1a7f7f",
     borderWidth: 2,
   },
   dayCellBulkSelected: {
-    borderColor: "#0f74cf",
+    borderColor: "#1a7f7f",
     borderWidth: 2,
-    backgroundColor: "#d9ecff",
-    shadowColor: "#0b61b0",
+    backgroundColor: "#e6f5f4",
+    shadowColor: "#1a7f7f",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.24,
     shadowRadius: 4,
@@ -2598,12 +2601,12 @@ const styles = StyleSheet.create({
   },
   dayCellPrice: {
     fontSize: 8,
-    color: "#0f5f9f",
+    color: "#1a7f7f",
     fontWeight: "700",
   },
   dayCellBulkBadge: {
     fontSize: 10,
-    color: "#0c63b2",
+    color: "#1a7f7f",
     fontWeight: "800",
   },
   dayCellCruiseRows: {
@@ -2619,7 +2622,7 @@ const styles = StyleSheet.create({
   dayCellCruisePrice: {
     flex: 1,
     fontSize: 9,
-    color: "#123a62",
+    color: "#1a7f7f",
     fontWeight: "700",
   },
   dayCellCruiseIconBadge: {
@@ -2633,7 +2636,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#2f8a3f",
   },
   nightCruiseIconBadge: {
-    backgroundColor: "#1b5f97",
+    backgroundColor: "#1a7f7f",
   },
   dayCellTickPlaceholder: {
     width: 7,
@@ -2643,9 +2646,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#d5e2ef",
+    borderColor: "#cde3db",
     borderRadius: 10,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     paddingHorizontal: 10,
     paddingVertical: 8,
     gap: 8,
@@ -2654,9 +2657,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#d5e2ef",
+    borderColor: "#cde3db",
     borderRadius: 10,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     paddingHorizontal: 10,
     paddingVertical: 8,
     gap: 8,
@@ -2670,9 +2673,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#cfddea",
+    borderColor: "#bfd5cc",
     borderRadius: 9,
-    backgroundColor: "#f5faff",
+    backgroundColor: "#f5f2ed",
     paddingHorizontal: 8,
     paddingVertical: 6,
     gap: 4,
@@ -2685,7 +2688,7 @@ const styles = StyleSheet.create({
     width: 14,
     height: 14,
     borderRadius: 7,
-    backgroundColor: "#0f74cf",
+    backgroundColor: "#1a7f7f",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2716,15 +2719,15 @@ const styles = StyleSheet.create({
   },
   bulkToggleButton: {
     borderWidth: 1,
-    borderColor: "#d2dbe6",
+    borderColor: "#bfd5cc",
     borderRadius: 8,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
   bulkToggleButtonCancel: {
-    borderColor: "#9fc6ec",
-    backgroundColor: "#e6f2ff",
+    borderColor: "#4a9f9f",
+    backgroundColor: "#e6f5f4",
   },
   bulkToggleButtonText: {
     color: "#5d7289",
@@ -2732,17 +2735,17 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   bulkToggleButtonCancelText: {
-    color: "#0c5eac",
+    color: "#1a7f7f",
   },
   bottomSheet: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     borderTopWidth: 1,
-    borderTopColor: "#d4e5f8",
+    borderTopColor: "#cde3db",
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 20,
     gap: 10,
-    shadowColor: "#0b3d70",
+    shadowColor: "#1a7f7f",
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -2753,11 +2756,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: "#d4e5f8",
+    borderColor: "#cde3db",
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 28,
@@ -2786,8 +2789,8 @@ const styles = StyleSheet.create({
     height: 28,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#d2dce8",
-    backgroundColor: "#f4f8fc",
+    borderColor: "#bfd5cc",
+    backgroundColor: "#ebe8e3",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -2801,9 +2804,9 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#cfddea",
+    borderColor: "#bfd5cc",
     borderRadius: 9,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     paddingHorizontal: 10,
     paddingVertical: 8,
     gap: 4,
@@ -2821,22 +2824,22 @@ const styles = StyleSheet.create({
   },
   applyPriceButton: {
     borderRadius: 10,
-    backgroundColor: "#1175ce",
+    backgroundColor: "#1a7f7f",
     alignItems: "center",
     paddingVertical: 10,
     paddingHorizontal: 16,
   },
   applyPriceButtonDisabled: {
-    backgroundColor: "#9bc1e7",
+    backgroundColor: "#a8c9c5",
   },
   applyPriceButtonText: {
-    color: "#ffffff",
+    color: "#faf6f1",
     fontSize: 13,
     fontWeight: "600",
   },
   bulkPricingOpenButton: {
     borderRadius: 10,
-    backgroundColor: "#1175ce",
+    backgroundColor: "#1a7f7f",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 10,
@@ -2844,7 +2847,7 @@ const styles = StyleSheet.create({
     minWidth: 120,
   },
   bulkPricingOpenButtonDisabled: {
-    backgroundColor: "#9bc1e7",
+    backgroundColor: "#a8c9c5",
   },
   calendarMonthRow: {
     flexDirection: "row",
@@ -2857,13 +2860,13 @@ const styles = StyleSheet.create({
     height: 30,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: "#cfddea",
+    borderColor: "#bfd5cc",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
   },
   monthChevronText: {
-    color: "#1b4e7e",
+    color: "#1a7f7f",
     fontSize: 20,
     lineHeight: 22,
     fontWeight: "700",
@@ -2884,24 +2887,24 @@ const styles = StyleSheet.create({
   primaryButton: {
     marginTop: 4,
     borderRadius: 10,
-    backgroundColor: "#1175ce",
+    backgroundColor: "#1a7f7f",
     alignItems: "center",
     paddingVertical: 10,
   },
   primaryButtonDisabled: {
-    backgroundColor: "#9bc1e7",
+    backgroundColor: "#a8c9c5",
   },
   primaryButtonText: {
-    color: "#ffffff",
+    color: "#faf6f1",
     fontSize: 13,
     fontWeight: "600",
   },
   bulkModeButtonActive: {
     borderColor: "#9fc6ec",
-    backgroundColor: "#e6f2ff",
+    backgroundColor: "#e6f5f4",
   },
   bulkModeButtonTextActive: {
-    color: "#0c5eac",
+    color: "#1a7f7f",
   },
   bulkInfoText: {
     color: "#5a6d82",
@@ -2912,28 +2915,28 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   bulkPricingPanel: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     borderTopWidth: 1,
-    borderTopColor: "#d4e5f8",
+    borderTopColor: "#cde3db",
     paddingHorizontal: 14,
     paddingTop: 12,
     paddingBottom: 96,
     gap: 10,
-    shadowColor: "#0b3d70",
+    shadowColor: "#1a7f7f",
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 8,
   },
   dayEditPanel: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     borderTopWidth: 1,
-    borderTopColor: "#d4e5f8",
+    borderTopColor: "#cde3db",
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 96,
     gap: 12,
-    shadowColor: "#0b3d70",
+    shadowColor: "#1a7f7f",
     shadowOffset: { width: 0, height: -3 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -2952,11 +2955,11 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 20,
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: "#d4e5f8",
+    borderColor: "#cde3db",
     paddingHorizontal: 16,
     paddingTop: 10,
     paddingBottom: 28,
@@ -2983,9 +2986,9 @@ const styles = StyleSheet.create({
   enquiryTabRow: {
     flexDirection: "row",
     borderWidth: 1,
-    borderColor: "#d2e4f6",
+    borderColor: "#cde3db",
     borderRadius: 12,
-    backgroundColor: "#f4f9ff",
+    backgroundColor: "#f5f2ed",
     padding: 4,
     gap: 6,
   },
@@ -2998,9 +3001,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   enquiryTabButtonActive: {
-    backgroundColor: "#ffffff",
+    backgroundColor: "#faf6f1",
     borderWidth: 1,
-    borderColor: "#a7cbee",
+    borderColor: "#4a9f9f",
   },
   enquiryTabText: {
     color: "#5d7289",
@@ -3008,7 +3011,7 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   enquiryTabTextActive: {
-    color: "#0d63b4",
+    color: "#1a7f7f",
   },
   inlineWrapRow: {
     flexDirection: "row",
@@ -3060,7 +3063,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "space-between",
     borderBottomWidth: 1,
-    borderBottomColor: "#edf2f7",
+    borderBottomColor: "#e8ebe9",
     paddingVertical: 6,
     gap: 8,
   },
@@ -3081,9 +3084,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     borderWidth: 1,
-    borderColor: "#d8e8fb",
+    borderColor: "#cde3db",
     borderRadius: 10,
-    backgroundColor: "#f5faff",
+    backgroundColor: "#f5f2ed",
     paddingHorizontal: 10,
     paddingVertical: 9,
   },
@@ -3095,7 +3098,7 @@ const styles = StyleSheet.create({
   noteBox: {
     marginTop: 10,
     borderRadius: 12,
-    backgroundColor: "#eaf5ff",
+    backgroundColor: "#e6f5f4",
     padding: 10,
   },
   noteText: {
@@ -3109,10 +3112,10 @@ const styles = StyleSheet.create({
     right: 14,
     bottom: 14,
     borderWidth: 1,
-    borderColor: "#d2e4f8",
+    borderColor: "#cde3db",
     borderRadius: 999,
-    backgroundColor: "#ffffff",
-    shadowColor: "#007fd8",
+    backgroundColor: "#faf6f1",
+    shadowColor: "#1a7f7f",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
@@ -3133,7 +3136,7 @@ const styles = StyleSheet.create({
     gap: 1,
   },
   bottomNavItemActive: {
-    backgroundColor: "#e1f1ff",
+    backgroundColor: "#e6f5f4",
   },
   bottomNavIcon: {
     minHeight: 16,
@@ -3146,7 +3149,7 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
   bottomNavLabelActive: {
-    color: "#0d63b4",
+    color: "#1a7f7f",
     fontWeight: "700",
   },
   flex1: {

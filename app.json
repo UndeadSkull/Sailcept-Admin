@@ -7,7 +7,7 @@
     "userInterfaceStyle": "light",
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#f3f8ff"
+      "backgroundColor": "#faf6f1"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -15,7 +15,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#f3f8ff"
+        "backgroundColor": "#faf6f1"
       }
     },
     "web": {
