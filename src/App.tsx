@@ -1,6 +1,6 @@
 import { StatusBar } from "expo-status-bar";
 import { FontAwesome5 } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   BookCheck,
   CalendarDays,
@@ -14,6 +14,7 @@ import {
 import {
   KeyboardAvoidingView,
   Modal,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -36,7 +37,7 @@ type RouteKey =
 type Enquiry = {
   name: string;
   dateLine: string;
-  status: "Date locked" | "Confirmed" | "Pending";
+  status: "Date locked" | "Confirmed" | "Pending" | "Rejected";
   config: string;
 };
 
@@ -91,6 +92,7 @@ const enquiryStatusStyle: Record<
   "Date locked": { bg: "#fff1d6", text: "#8f6300", border: "#f5d392" },
   Confirmed: { bg: "#dcfce8", text: "#0f7a4f", border: "#9dd8bc" },
   Pending: { bg: "#e0f2ff", text: "#1a5f94", border: "#aad1ef" },
+  Rejected: { bg: "#ffe5e8", text: "#9f1836", border: "#f3b2c0" },
 };
 
 function PageHeader({
@@ -231,19 +233,19 @@ function DashboardPage({
 }) {
   const upcomingCruises: Enquiry[] = [
     {
-      name: "Arjun Menon",
+      name: "Ethan Walker",
       dateLine: "Day cruise · 15 Jan 2025",
       status: "Confirmed",
       config: "Premium · Private · 2 adults",
     },
     {
-      name: "Priya Sharma",
+      name: "Olivia Bennett",
       dateLine: "Overnight stay · 18 Jan 2025",
       status: "Confirmed",
       config: "Luxury · Private · 4 adults",
     },
     {
-      name: "Rajesh Kumar",
+      name: "Lucas Martin",
       dateLine: "Night stay · 22 Jan 2025",
       status: "Confirmed",
       config: "Premium · Shared · 6 guests",
@@ -1453,11 +1455,21 @@ function CalendarPage() {
 }
 
 function EnquiriesPage() {
+  const [activeTab, setActiveTab] = useState<"pending" | "history">(
+    "pending",
+  );
+
   const cards: Array<
-    Enquiry & { subtitle: string; details: string; request?: string }
+    Enquiry & {
+      subtitle: string;
+      details: string;
+      request?: string;
+      outcome?: "accepted" | "rejected";
+      actedOn?: string;
+    }
   > = [
     {
-      name: "Arjun Menon",
+      name: "Ethan Walker",
       dateLine: "Received 2 hrs ago - Date held until 6 PM today",
       subtitle: "Day cruise · 15 Jan 2025",
       status: "Date locked",
@@ -1468,7 +1480,7 @@ function EnquiriesPage() {
         "Special request: Vegetarian meals preferred. Celebrating anniversary.",
     },
     {
-      name: "Ritu Nair",
+      name: "Emma Collins",
       dateLine: "Received yesterday - Overnight stay · 22 Jan",
       subtitle: "Overnight stay · 22 Jan 2025",
       status: "Pending",
@@ -1476,16 +1488,96 @@ function EnquiriesPage() {
       details:
         "Premium · Private · 4 adults, 1 child · 2 rooms · Room 1: 2 guests · Room 2: 2 guests + 1 extra bed",
     },
+    {
+      name: "Sofia Turner",
+      dateLine: "Handled 3 days ago - Day cruise · 10 Jan",
+      subtitle: "Day cruise · 10 Jan 2025",
+      status: "Confirmed",
+      config: "Final booking value: INR 13,000",
+      details:
+        "Deluxe · Private · 2 adults, 1 child · 1 room · Extra bed included",
+      outcome: "accepted",
+      actedOn: "Accepted by admin on 08 Jan, 4:42 PM",
+    },
+    {
+      name: "Noah Parker",
+      dateLine: "Handled 4 days ago - Night cruise · 09 Jan",
+      subtitle: "Night cruise · 09 Jan 2025",
+      status: "Rejected",
+      config: "Quoted value: INR 18,500",
+      details: "Premium · Shared · 3 adults · 2 rooms",
+      outcome: "rejected",
+      actedOn: "Rejected by admin on 07 Jan, 6:10 PM",
+    },
   ];
 
+  const pendingCards = cards.filter((card) => !card.outcome);
+  const historyCards = cards.filter((card) => card.outcome);
+  const visibleCards = activeTab === "pending" ? pendingCards : historyCards;
+
+  const swipeResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, gesture) => {
+        return Math.abs(gesture.dx) > 18 && Math.abs(gesture.dx) > Math.abs(gesture.dy);
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dx < -48) {
+          setActiveTab("history");
+          return;
+        }
+        if (gesture.dx > 48) {
+          setActiveTab("pending");
+        }
+      },
+    }),
+  ).current;
+
   return (
-    <ScrollView contentContainerStyle={styles.pageScrollContent}>
+    <ScrollView
+      contentContainerStyle={styles.pageScrollContent}
+      {...swipeResponder.panHandlers}
+    >
       <PageHeader
         title="Enquiries"
         sub="Temporary date locks are active. Respond to avoid automatic expiry."
       />
 
-      {cards.map((card) => (
+      <View style={styles.enquiryTabRow}>
+        <Pressable
+          onPress={() => setActiveTab("pending")}
+          style={[
+            styles.enquiryTabButton,
+            activeTab === "pending" ? styles.enquiryTabButtonActive : null,
+          ]}
+        >
+          <Text
+            style={[
+              styles.enquiryTabText,
+              activeTab === "pending" ? styles.enquiryTabTextActive : null,
+            ]}
+          >
+            Pending enquiries
+          </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setActiveTab("history")}
+          style={[
+            styles.enquiryTabButton,
+            activeTab === "history" ? styles.enquiryTabButtonActive : null,
+          ]}
+        >
+          <Text
+            style={[
+              styles.enquiryTabText,
+              activeTab === "history" ? styles.enquiryTabTextActive : null,
+            ]}
+          >
+            History
+          </Text>
+        </Pressable>
+      </View>
+
+      {visibleCards.map((card) => (
         <Card key={card.name} title={card.name} sub={card.dateLine}>
           <View style={styles.inlineWrapRow}>
             <StatusPill status={card.status} />
@@ -1496,16 +1588,30 @@ function EnquiriesPage() {
           {card.request ? (
             <Text style={styles.detailMuted}>{card.request}</Text>
           ) : null}
-          <View style={styles.rowGap8}>
-            <Pressable style={styles.acceptButton}>
-              <Text style={styles.actionButtonText}>Accept booking</Text>
-            </Pressable>
-            <Pressable style={styles.declineButton}>
-              <Text style={styles.actionButtonText}>Decline</Text>
-            </Pressable>
-          </View>
+          {activeTab === "pending" ? (
+            <View style={styles.rowGap8}>
+              <Pressable style={styles.acceptButton}>
+                <Text style={styles.actionButtonText}>Accept booking</Text>
+              </Pressable>
+              <Pressable style={styles.declineButton}>
+                <Text style={styles.actionButtonText}>Decline</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <Text style={styles.detailMuted}>{card.actedOn}</Text>
+          )}
         </Card>
       ))}
+
+      {visibleCards.length === 0 ? (
+        <Card title="No enquiries">
+          <Text style={styles.detailMuted}>
+            {activeTab === "pending"
+              ? "There are no pending enquiries right now."
+              : "Accepted and rejected enquiries will appear here."}
+          </Text>
+        </Card>
+      ) : null}
     </ScrollView>
   );
 }
@@ -1527,7 +1633,7 @@ function BookingsPage() {
   const bookings: BookingRecord[] = [
     {
       id: "booking-1",
-      guestName: "Arjun Menon",
+      guestName: "Ethan Walker",
       boatName: "Vembanad Crest",
       bookingId: "#SC-2025-0041",
       details: [
@@ -1544,7 +1650,7 @@ function BookingsPage() {
     },
     {
       id: "booking-2",
-      guestName: "Priya Sharma",
+      guestName: "Olivia Bennett",
       boatName: "Vembanad Crest",
       bookingId: "#SC-2025-0042",
       details: [
@@ -1675,9 +1781,9 @@ function AppLayout() {
 
   const boats = ["Vembanad Crest", "Backwater Pearl", "Kerala Dream"];
   const userProfile = {
-    name: "Arjun Menon",
-    phone: "+91 98765 43210",
-    email: "arjun.menon@sailcept.com",
+    name: "Ethan Walker",
+    phone: "+1 415 555 0134",
+    email: "ethan.walker@sailcept.com",
   };
 
   return (
@@ -2692,6 +2798,36 @@ const styles = StyleSheet.create({
     color: "#102949",
     fontSize: 16,
     fontWeight: "700",
+  },
+  enquiryTabRow: {
+    flexDirection: "row",
+    borderWidth: 1,
+    borderColor: "#d2e4f6",
+    borderRadius: 12,
+    backgroundColor: "#f4f9ff",
+    padding: 4,
+    gap: 6,
+  },
+  enquiryTabButton: {
+    flex: 1,
+    borderRadius: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  enquiryTabButtonActive: {
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#a7cbee",
+  },
+  enquiryTabText: {
+    color: "#5d7289",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  enquiryTabTextActive: {
+    color: "#0d63b4",
   },
   inlineWrapRow: {
     flexDirection: "row",
