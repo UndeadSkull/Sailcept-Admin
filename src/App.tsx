@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react-native";
 import {
+  LayoutAnimation,
   KeyboardAvoidingView,
   Modal,
   PanResponder,
@@ -22,6 +23,7 @@ import {
   Switch,
   Text,
   TextInput,
+  UIManager,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -229,9 +231,11 @@ function CruiseTypeIcon({
 function DashboardPage({
   selectedBoat,
   onNavigate,
+  onOpenUpcomingCruise,
 }: {
   selectedBoat: string;
   onNavigate: (route: RouteKey) => void;
+  onOpenUpcomingCruise: (guestName: string) => void;
 }) {
   const statsByBoat: Record<
     string,
@@ -405,7 +409,14 @@ function DashboardPage({
       <Card title="Upcoming cruises">
         <View style={styles.verticalGap12}>
           {upcomingCruises.map((cruise) => (
-            <View key={cruise.name} style={styles.listCard}>
+            <Pressable
+              key={cruise.name}
+              onPress={() => onOpenUpcomingCruise(cruise.name)}
+              style={({ pressed }) => [
+                styles.listCard,
+                pressed ? styles.listCardPressed : null,
+              ]}
+            >
               <View style={styles.rowBetweenTop}>
                 <View style={styles.flex1}>
                   <Text style={styles.listCardTitle}>{cruise.name}</Text>
@@ -414,7 +425,7 @@ function DashboardPage({
                 {/* <StatusPill status={cruise.status} /> */}
               </View>
               <Text style={styles.listCardMeta}>{cruise.config}</Text>
-            </View>
+            </Pressable>
           ))}
         </View>
       </Card>
@@ -1737,10 +1748,20 @@ type BookingRecord = {
   notes: string;
 };
 
-function BookingsPage({ selectedBoat }: { selectedBoat: string }) {
+function BookingsPage({
+  selectedBoat,
+  focusGuest,
+  focusToken,
+}: {
+  selectedBoat: string;
+  focusGuest?: string;
+  focusToken?: number;
+}) {
   const [expandedBookings, setExpandedBookings] = useState<Set<string>>(
     new Set()
   );
+  const scrollRef = useRef<ScrollView>(null);
+  const bookingYById = useRef<Record<string, number>>({});
 
   const bookings: BookingRecord[] = [
     {
@@ -1805,6 +1826,58 @@ function BookingsPage({ selectedBoat }: { selectedBoat: string }) {
       ],
       notes: "Luxury package with chef special menu requested.",
     },
+    {
+      id: "booking-5",
+      guestName: "Mason Reed",
+      boatName: "Backwater Pearl",
+      bookingId: "#SC-2025-0054",
+      details: [
+        ["Cruise type", "Day cruise"],
+        ["Date & time", "12 Jan 2025 · 10:30 AM - 4:30 PM"],
+        ["Configuration", "3 adults · 1 room · Private · Standard"],
+        ["Total agreed price", "INR 10,800"],
+      ],
+      notes: "Guest requested local cuisine lunch and calm-route itinerary.",
+    },
+    {
+      id: "booking-6",
+      guestName: "Ava Stone",
+      boatName: "Backwater Pearl",
+      bookingId: "#SC-2025-0055",
+      details: [
+        ["Cruise type", "Night stay"],
+        ["Date & time", "20 Jan 2025 · 6:00 PM - 10:00 PM"],
+        ["Configuration", "5 guests · Shared · Premium"],
+        ["Total agreed price", "INR 18,900"],
+      ],
+      notes: "Shared night package with onboard music setup confirmed.",
+    },
+    {
+      id: "booking-7",
+      guestName: "Noah Patel",
+      boatName: "Kerala Dream",
+      bookingId: "#SC-2025-0056",
+      details: [
+        ["Cruise type", "Overnight stay"],
+        ["Date & time", "16 Jan 2025 · 3:00 PM - Next day 11:00 AM"],
+        ["Configuration", "4 adults · 2 rooms · Private · Luxury"],
+        ["Total agreed price", "INR 31,500"],
+      ],
+      notes: "Luxury itinerary with sunrise breakfast arrangement.",
+    },
+    {
+      id: "booking-8",
+      guestName: "Liam Carter",
+      boatName: "Kerala Dream",
+      bookingId: "#SC-2025-0057",
+      details: [
+        ["Cruise type", "Day cruise"],
+        ["Date & time", "23 Jan 2025 · 11:00 AM - 5:00 PM"],
+        ["Configuration", "2 adults · 1 room · Private · Premium"],
+        ["Total agreed price", "INR 12,500"],
+      ],
+      notes: "Anniversary day trip with decoration and photo-stop included.",
+    },
   ];
 
   const visibleBookings = bookings.filter(
@@ -1812,6 +1885,7 @@ function BookingsPage({ selectedBoat }: { selectedBoat: string }) {
   );
 
   const toggleBooking = (bookingId: string) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     const newExpanded = new Set(expandedBookings);
     if (newExpanded.has(bookingId)) {
       newExpanded.delete(bookingId);
@@ -1821,8 +1895,46 @@ function BookingsPage({ selectedBoat }: { selectedBoat: string }) {
     setExpandedBookings(newExpanded);
   };
 
+  useEffect(() => {
+    if (!focusGuest) {
+      return;
+    }
+
+    const targetBooking = visibleBookings.find(
+      (booking) =>
+        booking.guestName.toLowerCase() === focusGuest.toLowerCase(),
+    );
+
+    if (!targetBooking) {
+      return;
+    }
+
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setExpandedBookings((current) => {
+      if (current.has(targetBooking.id)) {
+        return current;
+      }
+      const next = new Set(current);
+      next.add(targetBooking.id);
+      return next;
+    });
+
+    requestAnimationFrame(() => {
+      const targetY = bookingYById.current[targetBooking.id];
+      if (typeof targetY === "number") {
+        scrollRef.current?.scrollTo({
+          y: Math.max(0, targetY - 90),
+          animated: true,
+        });
+      }
+    });
+  }, [focusGuest, focusToken, visibleBookings]);
+
   return (
-    <ScrollView contentContainerStyle={styles.pageScrollContent}>
+    <ScrollView
+      ref={scrollRef}
+      contentContainerStyle={styles.pageScrollContent}
+    >
       <PageHeader
         title="Bookings"
         sub={`Track accepted bookings with complete trip details and guest preferences. · Boat: ${selectedBoat}`}
@@ -1835,6 +1947,9 @@ function BookingsPage({ selectedBoat }: { selectedBoat: string }) {
             <Pressable
               key={booking.id}
               onPress={() => toggleBooking(booking.id)}
+              onLayout={(event) => {
+                bookingYById.current[booking.id] = event.nativeEvent.layout.y;
+              }}
               style={[styles.card, styles.expandableBookingCard]}
             >
               <View style={styles.bookingSummaryRow}>
@@ -1929,6 +2044,19 @@ function AppLayout() {
   const [activeRoute, setActiveRoute] = useState<RouteKey>("dashboard");
   const [selectedBoat, setSelectedBoat] = useState<string>("Vembanad Crest");
   const [boatDropdownOpen, setBoatDropdownOpen] = useState<boolean>(false);
+  const [bookingFocus, setBookingFocus] = useState<{
+    guestName: string;
+    token: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (
+      Platform.OS === "android" &&
+      UIManager.setLayoutAnimationEnabledExperimental
+    ) {
+      UIManager.setLayoutAnimationEnabledExperimental(true);
+    }
+  }, []);
 
   const boats = ["Vembanad Crest", "Backwater Pearl", "Kerala Dream"];
   const userProfile = {
@@ -2056,7 +2184,15 @@ function AppLayout() {
 
         <View style={styles.mainArea}>
           {activeRoute === "dashboard" ? (
-            <DashboardPage selectedBoat={selectedBoat} onNavigate={setActiveRoute} />
+            <DashboardPage
+              selectedBoat={selectedBoat}
+              onNavigate={setActiveRoute}
+              onOpenUpcomingCruise={(guestName) => {
+                setBoatDropdownOpen(false);
+                setBookingFocus({ guestName, token: Date.now() });
+                setActiveRoute("bookings");
+              }}
+            />
           ) : null}
           {activeRoute === "boat" ? <BoatAssetPage selectedBoat={selectedBoat} /> : null}
           {activeRoute === "profile" ? (
@@ -2064,7 +2200,13 @@ function AppLayout() {
           ) : null}
           {activeRoute === "calendar" ? <CalendarPage selectedBoat={selectedBoat} /> : null}
           {activeRoute === "enquiries" ? <EnquiriesPage selectedBoat={selectedBoat} /> : null}
-          {activeRoute === "bookings" ? <BookingsPage selectedBoat={selectedBoat} /> : null}
+          {activeRoute === "bookings" ? (
+            <BookingsPage
+              selectedBoat={selectedBoat}
+              focusGuest={bookingFocus?.guestName}
+              focusToken={bookingFocus?.token}
+            />
+          ) : null}
         </View>
 
         <View style={styles.bottomNavShell}>
@@ -2323,6 +2465,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 12,
     gap: 8,
+  },
+  listCardPressed: {
+    opacity: 0.82,
+    borderColor: "#4a9f9f",
   },
   rowBetweenTop: {
     flexDirection: "row",
