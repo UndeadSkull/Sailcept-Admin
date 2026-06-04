@@ -1,6 +1,12 @@
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
-import { BookCheck, CalendarDays, LayoutGrid, Menu, MoreHorizontal } from "lucide-react-native";
+import {
+  BookCheck,
+  CalendarDays,
+  LayoutGrid,
+  Menu,
+  MoreHorizontal,
+} from "lucide-react-native";
 import BookingsScreen from "../screens/BookingsScreen";
 import CalendarScreen from "../screens/CalendarScreen";
 import DashboardScreen from "../screens/DashboardScreen";
@@ -21,6 +27,7 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
+        animation: "shift",
         headerShown: false,
         tabBarStyle: {
           backgroundColor: "#faf6f1",
@@ -38,35 +45,45 @@ function MainTabs() {
         name="Overview"
         component={DashboardScreen}
         options={{
-          tabBarIcon: ({ color }) => <LayoutGrid size={ICON_SIZE} color={color} strokeWidth={2.2} />,
+          tabBarIcon: ({ color }) => (
+            <LayoutGrid size={ICON_SIZE} color={color} strokeWidth={2.2} />
+          ),
         }}
       />
       <Tab.Screen
         name="Calendar"
         component={CalendarScreen}
         options={{
-          tabBarIcon: ({ color }) => <CalendarDays size={ICON_SIZE} color={color} strokeWidth={2.2} />,
+          tabBarIcon: ({ color }) => (
+            <CalendarDays size={ICON_SIZE} color={color} strokeWidth={2.2} />
+          ),
         }}
       />
       <Tab.Screen
         name="Enquiries"
         component={EnquiriesScreen}
         options={{
-          tabBarIcon: ({ color }) => <Menu size={ICON_SIZE} color={color} strokeWidth={2.2} />,
+          tabBarIcon: ({ color }) => (
+            <Menu size={ICON_SIZE} color={color} strokeWidth={2.2} />
+          ),
         }}
       />
       <Tab.Screen
         name="Bookings"
         component={BookingsScreen}
         options={{
-          tabBarIcon: ({ color }) => <BookCheck size={ICON_SIZE} color={color} strokeWidth={2.2} />,
+          tabBarIcon: ({ color }) => (
+            <BookCheck size={ICON_SIZE} color={color} strokeWidth={2.2} />
+          ),
         }}
       />
       <Tab.Screen
         name="More"
         component={MoreStack}
         options={{
-          tabBarIcon: ({ color }) => <MoreHorizontal size={ICON_SIZE} color={color} strokeWidth={2.2} />,
+          tabBarIcon: ({ color }) => (
+            <MoreHorizontal size={ICON_SIZE} color={color} strokeWidth={2.2} />
+          ),
         }}
       />
     </Tab.Navigator>

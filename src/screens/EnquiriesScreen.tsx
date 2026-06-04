@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import AppHeader from "../components/AppHeader";
 import { Card, PageHeader, StatusPill, type Enquiry } from "../components";
 import { useBoat } from "../context/BoatContext";
 import styles from "../styles";
@@ -22,8 +21,10 @@ const ALL_CARDS: EnquiryCard[] = [
     subtitle: "Day cruise · 15 Jan 2025",
     status: "Date locked",
     config: "Price shown to guest: INR 12,500",
-    details: "Premium · Private · 2 adults, 0 children · 1 room · 2 guests per room · No extra bed",
-    request: "Special request: Vegetarian meals preferred. Celebrating anniversary.",
+    details:
+      "Premium · Private · 2 adults, 0 children · 1 room · 2 guests per room · No extra bed",
+    request:
+      "Special request: Vegetarian meals preferred. Celebrating anniversary.",
   },
   {
     name: "Emma Collins",
@@ -32,7 +33,8 @@ const ALL_CARDS: EnquiryCard[] = [
     subtitle: "Overnight stay · 22 Jan 2025",
     status: "Pending",
     config: "Price shown to guest: INR 21,000",
-    details: "Premium · Private · 4 adults, 1 child · 2 rooms · Room 1: 2 guests · Room 2: 2 guests + 1 extra bed",
+    details:
+      "Premium · Private · 4 adults, 1 child · 2 rooms · Room 1: 2 guests · Room 2: 2 guests + 1 extra bed",
   },
   {
     name: "Sofia Turner",
@@ -41,7 +43,8 @@ const ALL_CARDS: EnquiryCard[] = [
     subtitle: "Day cruise · 10 Jan 2025",
     status: "Confirmed",
     config: "Final booking value: INR 13,000",
-    details: "Deluxe · Private · 2 adults, 1 child · 1 room · Extra bed included",
+    details:
+      "Deluxe · Private · 2 adults, 1 child · 1 room · Extra bed included",
     outcome: "accepted",
     actedOn: "Accepted by admin on 08 Jan, 4:42 PM",
   },
@@ -62,13 +65,16 @@ export default function EnquiriesScreen() {
   const { selectedBoat } = useBoat();
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
 
-  const pendingCards = ALL_CARDS.filter((c) => !c.outcome && c.boatName === selectedBoat);
-  const historyCards = ALL_CARDS.filter((c) => c.outcome && c.boatName === selectedBoat);
+  const pendingCards = ALL_CARDS.filter(
+    (c) => !c.outcome && c.boatName === selectedBoat,
+  );
+  const historyCards = ALL_CARDS.filter(
+    (c) => c.outcome && c.boatName === selectedBoat,
+  );
   const visibleCards = activeTab === "pending" ? pendingCards : historyCards;
 
   return (
     <View style={styles.flex1}>
-      <AppHeader />
       <ScrollView contentContainerStyle={styles.pageScrollContent}>
         <PageHeader
           title="Requests"
@@ -78,17 +84,33 @@ export default function EnquiriesScreen() {
         <View style={styles.enquiryTabRow}>
           <Pressable
             onPress={() => setActiveTab("pending")}
-            style={[styles.enquiryTabButton, activeTab === "pending" ? styles.enquiryTabButtonActive : null]}
+            style={[
+              styles.enquiryTabButton,
+              activeTab === "pending" ? styles.enquiryTabButtonActive : null,
+            ]}
           >
-            <Text style={[styles.enquiryTabText, activeTab === "pending" ? styles.enquiryTabTextActive : null]}>
+            <Text
+              style={[
+                styles.enquiryTabText,
+                activeTab === "pending" ? styles.enquiryTabTextActive : null,
+              ]}
+            >
               Pending enquiries
             </Text>
           </Pressable>
           <Pressable
             onPress={() => setActiveTab("history")}
-            style={[styles.enquiryTabButton, activeTab === "history" ? styles.enquiryTabButtonActive : null]}
+            style={[
+              styles.enquiryTabButton,
+              activeTab === "history" ? styles.enquiryTabButtonActive : null,
+            ]}
           >
-            <Text style={[styles.enquiryTabText, activeTab === "history" ? styles.enquiryTabTextActive : null]}>
+            <Text
+              style={[
+                styles.enquiryTabText,
+                activeTab === "history" ? styles.enquiryTabTextActive : null,
+              ]}
+            >
               History
             </Text>
           </Pressable>
@@ -102,7 +124,9 @@ export default function EnquiriesScreen() {
             </View>
             <Text style={styles.detailText}>{card.details}</Text>
             <Text style={styles.detailStrong}>{card.config}</Text>
-            {card.request ? <Text style={styles.detailMuted}>{card.request}</Text> : null}
+            {card.request ? (
+              <Text style={styles.detailMuted}>{card.request}</Text>
+            ) : null}
             {activeTab === "pending" ? (
               <View style={styles.buttonRowBetween}>
                 <Pressable style={styles.declineButton}>

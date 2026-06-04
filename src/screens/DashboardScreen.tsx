@@ -1,6 +1,5 @@
 import { useNavigation } from "@react-navigation/native";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import AppHeader from "../components/AppHeader";
 import { Card, PageHeader, type Enquiry } from "../components";
 import { useBoat } from "../context/BoatContext";
 import type { MainTabParamList } from "../navigation/types";
@@ -20,38 +19,121 @@ const statsByBoat: Record<
   }>
 > = {
   "Vembanad Crest": [
-    { label: "Open dates this month", value: "18", caption: "of 31 days", tab: "Calendar" },
-    { label: "Pending enquiries", value: "3", caption: "Awaiting response", tab: "Enquiries", isPending: true },
-    { label: "Confirmed bookings", value: "11", caption: "This month", tab: "Bookings" },
+    {
+      label: "Open dates this month",
+      value: "18",
+      caption: "of 31 days",
+      tab: "Calendar",
+    },
+    {
+      label: "Pending enquiries",
+      value: "3",
+      caption: "Awaiting response",
+      tab: "Enquiries",
+      isPending: true,
+    },
+    {
+      label: "Confirmed bookings",
+      value: "11",
+      caption: "This month",
+      tab: "Bookings",
+    },
     { label: "Revenue (month)", value: "INR 1.4L", caption: "Normal + peak" },
   ],
   "Backwater Pearl": [
-    { label: "Open dates this month", value: "22", caption: "of 31 days", tab: "Calendar" },
-    { label: "Pending enquiries", value: "1", caption: "Awaiting response", tab: "Enquiries", isPending: true },
-    { label: "Confirmed bookings", value: "6", caption: "This month", tab: "Bookings" },
+    {
+      label: "Open dates this month",
+      value: "22",
+      caption: "of 31 days",
+      tab: "Calendar",
+    },
+    {
+      label: "Pending enquiries",
+      value: "1",
+      caption: "Awaiting response",
+      tab: "Enquiries",
+      isPending: true,
+    },
+    {
+      label: "Confirmed bookings",
+      value: "6",
+      caption: "This month",
+      tab: "Bookings",
+    },
     { label: "Revenue (month)", value: "INR 82k", caption: "Normal + peak" },
   ],
   "Kerala Dream": [
-    { label: "Open dates this month", value: "14", caption: "of 31 days", tab: "Calendar" },
-    { label: "Pending enquiries", value: "4", caption: "Awaiting response", tab: "Enquiries", isPending: true },
-    { label: "Confirmed bookings", value: "13", caption: "This month", tab: "Bookings" },
+    {
+      label: "Open dates this month",
+      value: "14",
+      caption: "of 31 days",
+      tab: "Calendar",
+    },
+    {
+      label: "Pending enquiries",
+      value: "4",
+      caption: "Awaiting response",
+      tab: "Enquiries",
+      isPending: true,
+    },
+    {
+      label: "Confirmed bookings",
+      value: "13",
+      caption: "This month",
+      tab: "Bookings",
+    },
     { label: "Revenue (month)", value: "INR 1.9L", caption: "Normal + peak" },
   ],
 };
 
 const cruisesByBoat: Record<string, Enquiry[]> = {
   "Vembanad Crest": [
-    { name: "Ethan Walker", dateLine: "Day cruise · 15 Jan 2025", status: "Confirmed", config: "Premium · Private · 2 adults" },
-    { name: "Olivia Bennett", dateLine: "Overnight stay · 18 Jan 2025", status: "Confirmed", config: "Luxury · Private · 4 adults" },
-    { name: "Lucas Martin", dateLine: "Night stay · 22 Jan 2025", status: "Confirmed", config: "Premium · Shared · 6 guests" },
+    {
+      name: "Ethan Walker",
+      dateLine: "Day cruise · 15 Jan 2025",
+      status: "Confirmed",
+      config: "Premium · Private · 2 adults",
+    },
+    {
+      name: "Olivia Bennett",
+      dateLine: "Overnight stay · 18 Jan 2025",
+      status: "Confirmed",
+      config: "Luxury · Private · 4 adults",
+    },
+    {
+      name: "Lucas Martin",
+      dateLine: "Night stay · 22 Jan 2025",
+      status: "Confirmed",
+      config: "Premium · Shared · 6 guests",
+    },
   ],
   "Backwater Pearl": [
-    { name: "Mason Reed", dateLine: "Day cruise · 12 Jan 2025", status: "Confirmed", config: "Standard · Private · 3 adults" },
-    { name: "Ava Stone", dateLine: "Night stay · 20 Jan 2025", status: "Confirmed", config: "Premium · Shared · 5 guests" },
+    {
+      name: "Mason Reed",
+      dateLine: "Day cruise · 12 Jan 2025",
+      status: "Confirmed",
+      config: "Standard · Private · 3 adults",
+    },
+    {
+      name: "Ava Stone",
+      dateLine: "Night stay · 20 Jan 2025",
+      status: "Confirmed",
+      config: "Premium · Shared · 5 guests",
+    },
   ],
   "Kerala Dream": [
-    { name: "Noah Patel", dateLine: "Overnight stay · 16 Jan 2025", status: "Confirmed", config: "Luxury · Private · 4 adults" },
-    { name: "Liam Carter", dateLine: "Day cruise · 23 Jan 2025", status: "Confirmed", config: "Premium · Private · 2 adults" },
+    {
+      name: "Noah Patel",
+      dateLine: "Overnight stay · 16 Jan 2025",
+      status: "Confirmed",
+      config: "Luxury · Private · 4 adults",
+    },
+    {
+      name: "Liam Carter",
+      dateLine: "Day cruise · 23 Jan 2025",
+      status: "Confirmed",
+      config: "Premium · Private · 2 adults",
+    },
   ],
 };
 
@@ -60,11 +142,11 @@ export default function DashboardScreen() {
   const { selectedBoat } = useBoat();
 
   const stats = statsByBoat[selectedBoat] ?? statsByBoat["Vembanad Crest"];
-  const upcomingCruises = cruisesByBoat[selectedBoat] ?? cruisesByBoat["Vembanad Crest"];
+  const upcomingCruises =
+    cruisesByBoat[selectedBoat] ?? cruisesByBoat["Vembanad Crest"];
 
   return (
     <View style={styles.flex1}>
-      <AppHeader />
       <ScrollView contentContainerStyle={styles.pageScrollContent}>
         <PageHeader
           title="Overview"
@@ -75,11 +157,14 @@ export default function DashboardScreen() {
           {stats.map((stat) => (
             <Pressable
               key={stat.label}
-              onPress={stat.tab ? () => navigation.navigate(stat.tab!) : undefined}
+              onPress={
+                stat.tab ? () => navigation.navigate(stat.tab!) : undefined
+              }
               disabled={!stat.tab}
-              style={[
+              style={({ pressed }) => [
                 styles.statCard,
                 stat.isPending ? styles.statCardPending : null,
+                { opacity: pressed ? 0.6 : 1 },
               ]}
             >
               <Text style={styles.statLabel}>{stat.label}</Text>

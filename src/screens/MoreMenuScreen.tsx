@@ -65,7 +65,7 @@ export default function MoreMenuScreen({ navigation }: Props) {
                   paddingHorizontal: 4,
                   borderBottomWidth: idx < items.length - 1 ? 1 : 0,
                   borderBottomColor: "#e8ebe9",
-                  opacity: pressed ? 0.75 : 1,
+                  opacity: pressed ? 0.60 : 1,
                 },
               ]}
             >

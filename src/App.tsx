@@ -4,6 +4,7 @@ import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { BoatProvider } from "./context/BoatContext";
 import AppNavigator from "./navigation/AppNavigator";
 import styles from "./styles";
+import AppHeader from "./components/AppHeader";
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
       <SafeAreaProvider>
         <SafeAreaView style={styles.safeArea}>
           <NavigationContainer>
+            <AppHeader />
             <StatusBar style="dark" />
             <AppNavigator />
           </NavigationContainer>

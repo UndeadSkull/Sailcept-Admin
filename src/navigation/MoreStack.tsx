@@ -11,7 +11,6 @@ import SettingsScreen from "../screens/SettingsScreen";
 import UserProfileScreen from "../screens/UserProfileScreen";
 import styles from "../styles";
 import type { MoreStackParamList, MoreStackScreenProps } from "./types";
-import AppHeader from "../components/AppHeader";
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
 
@@ -197,51 +196,47 @@ function BoatProfileDetailInStack({
 
 export default function MoreStack() {
   return (
-    <>
-      <AppHeader />
-
-      <Stack.Navigator
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: "#f5f1ed" },
-        }}
-      >
-        <Stack.Screen
-          name="MoreMenu"
-          component={MoreMenuScreen}
-          options={{ title: "More" }}
-        />
-        <Stack.Screen
-          name="BoatProfilesList"
-          component={BoatProfilesListScreen}
-          options={{ title: "Boat profiles" }}
-        />
-        <Stack.Screen
-          name="BoatProfileDetail"
-          component={BoatProfileDetailInStack}
-          options={{ title: "Boat asset" }}
-        />
-        <Stack.Screen
-          name="UserProfile"
-          component={UserProfileScreen}
-          options={{ title: "Profile" }}
-        />
-        <Stack.Screen
-          name="Reviews"
-          component={ReviewsScreen}
-          options={{ title: "Reviews" }}
-        />
-        <Stack.Screen
-          name="Invoices"
-          component={InvoicesScreen}
-          options={{ title: "Invoices" }}
-        />
-        <Stack.Screen
-          name="Settings"
-          component={SettingsScreen}
-          options={{ title: "Settings" }}
-        />
-      </Stack.Navigator>
-    </>
+    <Stack.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: "#f5f1ed" },
+      }}
+    >
+      <Stack.Screen
+        name="MoreMenu"
+        component={MoreMenuScreen}
+        options={{ title: "More" }}
+      />
+      <Stack.Screen
+        name="BoatProfilesList"
+        component={BoatProfilesListScreen}
+        options={{ title: "Boat profiles" }}
+      />
+      <Stack.Screen
+        name="BoatProfileDetail"
+        component={BoatProfileDetailInStack}
+        options={{ title: "Boat asset" }}
+      />
+      <Stack.Screen
+        name="UserProfile"
+        component={UserProfileScreen}
+        options={{ title: "Profile" }}
+      />
+      <Stack.Screen
+        name="Reviews"
+        component={ReviewsScreen}
+        options={{ title: "Reviews" }}
+      />
+      <Stack.Screen
+        name="Invoices"
+        component={InvoicesScreen}
+        options={{ title: "Invoices" }}
+      />
+      <Stack.Screen
+        name="Settings"
+        component={SettingsScreen}
+        options={{ title: "Settings" }}
+      />
+    </Stack.Navigator>
   );
 }
