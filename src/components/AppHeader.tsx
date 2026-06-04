@@ -68,7 +68,9 @@ export default function AppHeader() {
                     }}
                     style={[
                       styles.boatDropdownItem,
-                      selectedBoat === boat ? styles.boatDropdownItemActive : null,
+                      selectedBoat === boat
+                        ? styles.boatDropdownItemActive
+                        : null,
                     ]}
                   >
                     <Text
@@ -86,28 +88,6 @@ export default function AppHeader() {
               </View>
             )}
           </View>
-
-          <Pressable
-            onPress={() => {
-              setBoatDropdownOpen(false);
-              navigation.navigate("BoatAssetModal", { boatName: selectedBoat });
-            }}
-            style={styles.profileChip}
-            testID="header-boat-button"
-          >
-            <Ship size={12} color="#5d7089" />
-          </Pressable>
-
-          <Pressable
-            onPress={() => {
-              setBoatDropdownOpen(false);
-              navigation.navigate("UserProfileModal");
-            }}
-            style={styles.profileChip}
-            testID="header-profile-button"
-          >
-            <User size={12} color="#5d7089" />
-          </Pressable>
         </View>
       </View>
     </>

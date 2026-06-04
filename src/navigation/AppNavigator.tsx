@@ -82,7 +82,7 @@ export default function AppNavigator() {
         component={BoatProfileDetailScreen}
         options={{
           presentation: "modal",
-          headerShown: true,
+          headerShown: false,
           title: "Boat asset",
           headerStyle: { backgroundColor: "#faf6f1" },
           headerTintColor: "#0f284e",
@@ -95,7 +95,7 @@ export default function AppNavigator() {
         component={UserProfileScreen}
         options={{
           presentation: "modal",
-          headerShown: true,
+          headerShown: false,
           title: "Profile",
           headerStyle: { backgroundColor: "#faf6f1" },
           headerTintColor: "#0f284e",
