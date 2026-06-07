@@ -86,23 +86,28 @@ const statsByBoat: Record<
   ],
 };
 
+const now = new Date();
+const year = now.getFullYear();
+const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const currentMonthStr = monthNames[now.getMonth()];
+
 const cruisesByBoat: Record<string, Request[]> = {
   "Vembanad Crest": [
     {
       name: "Ethan Walker",
-      dateLine: "Day cruise · 15 Jan 2025",
+      dateLine: `Day cruise · 15 ${currentMonthStr} ${year}`,
       status: "Confirmed",
       config: "Premium · Private · 2 adults",
     },
     {
       name: "Olivia Bennett",
-      dateLine: "Overnight stay · 18 Jan 2025",
+      dateLine: `Overnight stay · 18 ${currentMonthStr} ${year}`,
       status: "Confirmed",
       config: "Luxury · Private · 4 adults",
     },
     {
       name: "Lucas Martin",
-      dateLine: "Night stay · 22 Jan 2025",
+      dateLine: `Night stay · 22 ${currentMonthStr} ${year}`,
       status: "Confirmed",
       config: "Premium · Shared · 6 guests",
     },
@@ -110,13 +115,13 @@ const cruisesByBoat: Record<string, Request[]> = {
   "Backwater Pearl": [
     {
       name: "Mason Reed",
-      dateLine: "Day cruise · 12 Jan 2025",
+      dateLine: `Day cruise · 12 ${currentMonthStr} ${year}`,
       status: "Confirmed",
       config: "Standard · Private · 3 adults",
     },
     {
       name: "Ava Stone",
-      dateLine: "Night stay · 20 Jan 2025",
+      dateLine: `Night stay · 20 ${currentMonthStr} ${year}`,
       status: "Confirmed",
       config: "Premium · Shared · 5 guests",
     },
@@ -124,13 +129,13 @@ const cruisesByBoat: Record<string, Request[]> = {
   "Kerala Dream": [
     {
       name: "Noah Patel",
-      dateLine: "Overnight stay · 16 Jan 2025",
+      dateLine: `Overnight stay · 16 ${currentMonthStr} ${year}`,
       status: "Confirmed",
       config: "Luxury · Private · 4 adults",
     },
     {
       name: "Liam Carter",
-      dateLine: "Day cruise · 23 Jan 2025",
+      dateLine: `Day cruise · 23 ${currentMonthStr} ${year}`,
       status: "Confirmed",
       config: "Premium · Private · 2 adults",
     },
