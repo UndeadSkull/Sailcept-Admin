@@ -8,7 +8,7 @@ import {
   MoreHorizontal,
 } from "lucide-react-native";
 import BookingsScreen from "../screens/BookingsScreen";
-import CalendarScreen from "../screens/CalendarScreen";
+import AvailabilityScreen from "../screens/AvailabilityScreen";
 import DashboardScreen from "../screens/DashboardScreen";
 import RequestsScreen from "../screens/RequestsScreen";
 import BoatProfileDetailScreen from "../screens/BoatProfileDetailScreen";
@@ -51,10 +51,9 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Calendar"
-        component={CalendarScreen}
+        name="Availability"
+        component={AvailabilityScreen}
         options={{
-          tabBarLabel: "Availability",
           tabBarIcon: ({ color }) => (
             <CalendarDays size={ICON_SIZE} color={color} strokeWidth={2.2} />
           ),

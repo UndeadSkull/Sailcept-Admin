@@ -23,7 +23,7 @@ const statsByBoat: Record<
       label: "Open dates this month",
       value: "18",
       caption: "of 31 days",
-      tab: "Calendar",
+      tab: "Availability",
     },
     {
       label: "Pending requests",
@@ -45,7 +45,7 @@ const statsByBoat: Record<
       label: "Open dates this month",
       value: "22",
       caption: "of 31 days",
-      tab: "Calendar",
+      tab: "Availability",
     },
     {
       label: "Pending requests",
@@ -67,7 +67,7 @@ const statsByBoat: Record<
       label: "Open dates this month",
       value: "14",
       caption: "of 31 days",
-      tab: "Calendar",
+      tab: "Availability",
     },
     {
       label: "Pending requests",
@@ -158,7 +158,15 @@ export default function DashboardScreen() {
             <Pressable
               key={stat.label}
               onPress={
-                stat.tab ? () => navigation.navigate(stat.tab!) : undefined
+                stat.tab
+                  ? () => {
+                      if (stat.tab === "Availability") {
+                        navigation.navigate("Availability", { selectBoat: selectedBoat });
+                      } else {
+                        navigation.navigate(stat.tab as any);
+                      }
+                    }
+                  : undefined
               }
               disabled={!stat.tab}
               style={({ pressed }) => [
