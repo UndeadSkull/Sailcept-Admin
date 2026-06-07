@@ -2,15 +2,15 @@ import { FontAwesome5 } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
 import styles from "../styles";
 
-type Enquiry = {
+type Request = {
   name: string;
   dateLine: string;
   status: "Date locked" | "Confirmed" | "Pending" | "Rejected";
   config: string;
 };
 
-export const enquiryStatusStyle: Record<
-  Enquiry["status"],
+export const requestStatusStyle: Record<
+  Request["status"],
   { bg: string; text: string; border: string }
 > = {
   "Date locked": { bg: "#fff1d6", text: "#8f6300", border: "#f5d392" },
@@ -19,7 +19,7 @@ export const enquiryStatusStyle: Record<
   Rejected: { bg: "#ffe5e8", text: "#9f1836", border: "#f3b2c0" },
 };
 
-export type { Enquiry };
+export type { Request };
 
 export function PageHeader({
   title,
@@ -99,19 +99,19 @@ export function OptionSelect({
   );
 }
 
-export function StatusPill({ status }: { status: Enquiry["status"] }) {
+export function StatusPill({ status }: { status: Request["status"] }) {
   return (
     <View
       style={[
         styles.statusPill,
         {
-          backgroundColor: enquiryStatusStyle[status].bg,
-          borderColor: enquiryStatusStyle[status].border,
+          backgroundColor: requestStatusStyle[status].bg,
+          borderColor: requestStatusStyle[status].border,
         },
       ]}
     >
       <Text
-        style={[styles.statusPillText, { color: enquiryStatusStyle[status].text }]}
+        style={[styles.statusPillText, { color: requestStatusStyle[status].text }]}
       >
         {status}
       </Text>

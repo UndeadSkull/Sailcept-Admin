@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { Card, PageHeader, StatusPill, type Enquiry } from "../components";
+import { Card, PageHeader, StatusPill, type Request } from "../components";
 import { useBoat } from "../context/BoatContext";
 import styles from "../styles";
 
-type EnquiryCard = Enquiry & {
+type RequestCard = Request & {
   boatName: string;
   subtitle: string;
   details: string;
@@ -13,7 +13,7 @@ type EnquiryCard = Enquiry & {
   actedOn?: string;
 };
 
-const ALL_CARDS: EnquiryCard[] = [
+const ALL_CARDS: RequestCard[] = [
   {
     name: "Ethan Walker",
     boatName: "Vembanad Crest",
@@ -61,7 +61,7 @@ const ALL_CARDS: EnquiryCard[] = [
   },
 ];
 
-export default function EnquiriesScreen() {
+export default function RequestsScreen() {
   const { selectedBoat } = useBoat();
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
 
@@ -81,34 +81,34 @@ export default function EnquiriesScreen() {
           sub={`Temporary date locks are active. Respond to avoid automatic expiry. · Boat: ${selectedBoat}`}
         />
 
-        <View style={styles.enquiryTabRow}>
+        <View style={styles.requestTabRow}>
           <Pressable
             onPress={() => setActiveTab("pending")}
             style={[
-              styles.enquiryTabButton,
-              activeTab === "pending" ? styles.enquiryTabButtonActive : null,
+              styles.requestTabButton,
+              activeTab === "pending" ? styles.requestTabButtonActive : null,
             ]}
           >
             <Text
               style={[
-                styles.enquiryTabText,
-                activeTab === "pending" ? styles.enquiryTabTextActive : null,
+                styles.requestTabText,
+                activeTab === "pending" ? styles.requestTabTextActive : null,
               ]}
             >
-              Pending enquiries
+              Pending requests
             </Text>
           </Pressable>
           <Pressable
             onPress={() => setActiveTab("history")}
             style={[
-              styles.enquiryTabButton,
-              activeTab === "history" ? styles.enquiryTabButtonActive : null,
+              styles.requestTabButton,
+              activeTab === "history" ? styles.requestTabButtonActive : null,
             ]}
           >
             <Text
               style={[
-                styles.enquiryTabText,
-                activeTab === "history" ? styles.enquiryTabTextActive : null,
+                styles.requestTabText,
+                activeTab === "history" ? styles.requestTabTextActive : null,
               ]}
             >
               History
@@ -143,11 +143,11 @@ export default function EnquiriesScreen() {
         ))}
 
         {visibleCards.length === 0 ? (
-          <Card title="No enquiries">
+          <Card title="No requests">
             <Text style={styles.detailMuted}>
               {activeTab === "pending"
-                ? "There are no pending enquiries right now."
-                : "Accepted and rejected enquiries will appear here."}
+                ? "There are no pending requests right now."
+                : "Accepted and rejected requests will appear here."}
             </Text>
           </Card>
         ) : null}

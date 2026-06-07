@@ -11,7 +11,7 @@ export type RootStackParamList = {
 export type MainTabParamList = {
   Overview: undefined;
   Calendar: undefined;
-  Enquiries: undefined;
+  Requests: undefined;
   Bookings: { focusGuest?: string; focusToken?: number } | undefined;
   More: undefined;
 };

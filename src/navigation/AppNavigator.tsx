@@ -10,7 +10,7 @@ import {
 import BookingsScreen from "../screens/BookingsScreen";
 import CalendarScreen from "../screens/CalendarScreen";
 import DashboardScreen from "../screens/DashboardScreen";
-import EnquiriesScreen from "../screens/EnquiriesScreen";
+import RequestsScreen from "../screens/RequestsScreen";
 import BoatProfileDetailScreen from "../screens/BoatProfileDetailScreen";
 import UserProfileScreen from "../screens/UserProfileScreen";
 import MoreStack from "./MoreStack";
@@ -60,8 +60,8 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Enquiries"
-        component={EnquiriesScreen}
+        name="Requests"
+        component={RequestsScreen}
         options={{
           tabBarIcon: ({ color }) => (
             <Menu size={ICON_SIZE} color={color} strokeWidth={2.2} />

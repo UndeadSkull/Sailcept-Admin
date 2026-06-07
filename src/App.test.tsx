@@ -34,7 +34,7 @@ describe("App", () => {
     const { findAllByText, findByText } = await renderApp();
     expect((await findAllByText("Overview")).length).toBeGreaterThan(0);
     expect(await findByText("Calendar")).toBeTruthy();
-    expect(await findByText("Enquiries")).toBeTruthy();
+    expect(await findByText("Requests")).toBeTruthy();
     expect(await findByText("Bookings")).toBeTruthy();
   });
 
@@ -98,7 +98,7 @@ describe("App", () => {
 
     // Mock ActionSheetIOS to select "Backwater Pearl" (index 1)
     const spy = jest.spyOn(require("react-native").ActionSheetIOS, "showActionSheetWithOptions");
-    spy.mockImplementationOnce((options, callback) => {
+    spy.mockImplementationOnce((options, callback: any) => {
       callback(1); // Index 1 is Backwater Pearl
     });
 
@@ -110,7 +110,7 @@ describe("App", () => {
     expect(await findByText(/Availability calendar/)).toBeTruthy();
     expect(await findByText(/Boat: Backwater Pearl/)).toBeTruthy();
 
-    await pressByText(findAllByText, "Enquiries");
+    await pressByText(findAllByText, "Requests");
     expect(await findByText(/Temporary date locks are active/)).toBeTruthy();
     expect(await findByText(/Boat: Backwater Pearl/)).toBeTruthy();
 

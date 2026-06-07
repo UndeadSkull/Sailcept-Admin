@@ -25,6 +25,6 @@ This project has been migrated from a Vite web app to an Expo-managed React Nati
 
 ## Current Scope
 
-- Mobile-first shell with five sections: Overview, Boat, Calendar, Enquiries, Bookings.
+- Mobile-first shell with five sections: Overview, Boat, Calendar, Requests, Bookings.
 - Native UI components replaced web-only dependencies.
 - Jest + React Native Testing Library baseline in place.

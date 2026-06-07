@@ -15,7 +15,7 @@ export default function AppHeader({ currentRouteName }: { currentRouteName: stri
 
   // If navigation is not initialized yet, default to showing the selector
   // (since the initial route is "Overview")
-  const showBoatSelector = currentRouteName === null || currentRouteName === "Overview" || currentRouteName === "Enquiries";
+  const showBoatSelector = currentRouteName === null || currentRouteName === "Overview" || currentRouteName === "Requests";
 
   return (
     <View style={styles.mobileTopBar}>

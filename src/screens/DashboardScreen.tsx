@@ -1,6 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import { Pressable, ScrollView, Text, View } from "react-native";
-import { Card, PageHeader, type Enquiry } from "../components";
+import { Card, PageHeader, type Request } from "../components";
 import { useBoat } from "../context/BoatContext";
 import type { MainTabParamList } from "../navigation/types";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
@@ -26,10 +26,10 @@ const statsByBoat: Record<
       tab: "Calendar",
     },
     {
-      label: "Pending enquiries",
+      label: "Pending requests",
       value: "3",
       caption: "Awaiting response",
-      tab: "Enquiries",
+      tab: "Requests",
       isPending: true,
     },
     {
@@ -48,10 +48,10 @@ const statsByBoat: Record<
       tab: "Calendar",
     },
     {
-      label: "Pending enquiries",
+      label: "Pending requests",
       value: "1",
       caption: "Awaiting response",
-      tab: "Enquiries",
+      tab: "Requests",
       isPending: true,
     },
     {
@@ -70,10 +70,10 @@ const statsByBoat: Record<
       tab: "Calendar",
     },
     {
-      label: "Pending enquiries",
+      label: "Pending requests",
       value: "4",
       caption: "Awaiting response",
-      tab: "Enquiries",
+      tab: "Requests",
       isPending: true,
     },
     {
@@ -86,7 +86,7 @@ const statsByBoat: Record<
   ],
 };
 
-const cruisesByBoat: Record<string, Enquiry[]> = {
+const cruisesByBoat: Record<string, Request[]> = {
   "Vembanad Crest": [
     {
       name: "Ethan Walker",

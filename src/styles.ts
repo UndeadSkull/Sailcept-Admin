@@ -585,7 +585,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   modalTitle: { color: "#102949", fontSize: 16, fontWeight: "700" },
-  enquiryTabRow: {
+  requestTabRow: {
     flexDirection: "row",
     borderWidth: 1,
     borderColor: "#cde3db",
@@ -594,7 +594,7 @@ const styles = StyleSheet.create({
     padding: 4,
     gap: 6,
   },
-  enquiryTabButton: {
+  requestTabButton: {
     flex: 1,
     borderRadius: 8,
     paddingVertical: 8,
@@ -602,13 +602,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  enquiryTabButtonActive: {
+  requestTabButtonActive: {
     backgroundColor: "#faf6f1",
     borderWidth: 1,
     borderColor: "#4a9f9f",
   },
-  enquiryTabText: { color: "#5d7289", fontSize: 12, fontWeight: "600" },
-  enquiryTabTextActive: { color: "#1a7f7f" },
+  requestTabText: { color: "#5d7289", fontSize: 12, fontWeight: "600" },
+  requestTabTextActive: { color: "#1a7f7f" },
   inlineWrapRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", gap: 8 },
   inlineMuted: { color: "#6c8098", fontSize: 11 },
   detailText: { marginTop: 10, color: "#5a6d82", fontSize: 13 },
