@@ -1,6 +1,7 @@
 import { Check, CalendarDays, X } from "lucide-react-native";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {
+  BackHandler,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -10,6 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import { CruiseTypeIcon, PageHeader } from "../components";
 import { useBoat } from "../context/BoatContext";
 import styles from "../styles";
@@ -38,7 +40,25 @@ function getDateKey(year: number, month: number, day: number): string {
 }
 
 export default function CalendarScreen() {
-  const { selectedBoat } = useBoat();
+  const { boats } = useBoat();
+  const [activeBoatForCalendar, setActiveBoatForCalendar] = useState<string | null>(null);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (activeBoatForCalendar === null) return;
+
+      const onBackPress = () => {
+        setActiveBoatForCalendar(null);
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener("hardwareBackPress", onBackPress);
+
+      return () => {
+        subscription.remove();
+      };
+    }, [activeBoatForCalendar])
+  );
 
   const today = new Date();
   const todayYear = today.getFullYear();
@@ -56,55 +76,146 @@ export default function CalendarScreen() {
   const [modalDayCruisePrice, setModalDayCruisePrice] = useState("");
   const [modalOvernightPrice, setModalOvernightPrice] = useState("");
   const [modalNightPrice, setModalNightPrice] = useState("");
-  const [bookingsByDate, setBookingsByDate] = useState<
-    Record<string, DayBooking>
+
+  const [bookingsByBoat, setBookingsByBoat] = useState<
+    Record<string, Record<string, DayBooking>>
   >(() => ({
-    [getDateKey(todayYear, todayMonth, 2)]: normalizeBooking({
-      dayCruise: true,
-      overnightCruise: false,
-      nightCruise: false,
-      details: "Corporate day outing for 8 guests.",
-      dayCruisePrice: 12500,
-    }),
-    [getDateKey(todayYear, todayMonth, 5)]: normalizeBooking({
-      dayCruise: true,
-      overnightCruise: true,
-      nightCruise: false,
-      details: "Wedding group full-day charter with overnight extension.",
-      dayCruisePrice: 14000,
-      overnightCruisePrice: 14000,
-    }),
-    [getDateKey(todayYear, todayMonth, 9)]: normalizeBooking({
-      dayCruise: false,
-      overnightCruise: true,
-      nightCruise: false,
-      details: "Family overnight package.",
-      overnightCruisePrice: 21000,
-    }),
-    [getDateKey(todayYear, todayMonth, 13)]: normalizeBooking({
-      dayCruise: true,
-      overnightCruise: false,
-      nightCruise: true,
-      details: "Festival special day and night package booking.",
-      dayCruisePrice: 11500,
-      nightCruisePrice: 12000,
-    }),
-    [getDateKey(todayYear, todayMonth, 18)]: normalizeBooking({
-      dayCruise: false,
-      overnightCruise: false,
-      nightCruise: true,
-      details: "Couple moonlight cruise with dinner.",
-      nightCruisePrice: 14500,
-    }),
-    [getDateKey(todayYear, todayMonth, 24)]: normalizeBooking({
-      dayCruise: true,
-      overnightCruise: false,
-      nightCruise: true,
-      details: "Private anniversary plan with sunset and night ride.",
-      dayCruisePrice: 12000,
-      nightCruisePrice: 14000,
-    }),
+    "Vembanad Crest": {
+      [getDateKey(todayYear, todayMonth, 2)]: normalizeBooking({
+        dayCruise: true,
+        overnightCruise: false,
+        nightCruise: false,
+        details: "Corporate day outing for 8 guests.",
+        dayCruisePrice: 12500,
+      }),
+      [getDateKey(todayYear, todayMonth, 5)]: normalizeBooking({
+        dayCruise: true,
+        overnightCruise: true,
+        nightCruise: false,
+        details: "Wedding group full-day charter with overnight extension.",
+        dayCruisePrice: 14000,
+        overnightCruisePrice: 14000,
+      }),
+      [getDateKey(todayYear, todayMonth, 9)]: normalizeBooking({
+        dayCruise: false,
+        overnightCruise: true,
+        nightCruise: false,
+        details: "Family overnight package.",
+        overnightCruisePrice: 21000,
+      }),
+      [getDateKey(todayYear, todayMonth, 13)]: normalizeBooking({
+        dayCruise: true,
+        overnightCruise: false,
+        nightCruise: true,
+        details: "Festival special day and night package booking.",
+        dayCruisePrice: 11500,
+        nightCruisePrice: 12000,
+      }),
+      [getDateKey(todayYear, todayMonth, 18)]: normalizeBooking({
+        dayCruise: false,
+        overnightCruise: false,
+        nightCruise: true,
+        details: "Couple moonlight cruise with dinner.",
+        nightCruisePrice: 14500,
+      }),
+      [getDateKey(todayYear, todayMonth, 24)]: normalizeBooking({
+        dayCruise: true,
+        overnightCruise: false,
+        nightCruise: true,
+        details: "Private anniversary plan with sunset and night ride.",
+        dayCruisePrice: 12000,
+        nightCruisePrice: 14000,
+      }),
+    },
+    "Backwater Pearl": {
+      [getDateKey(todayYear, todayMonth, 3)]: normalizeBooking({
+        dayCruise: true,
+        overnightCruise: false,
+        nightCruise: false,
+        details: "Corporate lunch cruise.",
+        dayCruisePrice: 10000,
+      }),
+      [getDateKey(todayYear, todayMonth, 8)]: normalizeBooking({
+        dayCruise: false,
+        overnightCruise: true,
+        nightCruise: false,
+        details: "Weekend stay for family.",
+        overnightCruisePrice: 18000,
+      }),
+      [getDateKey(todayYear, todayMonth, 12)]: normalizeBooking({
+        dayCruise: true,
+        overnightCruise: false,
+        nightCruise: true,
+        details: "Day and night celebration.",
+        dayCruisePrice: 11000,
+        nightCruisePrice: 11500,
+      }),
+      [getDateKey(todayYear, todayMonth, 20)]: normalizeBooking({
+        dayCruise: false,
+        overnightCruise: false,
+        nightCruise: true,
+        details: "Dinner cruise.",
+        nightCruisePrice: 13000,
+      }),
+      [getDateKey(todayYear, todayMonth, 26)]: normalizeBooking({
+        dayCruise: true,
+        overnightCruise: true,
+        nightCruise: false,
+        details: "Premium overnight cruise.",
+        dayCruisePrice: 12500,
+        overnightCruisePrice: 15000,
+      }),
+    },
+    "Kerala Dream": {
+      [getDateKey(todayYear, todayMonth, 4)]: normalizeBooking({
+        dayCruise: true,
+        overnightCruise: false,
+        nightCruise: true,
+        details: "Sightseeing tour.",
+        dayCruisePrice: 13000,
+        nightCruisePrice: 13500,
+      }),
+      [getDateKey(todayYear, todayMonth, 7)]: normalizeBooking({
+        dayCruise: true,
+        overnightCruise: true,
+        nightCruise: false,
+        details: "Honeymoon special package.",
+        dayCruisePrice: 15000,
+        overnightCruisePrice: 22000,
+      }),
+      [getDateKey(todayYear, todayMonth, 15)]: normalizeBooking({
+        dayCruise: false,
+        overnightCruise: true,
+        nightCruise: false,
+        details: "Overnight backwater explore.",
+        overnightCruisePrice: 19500,
+      }),
+      [getDateKey(todayYear, todayMonth, 16)]: normalizeBooking({
+        dayCruise: false,
+        overnightCruise: false,
+        nightCruise: true,
+        details: "Night photography ride.",
+        nightCruisePrice: 15000,
+      }),
+      [getDateKey(todayYear, todayMonth, 22)]: normalizeBooking({
+        dayCruise: true,
+        overnightCruise: false,
+        nightCruise: false,
+        details: "Photography crew day trip.",
+        dayCruisePrice: 14000,
+      }),
+      [getDateKey(todayYear, todayMonth, 28)]: normalizeBooking({
+        dayCruise: true,
+        overnightCruise: false,
+        nightCruise: true,
+        details: "Sunset & dinner cruise.",
+        dayCruisePrice: 12000,
+        nightCruisePrice: 14000,
+      }),
+    },
   }));
+
+  const bookingsByDate = activeBoatForCalendar ? (bookingsByBoat[activeBoatForCalendar] ?? {}) : {};
 
   const visibleYear = visibleMonth.getFullYear();
   const visibleMonthIndex = visibleMonth.getMonth();
@@ -150,14 +261,15 @@ export default function CalendarScreen() {
     key: "dayCruise" | "overnightCruise" | "nightCruise",
     value: boolean,
   ) {
-    if (!selectedDate) return;
+    if (!selectedDate || !activeBoatForCalendar) return;
     const selectedDateKey = getDateKey(
       selectedDate.year,
       selectedDate.month,
       selectedDate.day,
     );
-    setBookingsByDate((current) => {
-      const currentDayBooking = current[selectedDateKey] ?? {
+    setBookingsByBoat((current) => {
+      const boatBookings = current[activeBoatForCalendar] ?? {};
+      const currentDayBooking = boatBookings[selectedDateKey] ?? {
         dayCruise: false,
         overnightCruise: false,
         nightCruise: false,
@@ -166,7 +278,13 @@ export default function CalendarScreen() {
       const nextBooking: DayBooking = { ...currentDayBooking, [key]: value };
       if (value && key === "overnightCruise") nextBooking.nightCruise = false;
       if (value && key === "nightCruise") nextBooking.overnightCruise = false;
-      return { ...current, [selectedDateKey]: normalizeBooking(nextBooking) };
+      return {
+        ...current,
+        [activeBoatForCalendar]: {
+          ...boatBookings,
+          [selectedDateKey]: normalizeBooking(nextBooking),
+        },
+      };
     });
   }
 
@@ -204,6 +322,7 @@ export default function CalendarScreen() {
   }
 
   function applyPriceToSelectedDates() {
+    if (!activeBoatForCalendar) return;
     const parsedDay = bulkDayCruisePrice
       ? Number(bulkDayCruisePrice)
       : undefined;
@@ -216,17 +335,17 @@ export default function CalendarScreen() {
       (parsedOvernight && parsedOvernight > 0) ||
       (parsedNight && parsedNight > 0);
     if (!hasAnyPrice || selectedDates.length === 0) return;
-    setBookingsByDate((current) => {
-      const next = { ...current };
+    setBookingsByBoat((current) => {
+      const boatBookings = { ...(current[activeBoatForCalendar] ?? {}) };
       selectedDates.forEach((day) => {
         const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
-        const existing = current[dateKey] ?? {
+        const existing = boatBookings[dateKey] ?? {
           dayCruise: false,
           overnightCruise: false,
           nightCruise: false,
           details: "No bookings for this day.",
         };
-        next[dateKey] = normalizeBooking({
+        boatBookings[dateKey] = normalizeBooking({
           ...existing,
           ...(parsedDay && parsedDay > 0 ? { dayCruisePrice: parsedDay } : {}),
           ...(parsedOvernight && parsedOvernight > 0
@@ -237,7 +356,10 @@ export default function CalendarScreen() {
             : {}),
         });
       });
-      return next;
+      return {
+        ...current,
+        [activeBoatForCalendar]: boatBookings,
+      };
     });
     setSelectedDates([]);
     setBulkDayCruisePrice("");
@@ -262,6 +384,126 @@ export default function CalendarScreen() {
     setBulkNightPrice("");
   }
 
+  if (activeBoatForCalendar === null) {
+    const currentMonthTitle = today.toLocaleString("en-US", {
+      month: "long",
+      year: "numeric",
+    });
+
+    const daysInCurrentMonth = new Date(
+      todayYear,
+      todayMonth + 1,
+      0,
+    ).getDate();
+    const firstDayWeekIndexCurrent = new Date(
+      todayYear,
+      todayMonth,
+      1,
+    ).getDay();
+
+    const miniCalendarDays = [
+      ...Array.from({ length: firstDayWeekIndexCurrent }, () => null as number | null),
+      ...Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1),
+    ];
+
+    const miniCalendarWeeks: Array<Array<number | null>> = [];
+    for (let i = 0; i < miniCalendarDays.length; i += 7) {
+      miniCalendarWeeks.push(miniCalendarDays.slice(i, i + 7));
+    }
+
+    const miniWeekdayLabels = ["S", "M", "T", "W", "T", "F", "S"];
+
+    return (
+      <ScrollView contentContainerStyle={styles.pageScrollContent}>
+        <PageHeader
+          title="Availability"
+          sub={`Select a boat to manage detailed availability · ${currentMonthTitle}`}
+        />
+
+        <View style={styles.boatGrid}>
+          {boats.map((boat) => (
+            <Pressable
+              key={boat}
+              onPress={() => {
+                setActiveBoatForCalendar(boat);
+                // Sync the visible month with the today date when selecting a boat
+                setVisibleMonth(new Date(todayYear, todayMonth, 1));
+              }}
+              style={({ pressed }) => [
+                styles.boatCard,
+                pressed ? styles.boatCardPressed : null,
+              ]}
+              testID={`boat-card-${boat.replace(/\s+/g, "-").toLowerCase()}`}
+            >
+              <Text style={styles.boatCardTitle} numberOfLines={1}>{boat}</Text>
+              
+              <View style={styles.miniCalendarContainer}>
+                <View style={styles.miniCalendarHeader}>
+                  {miniWeekdayLabels.map((l, idx) => (
+                    <Text key={idx} style={styles.miniCalendarHeaderLabel}>{l}</Text>
+                  ))}
+                </View>
+                <View style={styles.miniCalendarGrid}>
+                  {miniCalendarWeeks.map((week, weekIdx) => (
+                    <View key={weekIdx} style={styles.miniCalendarWeekRow}>
+                      {week.map((day, dayIdx) => {
+                        if (day === null) {
+                          return <View key={`empty-${dayIdx}`} style={styles.miniCalendarCellBlank} />;
+                        }
+                        const dateKey = getDateKey(todayYear, todayMonth, day);
+                        const booking = bookingsByBoat[boat]?.[dateKey];
+                        const allCruisesBooked = booking?.dayCruise && (booking?.overnightCruise || booking?.nightCruise);
+                        const anyCruiseBooked = booking?.dayCruise || booking?.overnightCruise || booking?.nightCruise;
+                        
+                        let cellColor = "#dbf8ea";
+                        let borderColor = "#9dd8bc";
+                        if (allCruisesBooked) {
+                          cellColor = "#ffe5e5";
+                          borderColor = "#ffcccc";
+                        } else if (anyCruiseBooked) {
+                          cellColor = "#fff1d6";
+                          borderColor = "#f5d392";
+                        }
+                        
+                        return (
+                          <View
+                            key={day}
+                            style={[
+                              styles.miniCalendarCell,
+                              { backgroundColor: cellColor, borderColor: borderColor }
+                            ]}
+                          />
+                        );
+                      })}
+                      {week.length < 7 && Array.from({ length: 7 - week.length }).map((_, padIdx) => (
+                        <View key={`pad-${padIdx}`} style={styles.miniCalendarCellBlank} />
+                      ))}
+                    </View>
+                  ))}
+                </View>
+              </View>
+            </Pressable>
+          ))}
+        </View>
+
+        <View style={styles.calendarLegendRow}>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: "#dbf8ea", borderColor: "#9dd8bc" }]} />
+            <Text style={styles.legendText}>Available</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: "#fff1d6", borderColor: "#f5d392" }]} />
+            <Text style={styles.legendText}>Partially Booked</Text>
+          </View>
+          <View style={styles.legendItem}>
+            <View style={[styles.legendDot, { backgroundColor: "#ffe5e5", borderColor: "#ffcccc" }]} />
+            <Text style={styles.legendText}>Fully Booked</Text>
+          </View>
+        </View>
+      </ScrollView>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.calendarPageRoot}
@@ -269,8 +511,9 @@ export default function CalendarScreen() {
     >
       <ScrollView contentContainerStyle={styles.pageScrollContent}>
         <PageHeader
-          title="Availability calendar"
-          sub={`Set bulk prices for multiple dates and manage cruise availability by date. · Boat: ${selectedBoat}`}
+          title={activeBoatForCalendar}
+          sub="Set bulk prices for multiple dates and manage cruise availability by date."
+          onBack={() => setActiveBoatForCalendar(null)}
         />
 
         <View style={styles.card}>
@@ -651,7 +894,7 @@ export default function CalendarScreen() {
           </View>
           <Pressable
             onPress={() => {
-              if (selectedDate) {
+              if (selectedDate && activeBoatForCalendar) {
                 const dateKey = getDateKey(
                   selectedDate.year,
                   selectedDate.month,
@@ -666,8 +909,9 @@ export default function CalendarScreen() {
                 const parsedNight = modalNightPrice
                   ? Number(modalNightPrice)
                   : undefined;
-                setBookingsByDate((current) => {
-                  const existing = current[dateKey] ?? {
+                setBookingsByBoat((current) => {
+                  const boatBookings = current[activeBoatForCalendar] ?? {};
+                  const existing = boatBookings[dateKey] ?? {
                     dayCruise: false,
                     overnightCruise: false,
                     nightCruise: false,
@@ -675,12 +919,15 @@ export default function CalendarScreen() {
                   };
                   return {
                     ...current,
-                    [dateKey]: normalizeBooking({
-                      ...existing,
-                      dayCruisePrice: parsedDay,
-                      overnightCruisePrice: parsedOvernight,
-                      nightCruisePrice: parsedNight,
-                    }),
+                    [activeBoatForCalendar]: {
+                      ...boatBookings,
+                      [dateKey]: normalizeBooking({
+                        ...existing,
+                        dayCruisePrice: parsedDay,
+                        overnightCruisePrice: parsedOvernight,
+                        nightCruisePrice: parsedNight,
+                      }),
+                    },
                   };
                 });
               }

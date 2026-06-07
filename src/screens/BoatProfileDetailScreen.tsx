@@ -14,7 +14,7 @@ const roomRules: Array<{ label: string; options: string[] }> = [
 
 type Props = RootStackScreenProps<"BoatAssetModal">;
 
-export default function BoatProfileDetailScreen({ route }: Props) {
+export default function BoatProfileDetailScreen({ route, navigation }: Props) {
   const { selectedBoat } = useBoat();
   const boatName = route.params.boatName ?? selectedBoat;
 
@@ -46,6 +46,7 @@ export default function BoatProfileDetailScreen({ route }: Props) {
       <PageHeader
         title="Boat asset definition"
         sub={`These details are permanent truths about your boat. They drive all matching logic. · Boat: ${boatName}`}
+        onBack={() => navigation.goBack()}
       >
         <View style={styles.rowGap8}>
           {isEditing ? (

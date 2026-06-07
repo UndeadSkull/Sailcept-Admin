@@ -1,5 +1,6 @@
 import { FontAwesome5 } from "@expo/vector-icons";
 import { Pressable, Text, View } from "react-native";
+import { ChevronLeft } from "lucide-react-native";
 import styles from "../styles";
 
 type Request = {
@@ -24,17 +25,34 @@ export type { Request };
 export function PageHeader({
   title,
   sub,
+  onBack,
   children,
 }: {
   title: string;
   sub: string;
+  onBack?: () => void;
   children?: React.ReactNode;
 }) {
   return (
     <View style={styles.pageHeader}>
-      <View style={styles.flex1}>
-        <Text style={styles.pageTitle}>{title}</Text>
-        <Text style={styles.pageSub}>{sub}</Text>
+      <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 8, flex: 1 }}>
+        {onBack && (
+          <Pressable
+            onPress={onBack}
+            style={{
+              paddingRight: 4,
+              paddingVertical: 2,
+              marginTop: 2,
+            }}
+            testID="header-back-button"
+          >
+            <ChevronLeft size={26} color="#0f284e" strokeWidth={2.8} />
+          </Pressable>
+        )}
+        <View style={styles.flex1}>
+          <Text style={styles.pageTitle}>{title}</Text>
+          <Text style={styles.pageSub}>{sub}</Text>
+        </View>
       </View>
       {children}
     </View>

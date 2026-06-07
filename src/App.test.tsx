@@ -33,7 +33,7 @@ describe("App", () => {
   it("shows main tabs in app shell", async () => {
     const { findAllByText, findByText } = await renderApp();
     expect((await findAllByText("Overview")).length).toBeGreaterThan(0);
-    expect(await findByText("Calendar")).toBeTruthy();
+    expect(await findByText("Availability")).toBeTruthy();
     expect(await findByText("Requests")).toBeTruthy();
     expect(await findByText("Bookings")).toBeTruthy();
   });
@@ -43,7 +43,8 @@ describe("App", () => {
     const day3 = dateKeyForCurrentMonth(3);
     const day4 = dateKeyForCurrentMonth(4);
 
-    await pressByText(findAllByText, "Calendar");
+    await pressByText(findAllByText, "Availability");
+    fireEvent.press(getByTestId("boat-card-vembanad-crest"));
     await pressByText(findAllByText, "Enable");
 
     fireEvent.press(getByTestId(`calendar-day-${day3}`));
@@ -59,7 +60,8 @@ describe("App", () => {
     const { findAllByText, getByTestId } = await renderApp();
     const day5 = dateKeyForCurrentMonth(5);
 
-    await pressByText(findAllByText, "Calendar");
+    await pressByText(findAllByText, "Availability");
+    fireEvent.press(getByTestId("boat-card-vembanad-crest"));
     fireEvent.press(getByTestId(`calendar-day-${day5}`));
     expect(getByTestId("day-edit-modal")).toBeTruthy();
 
@@ -76,7 +78,8 @@ describe("App", () => {
     const now = new Date();
     const expectedMonth = now.toLocaleString("en-US", { month: "long", year: "numeric" });
 
-    await pressByText(findAllByText, "Calendar");
+    await pressByText(findAllByText, "Availability");
+    fireEvent.press(getByTestId("boat-card-vembanad-crest"));
 
     expect(getByTestId("calendar-month-title").props.children).toBe(expectedMonth);
     expect(await findByText("Sun")).toBeTruthy();
@@ -87,7 +90,8 @@ describe("App", () => {
     const { findAllByText, findByText, getByTestId } = await renderApp();
     const day6 = dateKeyForCurrentMonth(6);
 
-    await pressByText(findAllByText, "Calendar");
+    await pressByText(findAllByText, "Availability");
+    fireEvent.press(getByTestId("boat-card-vembanad-crest"));
     fireEvent(getByTestId(`calendar-day-${day6}`), "longPress");
 
     expect(await findByText("1 date selected")).toBeTruthy();
@@ -106,9 +110,9 @@ describe("App", () => {
 
     expect(await findByText(/Boat: Backwater Pearl/)).toBeTruthy();
 
-    await pressByText(findAllByText, "Calendar");
-    expect(await findByText(/Availability calendar/)).toBeTruthy();
-    expect(await findByText(/Boat: Backwater Pearl/)).toBeTruthy();
+    await pressByText(findAllByText, "Availability");
+    fireEvent.press(getByTestId("boat-card-backwater-pearl"));
+    expect(await findByText("Backwater Pearl")).toBeTruthy();
 
     await pressByText(findAllByText, "Requests");
     expect(await findByText(/Temporary date locks are active/)).toBeTruthy();
@@ -118,4 +122,5 @@ describe("App", () => {
     expect(await findByText(/Track accepted bookings with complete trip details/)).toBeTruthy();
     expect(await findByText(/Boat: Backwater Pearl/)).toBeTruthy();
   });
+
 });

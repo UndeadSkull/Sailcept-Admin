@@ -54,6 +54,7 @@ function MainTabs() {
         name="Calendar"
         component={CalendarScreen}
         options={{
+          tabBarLabel: "Availability",
           tabBarIcon: ({ color }) => (
             <CalendarDays size={ICON_SIZE} color={color} strokeWidth={2.2} />
           ),

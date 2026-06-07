@@ -12,7 +12,11 @@ export default function BoatProfilesListScreen({ navigation }: Props) {
 
   return (
     <ScrollView contentContainerStyle={styles.pageScrollContent}>
-      <PageHeader title="Boat profiles" sub="Select a boat to view and edit its asset details." />
+      <PageHeader
+        title="Boat profiles"
+        sub="Select a boat to view and edit its asset details."
+        onBack={() => navigation.goBack()}
+      />
       <Card title="Your boats">
         <View style={styles.verticalGap8}>
           {boats.map((boat) => (

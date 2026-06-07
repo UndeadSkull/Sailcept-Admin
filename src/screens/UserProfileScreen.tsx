@@ -1,5 +1,6 @@
 import { ScrollView, Text, View } from "react-native";
 import { Ship } from "lucide-react-native";
+import { useNavigation } from "@react-navigation/native";
 import { Card, PageHeader } from "../components";
 import styles from "../styles";
 
@@ -7,9 +8,15 @@ const USER = { name: "Ethan Walker", phone: "+1 415 555 0134", email: "ethan.wal
 const BOATS = ["Vembanad Crest", "Backwater Pearl", "Kerala Dream"];
 
 export default function UserProfileScreen() {
+  const navigation = useNavigation();
+
   return (
     <ScrollView contentContainerStyle={styles.pageScrollContent}>
-      <PageHeader title="Profile" sub="View user details and registered boat list." />
+      <PageHeader
+        title="Profile"
+        sub="View user details and registered boat list."
+        onBack={() => navigation.goBack()}
+      />
       <Card title="User details">
         <View style={styles.verticalGap10}>
           <View style={styles.metaBox}>
