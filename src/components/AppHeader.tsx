@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import { useNavigation } from "@react-navigation/native";
-import { Ship, User } from "lucide-react-native";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, Text, View, Platform, ActionSheetIOS } from "react-native";
+import { Picker } from "@react-native-picker/picker";
 import { useBoat } from "../context/BoatContext";
 import type { RootStackParamList } from "../navigation/types";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -9,38 +9,49 @@ import styles from "../styles";
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
-export default function AppHeader() {
+export default function AppHeader({ currentRouteName }: { currentRouteName: string | null }) {
   const navigation = useNavigation<RootNav>();
   const { boats, selectedBoat, setSelectedBoat } = useBoat();
-  const [boatDropdownOpen, setBoatDropdownOpen] = useState(false);
+
+  // If navigation is not initialized yet, default to showing the selector
+  // (since the initial route is "Overview")
+  const showBoatSelector = currentRouteName === null || currentRouteName === "Overview" || currentRouteName === "Enquiries";
 
   return (
-    <>
-      {boatDropdownOpen ? (
-        <Pressable
-          onPress={() => setBoatDropdownOpen(false)}
-          style={styles.dropdownBackdrop}
-          testID="boat-dropdown-backdrop"
-        />
-      ) : null}
-      <View style={styles.mobileTopBar}>
-        <Pressable
-          style={styles.brandRow}
-          onPress={() => navigation.navigate("MainTabs")}
-        >
-          <View style={styles.logoBox}>
-            <Text style={styles.logoText}>≈</Text>
-          </View>
-          <View>
-            <Text style={styles.brandOverline}>Sailcept</Text>
-            <Text style={styles.brandTitle}>Admin</Text>
-          </View>
-        </Pressable>
+    <View style={styles.mobileTopBar}>
+      <Pressable
+        style={styles.brandRow}
+        onPress={() => navigation.navigate("MainTabs")}
+      >
+        <View style={styles.logoBox}>
+          <Text style={styles.logoText}>≈</Text>
+        </View>
+        <View>
+          <Text style={styles.brandOverline}>Sailcept</Text>
+          <Text style={styles.brandTitle}>Admin</Text>
+        </View>
+      </Pressable>
 
-        <View style={styles.headerRightSection}>
+      <View style={styles.headerRightSection}>
+        {showBoatSelector && (
           <View style={styles.boatSwitcherWrapper}>
             <Pressable
-              onPress={() => setBoatDropdownOpen(!boatDropdownOpen)}
+              onPress={() => {
+                if (Platform.OS === "ios") {
+                  ActionSheetIOS.showActionSheetWithOptions(
+                    {
+                      options: [...boats, "Cancel"],
+                      cancelButtonIndex: boats.length,
+                      title: "Select Boat",
+                    },
+                    (buttonIndex) => {
+                      if (buttonIndex < boats.length) {
+                        setSelectedBoat(boats[buttonIndex]);
+                      }
+                    }
+                  );
+                }
+              }}
               style={[styles.profileChip, styles.boatSwitcherChip]}
               testID="boat-selector-trigger"
             >
@@ -51,45 +62,24 @@ export default function AppHeader() {
               >
                 {selectedBoat}
               </Text>
-              <Text style={styles.dropdownArrow}>
-                {boatDropdownOpen ? "▲" : "▼"}
-              </Text>
+              <Text style={styles.dropdownArrow}>▼</Text>
             </Pressable>
 
-            {boatDropdownOpen && (
-              <View style={styles.boatDropdown}>
+            {Platform.OS !== "ios" && (
+              <Picker
+                selectedValue={selectedBoat}
+                onValueChange={(itemValue) => setSelectedBoat(itemValue)}
+                style={styles.pickerOverlay}
+                testID="boat-picker"
+              >
                 {boats.map((boat) => (
-                  <Pressable
-                    key={boat}
-                    testID={`boat-option-${boat.replace(/\s+/g, "-").toLowerCase()}`}
-                    onPress={() => {
-                      setSelectedBoat(boat);
-                      setBoatDropdownOpen(false);
-                    }}
-                    style={[
-                      styles.boatDropdownItem,
-                      selectedBoat === boat
-                        ? styles.boatDropdownItemActive
-                        : null,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.boatDropdownItemText,
-                        selectedBoat === boat
-                          ? styles.boatDropdownItemTextActive
-                          : null,
-                      ]}
-                    >
-                      {boat}
-                    </Text>
-                  </Pressable>
+                  <Picker.Item key={boat} label={boat} value={boat} />
                 ))}
-              </View>
+              </Picker>
             )}
           </View>
-        </View>
+        )}
       </View>
-    </>
+    </View>
   );
 }

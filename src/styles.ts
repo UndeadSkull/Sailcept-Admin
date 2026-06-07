@@ -1,4 +1,4 @@
-import { StyleSheet } from "react-native";
+import { Platform, StyleSheet } from "react-native";
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -90,6 +90,21 @@ const styles = StyleSheet.create({
   dropdownArrow: {
     fontSize: 10,
     color: "#5d7089",
+  },
+  pickerOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0,
+    width: "100%",
+    height: "100%",
+    ...Platform.select({
+      web: {
+        cursor: "pointer",
+      } as any,
+    }),
   },
   boatDropdown: {
     position: "absolute",

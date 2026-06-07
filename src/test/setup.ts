@@ -16,3 +16,35 @@ jest.mock("react-native-reanimated", () => {
 	Reanimated.default.call = () => {};
 	return Reanimated;
 });
+
+jest.mock("react-native-safe-area-context", () => {
+	const React = require("react");
+	const inset = { top: 0, right: 0, bottom: 0, left: 0 };
+	const SafeAreaContext = React.createContext(inset);
+	const SafeAreaInsetsContext = SafeAreaContext;
+	return {
+		SafeAreaProvider: ({ children }: any) => children,
+		SafeAreaView: ({ children }: any) => children,
+		SafeAreaContext,
+		SafeAreaConsumer: SafeAreaContext.Consumer,
+		SafeAreaInsetsContext,
+		useSafeAreaInsets: () => inset,
+		initialWindowMetrics: {
+			frame: { x: 0, y: 0, width: 0, height: 0 },
+			insets: inset,
+		},
+	};
+});
+
+jest.mock("@react-native-picker/picker", () => {
+	const React = require("react");
+	class MockPicker extends React.Component {
+		static Item = (props: any) => React.createElement("PickerItem", props);
+		render() {
+			return React.createElement("Picker", this.props, this.props.children);
+		}
+	}
+	return {
+		Picker: MockPicker,
+	};
+});

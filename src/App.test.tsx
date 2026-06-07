@@ -93,21 +93,16 @@ describe("App", () => {
     expect(await findByText("1 date selected")).toBeTruthy();
   });
 
-  it("closes boat dropdown on outside tap", async () => {
-    const { getByTestId, queryByTestId } = await renderApp();
-
-    fireEvent.press(getByTestId("boat-selector-trigger"));
-    expect(getByTestId("boat-dropdown-backdrop")).toBeTruthy();
-
-    fireEvent.press(getByTestId("boat-dropdown-backdrop"));
-    expect(queryByTestId("boat-dropdown-backdrop")).toBeNull();
-  });
-
   it("propagates selected boat across all main screens", async () => {
     const { findAllByText, findByText, getByTestId } = await renderApp();
 
+    // Mock ActionSheetIOS to select "Backwater Pearl" (index 1)
+    const spy = jest.spyOn(require("react-native").ActionSheetIOS, "showActionSheetWithOptions");
+    spy.mockImplementationOnce((options, callback) => {
+      callback(1); // Index 1 is Backwater Pearl
+    });
+
     fireEvent.press(getByTestId("boat-selector-trigger"));
-    fireEvent.press(getByTestId("boat-option-backwater-pearl"));
 
     expect(await findByText(/Boat: Backwater Pearl/)).toBeTruthy();
 
@@ -121,10 +116,6 @@ describe("App", () => {
 
     await pressByText(findAllByText, "Bookings");
     expect(await findByText(/Track accepted bookings with complete trip details/)).toBeTruthy();
-    expect(await findByText(/Boat: Backwater Pearl/)).toBeTruthy();
-
-    fireEvent.press(getByTestId("header-boat-button"));
-    expect(await findByText(/Boat asset definition/)).toBeTruthy();
     expect(await findByText(/Boat: Backwater Pearl/)).toBeTruthy();
   });
 });
