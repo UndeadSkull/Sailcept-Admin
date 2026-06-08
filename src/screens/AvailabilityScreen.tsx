@@ -1,5 +1,5 @@
-import { Check, CalendarDays, X } from "lucide-react-native";
-import { useState, useCallback, useEffect } from "react";
+import { Check, CalendarDays, X, Info, Download, MoreVertical } from "lucide-react-native";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   BackHandler,
   Dimensions,
@@ -7,11 +7,12 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Switch,
   Text,
   TextInput,
   View,
 } from "react-native";
+import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   useFocusEffect,
   useRoute,
@@ -30,8 +31,14 @@ type DayBooking = {
   nightCruise: boolean;
   details: string;
   dayCruisePrice?: number;
+  dayCruiseExtraGuest?: number;
+  dayCruiseExtraRoom?: number;
   overnightCruisePrice?: number;
+  overnightExtraBed?: number;
+  overnightExtraCot?: number;
   nightCruisePrice?: number;
+  nightCruiseExtraGuest?: number;
+  nightCruiseExtraRoom?: number;
 };
 
 type SelectedDate = { year: number; month: number; day: number };
@@ -104,6 +111,15 @@ export default function AvailabilityScreen() {
   const [modalDayCruisePrice, setModalDayCruisePrice] = useState("");
   const [modalOvernightPrice, setModalOvernightPrice] = useState("");
   const [modalNightPrice, setModalNightPrice] = useState("");
+  const [modalDayExtraGuest, setModalDayExtraGuest] = useState("");
+  const [modalDayExtraRoom, setModalDayExtraRoom] = useState("");
+  const [modalOvernightExtraBed, setModalOvernightExtraBed] = useState("");
+  const [modalOvernightExtraCot, setModalOvernightExtraCot] = useState("");
+  const [modalNightExtraGuest, setModalNightExtraGuest] = useState("");
+  const [modalNightExtraRoom, setModalNightExtraRoom] = useState("");
+
+  const bottomSheetRef = useRef<BottomSheet>(null);
+  const sheetSnapPoints = useMemo(() => ["75%", "95%"], []);
 
   const [bookingsByBoat, setBookingsByBoat] = useState<
     Record<string, Record<string, DayBooking>>
@@ -332,15 +348,34 @@ export default function AvailabilityScreen() {
     setModalDayCruisePrice(
       existing?.dayCruisePrice ? String(existing.dayCruisePrice) : "",
     );
+    setModalDayExtraGuest(
+      existing?.dayCruiseExtraGuest ? String(existing.dayCruiseExtraGuest) : "",
+    );
+    setModalDayExtraRoom(
+      existing?.dayCruiseExtraRoom ? String(existing.dayCruiseExtraRoom) : "",
+    );
     setModalOvernightPrice(
       existing?.overnightCruisePrice
         ? String(existing.overnightCruisePrice)
         : "",
     );
+    setModalOvernightExtraBed(
+      existing?.overnightExtraBed ? String(existing.overnightExtraBed) : "",
+    );
+    setModalOvernightExtraCot(
+      existing?.overnightExtraCot ? String(existing.overnightExtraCot) : "",
+    );
     setModalNightPrice(
       existing?.nightCruisePrice ? String(existing.nightCruisePrice) : "",
     );
+    setModalNightExtraGuest(
+      existing?.nightCruiseExtraGuest ? String(existing.nightCruiseExtraGuest) : "",
+    );
+    setModalNightExtraRoom(
+      existing?.nightCruiseExtraRoom ? String(existing.nightCruiseExtraRoom) : "",
+    );
     setSelectedDate({ year: visibleYear, month: visibleMonthIndex, day });
+    bottomSheetRef.current?.snapToIndex(0);
   }
 
   function handleDayLongPress(day: number) {
@@ -498,7 +533,62 @@ export default function AvailabilityScreen() {
     },
   }).duration(150);
 
+  function handleSheetChange(index: number) {
+    if (index === -1) {
+      setSelectedDate(null);
+    }
+  }
+
+  function handleSaveChanges() {
+    if (selectedDate && activeBoatForCalendar) {
+      const dateKey = getDateKey(
+        selectedDate.year,
+        selectedDate.month,
+        selectedDate.day,
+      );
+      const parsedDay = modalDayCruisePrice ? Number(modalDayCruisePrice) : undefined;
+      const parsedDayExtraGuest = modalDayExtraGuest ? Number(modalDayExtraGuest) : undefined;
+      const parsedDayExtraRoom = modalDayExtraRoom ? Number(modalDayExtraRoom) : undefined;
+      const parsedOvernight = modalOvernightPrice ? Number(modalOvernightPrice) : undefined;
+      const parsedOvernightExtraBed = modalOvernightExtraBed ? Number(modalOvernightExtraBed) : undefined;
+      const parsedOvernightExtraCot = modalOvernightExtraCot ? Number(modalOvernightExtraCot) : undefined;
+      const parsedNight = modalNightPrice ? Number(modalNightPrice) : undefined;
+      const parsedNightExtraGuest = modalNightExtraGuest ? Number(modalNightExtraGuest) : undefined;
+      const parsedNightExtraRoom = modalNightExtraRoom ? Number(modalNightExtraRoom) : undefined;
+      setBookingsByBoat((current) => {
+        const boatBookings = current[activeBoatForCalendar] ?? {};
+        const existing = boatBookings[dateKey] ?? {
+          dayCruise: false,
+          overnightCruise: false,
+          nightCruise: false,
+          details: "No bookings for this day.",
+        };
+        return {
+          ...current,
+          [activeBoatForCalendar]: {
+            ...boatBookings,
+            [dateKey]: normalizeBooking({
+              ...existing,
+              dayCruisePrice: parsedDay,
+              dayCruiseExtraGuest: parsedDayExtraGuest,
+              dayCruiseExtraRoom: parsedDayExtraRoom,
+              overnightCruisePrice: parsedOvernight,
+              overnightExtraBed: parsedOvernightExtraBed,
+              overnightExtraCot: parsedOvernightExtraCot,
+              nightCruisePrice: parsedNight,
+              nightCruiseExtraGuest: parsedNightExtraGuest,
+              nightCruiseExtraRoom: parsedNightExtraRoom,
+            }),
+          },
+        };
+      });
+    }
+    bottomSheetRef.current?.close();
+    setSelectedDate(null);
+  }
+
   return (
+    <GestureHandlerRootView style={styles.calendarPageRoot}>
     <KeyboardAvoidingView
       style={styles.calendarPageRoot}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -966,149 +1056,246 @@ export default function AvailabilityScreen() {
             </View>
           ) : null}
 
-          {selectedDate && !isBulkPricingMode ? (
-            <View style={styles.dayEditPanel} testID="day-edit-modal">
-              <View style={styles.modalDragHandle} />
-              <View style={styles.modalTitleRow}>
-                <Text style={styles.modalTitle}>
-                  {`${selectedDate.day} ${new Date(selectedDate.year, selectedDate.month, selectedDate.day).toLocaleString("en-US", { month: "short", year: "numeric" })}`}
-                </Text>
-                <Pressable
-                  onPress={() => setSelectedDate(null)}
-                  style={styles.bottomSheetCloseButton}
-                >
-                  <X size={16} color="#5a6d82" strokeWidth={2.2} />
-                </Pressable>
-              </View>
-              <Text style={styles.calendarRuleText}>
-                Overnight stay and Night stay cannot be booked together.
-              </Text>
-              <View style={styles.verticalGap8}>
-                <View style={styles.cruiseCombinedRow}>
-                  <CruiseTypeIcon type="day" size="regular" />
-                  <Text style={styles.cruisePriceLabel}>Day cruise</Text>
-                  <View style={styles.cruisePriceField}>
-                    <Text style={styles.bottomSheetRupee}>₹</Text>
-                    <TextInput
-                      value={modalDayCruisePrice}
-                      onChangeText={(v) =>
-                        setModalDayCruisePrice(v.replace(/[^0-9]/g, ""))
-                      }
-                      keyboardType="numeric"
-                      placeholder="Price"
-                      placeholderTextColor="#9aafbf"
-                      style={styles.bottomSheetInput}
-                      testID="modal-price-input-day"
-                    />
-                  </View>
-                  <Switch
-                    value={selectedBooking.dayCruise}
-                    onValueChange={(v) =>
-                      updateSelectedDayAvailability("dayCruise", v)
-                    }
-                    testID="availability-switch-dayCruise"
-                  />
-                </View>
-                <View style={styles.cruiseCombinedRow}>
-                  <CruiseTypeIcon type="overnight" size="regular" />
-                  <Text style={styles.cruisePriceLabel}>Overnight</Text>
-                  <View style={styles.cruisePriceField}>
-                    <Text style={styles.bottomSheetRupee}>₹</Text>
-                    <TextInput
-                      value={modalOvernightPrice}
-                      onChangeText={(v) =>
-                        setModalOvernightPrice(v.replace(/[^0-9]/g, ""))
-                      }
-                      keyboardType="numeric"
-                      placeholder="Price"
-                      placeholderTextColor="#9aafbf"
-                      style={styles.bottomSheetInput}
-                      testID="modal-price-input-overnight"
-                    />
-                  </View>
-                  <Switch
-                    value={selectedBooking.overnightCruise}
-                    onValueChange={(v) =>
-                      updateSelectedDayAvailability("overnightCruise", v)
-                    }
-                    testID="availability-switch-overnightCruise"
-                  />
-                </View>
-                <View style={styles.cruiseCombinedRow}>
-                  <CruiseTypeIcon type="night" size="regular" />
-                  <Text style={styles.cruisePriceLabel}>Night stay</Text>
-                  <View style={styles.cruisePriceField}>
-                    <Text style={styles.bottomSheetRupee}>₹</Text>
-                    <TextInput
-                      value={modalNightPrice}
-                      onChangeText={(v) =>
-                        setModalNightPrice(v.replace(/[^0-9]/g, ""))
-                      }
-                      keyboardType="numeric"
-                      placeholder="Price"
-                      placeholderTextColor="#9aafbf"
-                      style={styles.bottomSheetInput}
-                      testID="modal-price-input-night"
-                    />
-                  </View>
-                  <Switch
-                    value={selectedBooking.nightCruise}
-                    onValueChange={(v) =>
-                      updateSelectedDayAvailability("nightCruise", v)
-                    }
-                    testID="availability-switch-nightCruise"
-                  />
-                </View>
-              </View>
-              <Pressable
-                onPress={() => {
-                  if (selectedDate && activeBoatForCalendar) {
-                    const dateKey = getDateKey(
-                      selectedDate.year,
-                      selectedDate.month,
-                      selectedDate.day,
-                    );
-                    const parsedDay = modalDayCruisePrice
-                      ? Number(modalDayCruisePrice)
-                      : undefined;
-                    const parsedOvernight = modalOvernightPrice
-                      ? Number(modalOvernightPrice)
-                      : undefined;
-                    const parsedNight = modalNightPrice
-                      ? Number(modalNightPrice)
-                      : undefined;
-                    setBookingsByBoat((current) => {
-                      const boatBookings = current[activeBoatForCalendar] ?? {};
-                      const existing = boatBookings[dateKey] ?? {
-                        dayCruise: false,
-                        overnightCruise: false,
-                        nightCruise: false,
-                        details: "No bookings for this day.",
-                      };
-                      return {
-                        ...current,
-                        [activeBoatForCalendar]: {
-                          ...boatBookings,
-                          [dateKey]: normalizeBooking({
-                            ...existing,
-                            dayCruisePrice: parsedDay,
-                            overnightCruisePrice: parsedOvernight,
-                            nightCruisePrice: parsedNight,
-                          }),
-                        },
-                      };
-                    });
-                  }
-                  setSelectedDate(null);
-                }}
-                style={styles.primaryButton}
-              >
-                <Text style={styles.primaryButtonText}>Done</Text>
-              </Pressable>
-            </View>
-          ) : null}
         </Animated.View>
       )}
+
+      {/* Native Draggable Bottom Sheet */}
+      <BottomSheet
+        ref={bottomSheetRef}
+        index={-1}
+        snapPoints={sheetSnapPoints}
+        enablePanDownToClose
+        onChange={handleSheetChange}
+        backgroundStyle={styles.sheetBackground}
+        handleIndicatorStyle={styles.sheetHandleIndicator}
+      >
+        <BottomSheetScrollView contentContainerStyle={styles.sheetScroll}>
+          {selectedDate ? (
+            <>
+              {/* Header: Date + actions */}
+              <View style={styles.sheetDateHeader}>
+                <Text style={styles.sheetDateText}>
+                  {`${selectedDate.day} ${new Date(selectedDate.year, selectedDate.month, selectedDate.day).toLocaleString("en-US", { month: "short" })} ${selectedDate.year}`}
+                </Text>
+                <View style={styles.sheetHeaderActions}>
+                  <Pressable style={styles.sheetActionButton}>
+                    <Download size={16} color="#ffffff" strokeWidth={2.2} />
+                  </Pressable>
+                  <Pressable style={styles.sheetActionButton}>
+                    <MoreVertical size={16} color="#ffffff" strokeWidth={2.2} />
+                  </Pressable>
+                </View>
+              </View>
+
+              {/* Info banner */}
+              <View style={styles.sheetInfoBanner}>
+                <Info size={16} color="#5a6d82" strokeWidth={2} />
+                <Text style={styles.sheetInfoText}>
+                  Overnight stay and Night stay cannot be booked together.
+                </Text>
+              </View>
+
+              {/* Day Cruise Card */}
+              <View style={styles.cruiseCard}>
+                <View style={styles.cruiseCardHeader}>
+                  <CruiseTypeIcon type="day" size="regular" />
+                  <Text style={styles.cruiseCardLabel}>Day cruise</Text>
+                  <View style={selectedBooking.dayCruise ? styles.bookedPill : styles.notBookedPill}>
+                    {selectedBooking.dayCruise ? (
+                      <Check size={12} color="#ffffff" strokeWidth={2.5} />
+                    ) : null}
+                    <Text style={selectedBooking.dayCruise ? styles.bookedPillText : styles.notBookedPillText}>
+                      {selectedBooking.dayCruise ? "Booked" : "Not booked"}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.priceFieldsRow}>
+                  <View style={styles.priceFieldBox}>
+                    <Text style={styles.priceFieldLabel}>Base price</Text>
+                    <View style={styles.priceFieldInput}>
+                      <Text style={styles.priceFieldRupee}>₹</Text>
+                      <TextInput
+                        value={modalDayCruisePrice}
+                        onChangeText={(v) => setModalDayCruisePrice(v.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#9aafbf"
+                        style={styles.priceFieldTextInput}
+                        testID="modal-price-input-day"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.priceFieldBox}>
+                    <Text style={styles.priceFieldLabel}>Extra guest</Text>
+                    <View style={styles.priceFieldInput}>
+                      <Text style={styles.priceFieldRupee}>₹</Text>
+                      <TextInput
+                        value={modalDayExtraGuest}
+                        onChangeText={(v) => setModalDayExtraGuest(v.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#9aafbf"
+                        style={styles.priceFieldTextInput}
+                        testID="modal-day-extra-guest"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.priceFieldBox}>
+                    <Text style={styles.priceFieldLabel}>Extra room</Text>
+                    <View style={styles.priceFieldInput}>
+                      <Text style={styles.priceFieldRupee}>₹</Text>
+                      <TextInput
+                        value={modalDayExtraRoom}
+                        onChangeText={(v) => setModalDayExtraRoom(v.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#9aafbf"
+                        style={styles.priceFieldTextInput}
+                        testID="modal-day-extra-room"
+                      />
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Overnight Card */}
+              <View style={styles.cruiseCard}>
+                <View style={styles.cruiseCardHeader}>
+                  <CruiseTypeIcon type="overnight" size="regular" />
+                  <Text style={styles.cruiseCardLabel}>Overnight</Text>
+                  <View style={selectedBooking.overnightCruise ? styles.bookedPill : styles.notBookedPill}>
+                    {selectedBooking.overnightCruise ? (
+                      <Check size={12} color="#ffffff" strokeWidth={2.5} />
+                    ) : null}
+                    <Text style={selectedBooking.overnightCruise ? styles.bookedPillText : styles.notBookedPillText}>
+                      {selectedBooking.overnightCruise ? "Booked" : "Not booked"}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.priceFieldsRow}>
+                  <View style={styles.priceFieldBox}>
+                    <Text style={styles.priceFieldLabel}>Base price</Text>
+                    <View style={styles.priceFieldInput}>
+                      <Text style={styles.priceFieldRupee}>₹</Text>
+                      <TextInput
+                        value={modalOvernightPrice}
+                        onChangeText={(v) => setModalOvernightPrice(v.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#9aafbf"
+                        style={styles.priceFieldTextInput}
+                        testID="modal-price-input-overnight"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.priceFieldBox}>
+                    <Text style={styles.priceFieldLabel}>Extra bed</Text>
+                    <View style={styles.priceFieldInput}>
+                      <Text style={styles.priceFieldRupee}>₹</Text>
+                      <TextInput
+                        value={modalOvernightExtraBed}
+                        onChangeText={(v) => setModalOvernightExtraBed(v.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#9aafbf"
+                        style={styles.priceFieldTextInput}
+                        testID="modal-overnight-extra-bed"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.priceFieldBox}>
+                    <Text style={styles.priceFieldLabel}>Extra cot</Text>
+                    <View style={styles.priceFieldInput}>
+                      <Text style={styles.priceFieldRupee}>₹</Text>
+                      <TextInput
+                        value={modalOvernightExtraCot}
+                        onChangeText={(v) => setModalOvernightExtraCot(v.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#9aafbf"
+                        style={styles.priceFieldTextInput}
+                        testID="modal-overnight-extra-cot"
+                      />
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Night Stay Card */}
+              <View style={styles.cruiseCard}>
+                <View style={styles.cruiseCardHeader}>
+                  <CruiseTypeIcon type="night" size="regular" />
+                  <Text style={styles.cruiseCardLabel}>Night stay</Text>
+                  <View style={selectedBooking.nightCruise ? styles.bookedPill : styles.notBookedPill}>
+                    {selectedBooking.nightCruise ? (
+                      <Check size={12} color="#ffffff" strokeWidth={2.5} />
+                    ) : null}
+                    <Text style={selectedBooking.nightCruise ? styles.bookedPillText : styles.notBookedPillText}>
+                      {selectedBooking.nightCruise ? "Booked" : "Not booked"}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.priceFieldsRow}>
+                  <View style={styles.priceFieldBox}>
+                    <Text style={styles.priceFieldLabel}>Base price</Text>
+                    <View style={styles.priceFieldInput}>
+                      <Text style={styles.priceFieldRupee}>₹</Text>
+                      <TextInput
+                        value={modalNightPrice}
+                        onChangeText={(v) => setModalNightPrice(v.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#9aafbf"
+                        style={styles.priceFieldTextInput}
+                        testID="modal-price-input-night"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.priceFieldBox}>
+                    <Text style={styles.priceFieldLabel}>Extra guest</Text>
+                    <View style={styles.priceFieldInput}>
+                      <Text style={styles.priceFieldRupee}>₹</Text>
+                      <TextInput
+                        value={modalNightExtraGuest}
+                        onChangeText={(v) => setModalNightExtraGuest(v.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#9aafbf"
+                        style={styles.priceFieldTextInput}
+                        testID="modal-night-extra-guest"
+                      />
+                    </View>
+                  </View>
+                  <View style={styles.priceFieldBox}>
+                    <Text style={styles.priceFieldLabel}>Extra room</Text>
+                    <View style={styles.priceFieldInput}>
+                      <Text style={styles.priceFieldRupee}>₹</Text>
+                      <TextInput
+                        value={modalNightExtraRoom}
+                        onChangeText={(v) => setModalNightExtraRoom(v.replace(/[^0-9]/g, ""))}
+                        keyboardType="numeric"
+                        placeholder="0"
+                        placeholderTextColor="#9aafbf"
+                        style={styles.priceFieldTextInput}
+                        testID="modal-night-extra-room"
+                      />
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {/* Save Changes Button */}
+              <Pressable
+                onPress={handleSaveChanges}
+                style={styles.saveChangesButton}
+              >
+                <Text style={styles.saveChangesButtonText}>Save changes</Text>
+              </Pressable>
+            </>
+          ) : null}
+        </BottomSheetScrollView>
+      </BottomSheet>
     </KeyboardAvoidingView>
+    </GestureHandlerRootView>
   );
 }

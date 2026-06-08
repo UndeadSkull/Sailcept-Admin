@@ -56,21 +56,19 @@ describe("App", () => {
     expect(within(getByTestId(`calendar-day-${day4}`)).getByText("15000")).toBeTruthy();
   });
 
-  it("keeps overnight and night mutually exclusive", async () => {
-    const { findAllByText, getByTestId } = await renderApp();
+  it("opens bottom sheet with cruise cards when a date is tapped", async () => {
+    const { findAllByText, getByTestId, findByText } = await renderApp();
     const day5 = dateKeyForCurrentMonth(5);
 
     await pressByText(findAllByText, "Availability");
     fireEvent.press(getByTestId("boat-card-vembanad-crest"));
     fireEvent.press(getByTestId(`calendar-day-${day5}`));
-    expect(getByTestId("day-edit-modal")).toBeTruthy();
 
-    fireEvent(getByTestId("availability-switch-nightCruise"), "valueChange", true);
-    await pressByText(findAllByText, "Done");
-    fireEvent.press(getByTestId(`calendar-day-${day5}`));
-
-    expect(getByTestId("availability-switch-overnightCruise").props.value).toBe(false);
-    expect(getByTestId("availability-switch-nightCruise").props.value).toBe(true);
+    // Bottom sheet should show cruise type labels
+    expect(await findByText("Day cruise")).toBeTruthy();
+    expect(await findByText("Overnight")).toBeTruthy();
+    expect(await findByText("Night stay")).toBeTruthy();
+    expect(await findByText("Save changes")).toBeTruthy();
   });
 
   it("shows current month title and weekday headers", async () => {
