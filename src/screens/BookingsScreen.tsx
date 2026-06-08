@@ -8,6 +8,8 @@ import {
   View,
   Platform,
 } from "react-native";
+import { Gesture, GestureDetector, GestureHandlerRootView, Directions } from "react-native-gesture-handler";
+import Animated, { SlideInRight, SlideInLeft, runOnJS } from "react-native-reanimated";
 import { Card, PageHeader, CruiseTypeIcon } from "../components";
 import { useBoat } from "../context/BoatContext";
 import type { MainTabScreenProps } from "../navigation/types";
@@ -255,6 +257,7 @@ export default function BookingsScreen({ route }: Props) {
     month: currentMonthIndex,
     day: now.getDate(),
   }));
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
 
   const visibleBookings = useMemo(() => {
     return ALL_BOOKINGS.filter((b) => b.boatName === selectedBoat);
@@ -353,11 +356,26 @@ export default function BookingsScreen({ route }: Props) {
   }, [focusedBookingId, focusToken]);
 
   function moveMonth(delta: number) {
+    setSlideDirection(delta > 0 ? 'left' : 'right');
     setVisibleMonth(
       (current) =>
         new Date(current.getFullYear(), current.getMonth() + delta, 1),
     );
   }
+
+  const swipeLeft = Gesture.Fling()
+    .direction(Directions.LEFT)
+    .onEnd(() => {
+      runOnJS(moveMonth)(1);
+    });
+
+  const swipeRight = Gesture.Fling()
+    .direction(Directions.RIGHT)
+    .onEnd(() => {
+      runOnJS(moveMonth)(-1);
+    });
+
+  const calendarSwipeGesture = Gesture.Simultaneous(swipeLeft, swipeRight);
 
   const visibleYear = visibleMonth.getFullYear();
   const visibleMonthIndex = visibleMonth.getMonth();
@@ -384,11 +402,12 @@ export default function BookingsScreen({ route }: Props) {
   });
 
   return (
-    <View style={styles.flex1}>
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={styles.pageScrollContent}
-      >
+    <GestureHandlerRootView style={styles.calendarPageRoot}>
+      <View style={styles.flex1}>
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.pageScrollContent}
+        >
         <PageHeader
           title="Bookings"
           sub={`Track accepted bookings with complete trip details and guest preferences. · Boat: ${selectedBoat}`}
@@ -427,93 +446,99 @@ export default function BookingsScreen({ route }: Props) {
             ))}
           </View>
 
-          <View style={styles.calendarGrid}>
-            {Array.from(
-              { length: Math.ceil(calendarDays.length / 7) },
-              (_, weekIndex) => (
-                <View key={weekIndex} style={styles.calendarWeekRow}>
-                  {[
-                    ...calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7),
-                    ...Array.from(
-                      {
-                        length: Math.max(
-                          0,
-                          7 -
-                            calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7)
-                              .length,
-                        ),
-                      },
-                      () => null as number | null,
-                    ),
-                  ].map((day, cellIndex) => {
-                    if (!day) {
-                      return (
-                        <View
-                          key={`blank-${weekIndex}-${cellIndex}`}
-                          style={styles.dayCellBlank}
-                        />
-                      );
-                    }
-                    const isSelected =
-                      selectedDate.year === visibleYear &&
-                      selectedDate.month === visibleMonthIndex &&
-                      selectedDate.day === day;
-                    const dateKey = getDateKey(
-                      visibleYear,
-                      visibleMonthIndex,
-                      day,
-                    );
-                    const dayBookings = bookingsByDateKey[dateKey] ?? [];
-
-                    return (
-                      <Pressable
-                        key={day}
-                        onPress={() =>
-                          setSelectedDate({
-                            year: visibleYear,
-                            month: visibleMonthIndex,
-                            day,
-                          })
-                        }
-                        style={[
-                          styles.dayCell,
-                          {
-                            backgroundColor: "#faf6f1ee",
-                            borderColor: "#cde3db",
-                            borderWidth: 1,
-                          },
-                          isSelected ? styles.dayCellSelected : null,
-                        ]}
-                        testID={`calendar-day-${dateKey}`}
-                      >
-                        <Text style={styles.dayCellNumber}>{day}</Text>
-                        {dayBookings.length > 0 && (
+          <GestureDetector gesture={calendarSwipeGesture}>
+            <Animated.View
+              style={styles.calendarGrid}
+              entering={slideDirection === 'left' ? SlideInRight.duration(200) : SlideInLeft.duration(200)}
+              testID="calendar-grid-view"
+            >
+              {Array.from(
+                { length: Math.ceil(calendarDays.length / 7) },
+                (_, weekIndex) => (
+                  <View key={weekIndex} style={styles.calendarWeekRow}>
+                    {[
+                      ...calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7),
+                      ...Array.from(
+                        {
+                          length: Math.max(
+                            0,
+                            7 -
+                              calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7)
+                                .length,
+                          ),
+                        },
+                        () => null as number | null,
+                      ),
+                    ].map((day, cellIndex) => {
+                      if (!day) {
+                        return (
                           <View
-                            style={{
-                              flexDirection: "row",
-                              gap: 3,
-                              marginTop: 4,
-                              flexWrap: "wrap",
-                              justifyContent: "center",
-                              alignItems: "center",
-                            }}
-                          >
-                            {dayBookings.map((b) => (
-                              <CruiseTypeIcon
-                                key={b.id}
-                                type={b.parsedType || "day"}
-                                size="compact"
-                              />
-                            ))}
-                          </View>
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ),
-            )}
-          </View>
+                            key={`blank-${weekIndex}-${cellIndex}`}
+                            style={styles.dayCellBlank}
+                          />
+                        );
+                      }
+                      const isSelected =
+                        selectedDate.year === visibleYear &&
+                        selectedDate.month === visibleMonthIndex &&
+                        selectedDate.day === day;
+                      const dateKey = getDateKey(
+                        visibleYear,
+                        visibleMonthIndex,
+                        day,
+                      );
+                      const dayBookings = bookingsByDateKey[dateKey] ?? [];
+
+                      return (
+                        <Pressable
+                          key={day}
+                          onPress={() =>
+                            setSelectedDate({
+                              year: visibleYear,
+                              month: visibleMonthIndex,
+                              day,
+                            })
+                          }
+                          style={[
+                            styles.dayCell,
+                            {
+                              backgroundColor: "#faf6f1ee",
+                              borderColor: "#cde3db",
+                              borderWidth: 1,
+                            },
+                            isSelected ? styles.dayCellSelected : null,
+                          ]}
+                          testID={`calendar-day-${dateKey}`}
+                        >
+                          <Text style={styles.dayCellNumber}>{day}</Text>
+                          {dayBookings.length > 0 && (
+                            <View
+                              style={{
+                                flexDirection: "row",
+                                gap: 3,
+                                marginTop: 4,
+                                flexWrap: "wrap",
+                                justifyContent: "center",
+                                alignItems: "center",
+                              }}
+                            >
+                              {dayBookings.map((b) => (
+                                <CruiseTypeIcon
+                                  key={b.id}
+                                  type={b.parsedType || "day"}
+                                  size="compact"
+                                />
+                              ))}
+                            </View>
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ),
+              )}
+            </Animated.View>
+          </GestureDetector>
         </View>
 
         {/* Bookings List below selected date */}
@@ -573,6 +598,7 @@ export default function BookingsScreen({ route }: Props) {
           ) : null}
         </View>
       </ScrollView>
-    </View>
+      </View>
+    </GestureHandlerRootView>
   );
 }

@@ -1,4 +1,4 @@
-import { Check, CalendarDays, X, Info, Download, MoreVertical } from "lucide-react-native";
+import { Check, CalendarDays, X, Info } from "lucide-react-native";
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   BackHandler,
@@ -1122,16 +1122,6 @@ export default function AvailabilityScreen() {
                       ? `${selectedDate.day} ${new Date(selectedDate.year, selectedDate.month, selectedDate.day).toLocaleString("en-US", { month: "short" })} ${selectedDate.year}`
                       : ""}
                 </Text>
-                {!isSheetForBulk && (
-                  <View style={styles.sheetHeaderActions}>
-                    <Pressable style={styles.sheetActionButton}>
-                      <Download size={16} color="#ffffff" strokeWidth={2.2} />
-                    </Pressable>
-                    <Pressable style={styles.sheetActionButton}>
-                      <MoreVertical size={16} color="#ffffff" strokeWidth={2.2} />
-                    </Pressable>
-                  </View>
-                )}
               </View>
 
               {/* Info banner */}

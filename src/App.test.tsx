@@ -1,5 +1,10 @@
 import { fireEvent, render, within } from "@testing-library/react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import App from "./App";
+
+beforeEach(async () => {
+  await AsyncStorage.setItem("@sailcept_admin_auth_token", "dummy-token");
+});
 
 function dateKeyForCurrentMonth(day: number) {
   const now = new Date();
