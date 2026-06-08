@@ -12,13 +12,13 @@ import {
   View,
 } from "react-native";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
-import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { Gesture, GestureDetector, GestureHandlerRootView, Directions } from "react-native-gesture-handler";
 import {
   useFocusEffect,
   useRoute,
   useNavigation,
 } from "@react-navigation/native";
-import Animated, { FadeIn, FadeOut, Keyframe } from "react-native-reanimated";
+import Animated, { FadeIn, FadeOut, Keyframe, runOnJS, SlideInRight, SlideInLeft } from "react-native-reanimated";
 import { CruiseTypeIcon, PageHeader } from "../components";
 import { useBoat } from "../context/BoatContext";
 import styles from "../styles";
@@ -75,11 +75,31 @@ export default function AvailabilityScreen() {
     }
   }, [route.params?.selectBoat]);
 
+  const sheetOpenRef = useRef(false);
+  const bulkModeRef = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
       if (activeBoatForCalendar === null) return;
 
       const onBackPress = () => {
+        // If bottom sheet is open, close it first
+        if (sheetOpenRef.current) {
+          bottomSheetRef.current?.close();
+          setSelectedDate(null);
+          setIsSheetForBulk(false);
+          sheetOpenRef.current = false;
+          return true;
+        }
+        // If in bulk pricing mode, exit it
+        if (bulkModeRef.current) {
+          setIsBulkPricingMode(false);
+          setSelectedDates([]);
+          setIsSheetForBulk(false);
+          bulkModeRef.current = false;
+          return true;
+        }
+        // Otherwise go back to availability home
         setActiveBoatForCalendar(null);
         return true;
       };
@@ -95,6 +115,37 @@ export default function AvailabilityScreen() {
     }, [activeBoatForCalendar]),
   );
 
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+      // If bottom sheet is open, close it first
+      if (sheetOpenRef.current) {
+        e.preventDefault();
+        bottomSheetRef.current?.close();
+        setSelectedDate(null);
+        setIsSheetForBulk(false);
+        sheetOpenRef.current = false;
+        return;
+      }
+      // If in bulk pricing mode, exit it
+      if (bulkModeRef.current) {
+        e.preventDefault();
+        setIsBulkPricingMode(false);
+        setSelectedDates([]);
+        setIsSheetForBulk(false);
+        bulkModeRef.current = false;
+        return;
+      }
+      // If calendar is open, go back to availability home
+      if (activeBoatForCalendar !== null) {
+        e.preventDefault();
+        setActiveBoatForCalendar(null);
+        return;
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation, activeBoatForCalendar]);
+
   const today = new Date();
   const todayYear = today.getFullYear();
   const todayMonth = today.getMonth();
@@ -104,9 +155,8 @@ export default function AvailabilityScreen() {
   );
   const [isBulkPricingMode, setIsBulkPricingMode] = useState(false);
   const [selectedDates, setSelectedDates] = useState<number[]>([]);
-  const [bulkDayCruisePrice, setBulkDayCruisePrice] = useState("");
-  const [bulkOvernightPrice, setBulkOvernightPrice] = useState("");
-  const [bulkNightPrice, setBulkNightPrice] = useState("");
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
+  const [isSheetForBulk, setIsSheetForBulk] = useState(false);
   const [selectedDate, setSelectedDate] = useState<SelectedDate | null>(null);
   const [modalDayCruisePrice, setModalDayCruisePrice] = useState("");
   const [modalOvernightPrice, setModalOvernightPrice] = useState("");
@@ -374,65 +424,40 @@ export default function AvailabilityScreen() {
     setModalNightExtraRoom(
       existing?.nightCruiseExtraRoom ? String(existing.nightCruiseExtraRoom) : "",
     );
+    setIsSheetForBulk(false);
     setSelectedDate({ year: visibleYear, month: visibleMonthIndex, day });
+    sheetOpenRef.current = true;
     bottomSheetRef.current?.snapToIndex(0);
   }
 
   function handleDayLongPress(day: number) {
     setSelectedDate(null);
+    setIsSheetForBulk(false);
     setIsBulkPricingMode(true);
+    bulkModeRef.current = true;
     setSelectedDates((current) =>
       current.includes(day) ? current : [...current, day],
     );
   }
 
-  function applyPriceToSelectedDates() {
-    if (!activeBoatForCalendar) return;
-    const parsedDay = bulkDayCruisePrice
-      ? Number(bulkDayCruisePrice)
-      : undefined;
-    const parsedOvernight = bulkOvernightPrice
-      ? Number(bulkOvernightPrice)
-      : undefined;
-    const parsedNight = bulkNightPrice ? Number(bulkNightPrice) : undefined;
-    const hasAnyPrice =
-      (parsedDay && parsedDay > 0) ||
-      (parsedOvernight && parsedOvernight > 0) ||
-      (parsedNight && parsedNight > 0);
-    if (!hasAnyPrice || selectedDates.length === 0) return;
-    setBookingsByBoat((current) => {
-      const boatBookings = { ...(current[activeBoatForCalendar] ?? {}) };
-      selectedDates.forEach((day) => {
-        const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
-        const existing = boatBookings[dateKey] ?? {
-          dayCruise: false,
-          overnightCruise: false,
-          nightCruise: false,
-          details: "No bookings for this day.",
-        };
-        boatBookings[dateKey] = normalizeBooking({
-          ...existing,
-          ...(parsedDay && parsedDay > 0 ? { dayCruisePrice: parsedDay } : {}),
-          ...(parsedOvernight && parsedOvernight > 0
-            ? { overnightCruisePrice: parsedOvernight }
-            : {}),
-          ...(parsedNight && parsedNight > 0
-            ? { nightCruisePrice: parsedNight }
-            : {}),
-        });
-      });
-      return {
-        ...current,
-        [activeBoatForCalendar]: boatBookings,
-      };
-    });
-    setSelectedDates([]);
-    setBulkDayCruisePrice("");
-    setBulkOvernightPrice("");
-    setBulkNightPrice("");
+  function handleOpenBulkEditSheet() {
+    setModalDayCruisePrice("");
+    setModalDayExtraGuest("");
+    setModalDayExtraRoom("");
+    setModalOvernightPrice("");
+    setModalOvernightExtraBed("");
+    setModalOvernightExtraCot("");
+    setModalNightPrice("");
+    setModalNightExtraGuest("");
+    setModalNightExtraRoom("");
+
+    setIsSheetForBulk(true);
+    sheetOpenRef.current = true;
+    bottomSheetRef.current?.snapToIndex(0);
   }
 
   function moveMonth(delta: number) {
+    setSlideDirection(delta > 0 ? 'left' : 'right');
     setVisibleMonth(
       (current) =>
         new Date(current.getFullYear(), current.getMonth() + delta, 1),
@@ -443,11 +468,26 @@ export default function AvailabilityScreen() {
 
   function cancelBulkMode() {
     setIsBulkPricingMode(false);
+    bulkModeRef.current = false;
     setSelectedDates([]);
-    setBulkDayCruisePrice("");
-    setBulkOvernightPrice("");
-    setBulkNightPrice("");
+    setIsSheetForBulk(false);
+    sheetOpenRef.current = false;
+    bottomSheetRef.current?.close();
   }
+
+  const swipeLeft = Gesture.Fling()
+    .direction(Directions.LEFT)
+    .onEnd(() => {
+      runOnJS(moveMonth)(1);
+    });
+
+  const swipeRight = Gesture.Fling()
+    .direction(Directions.RIGHT)
+    .onEnd(() => {
+      runOnJS(moveMonth)(-1);
+    });
+
+  const calendarSwipeGesture = Gesture.Simultaneous(swipeLeft, swipeRight);
 
   const currentMonthTitle = today.toLocaleString("en-US", {
     month: "long",
@@ -534,13 +574,63 @@ export default function AvailabilityScreen() {
   }).duration(150);
 
   function handleSheetChange(index: number) {
+    sheetOpenRef.current = index >= 0;
     if (index === -1) {
       setSelectedDate(null);
+      setIsSheetForBulk(false);
     }
   }
 
   function handleSaveChanges() {
-    if (selectedDate && activeBoatForCalendar) {
+    if (!activeBoatForCalendar) return;
+
+    if (isSheetForBulk) {
+      const parsedDay = modalDayCruisePrice ? Number(modalDayCruisePrice) : undefined;
+      const parsedDayExtraGuest = modalDayExtraGuest ? Number(modalDayExtraGuest) : undefined;
+      const parsedDayExtraRoom = modalDayExtraRoom ? Number(modalDayExtraRoom) : undefined;
+      const parsedOvernight = modalOvernightPrice ? Number(modalOvernightPrice) : undefined;
+      const parsedOvernightExtraBed = modalOvernightExtraBed ? Number(modalOvernightExtraBed) : undefined;
+      const parsedOvernightExtraCot = modalOvernightExtraCot ? Number(modalOvernightExtraCot) : undefined;
+      const parsedNight = modalNightPrice ? Number(modalNightPrice) : undefined;
+      const parsedNightExtraGuest = modalNightExtraGuest ? Number(modalNightExtraGuest) : undefined;
+      const parsedNightExtraRoom = modalNightExtraRoom ? Number(modalNightExtraRoom) : undefined;
+
+      setBookingsByBoat((current) => {
+        const boatBookings = { ...(current[activeBoatForCalendar] ?? {}) };
+        selectedDates.forEach((day) => {
+          const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
+          const existing = boatBookings[dateKey] ?? {
+            dayCruise: false,
+            overnightCruise: false,
+            nightCruise: false,
+            details: "No bookings for this day.",
+          };
+          boatBookings[dateKey] = normalizeBooking({
+            ...existing,
+            dayCruisePrice: parsedDay !== undefined ? parsedDay : existing.dayCruisePrice,
+            dayCruiseExtraGuest: parsedDayExtraGuest !== undefined ? parsedDayExtraGuest : existing.dayCruiseExtraGuest,
+            dayCruiseExtraRoom: parsedDayExtraRoom !== undefined ? parsedDayExtraRoom : existing.dayCruiseExtraRoom,
+            overnightCruisePrice: parsedOvernight !== undefined ? parsedOvernight : existing.overnightCruisePrice,
+            overnightExtraBed: parsedOvernightExtraBed !== undefined ? parsedOvernightExtraBed : existing.overnightExtraBed,
+            overnightExtraCot: parsedOvernightExtraCot !== undefined ? parsedOvernightExtraCot : existing.overnightExtraCot,
+            nightCruisePrice: parsedNight !== undefined ? parsedNight : existing.nightCruisePrice,
+            nightCruiseExtraGuest: parsedNightExtraGuest !== undefined ? parsedNightExtraGuest : existing.nightCruiseExtraGuest,
+            nightCruiseExtraRoom: parsedNightExtraRoom !== undefined ? parsedNightExtraRoom : existing.nightCruiseExtraRoom,
+          });
+        });
+        return {
+          ...current,
+          [activeBoatForCalendar]: boatBookings,
+        };
+      });
+
+      bottomSheetRef.current?.close();
+      sheetOpenRef.current = false;
+      setSelectedDates([]);
+      setIsBulkPricingMode(false);
+      bulkModeRef.current = false;
+      setIsSheetForBulk(false);
+    } else if (selectedDate) {
       const dateKey = getDateKey(
         selectedDate.year,
         selectedDate.month,
@@ -582,9 +672,10 @@ export default function AvailabilityScreen() {
           },
         };
       });
+      bottomSheetRef.current?.close();
+      setSelectedDate(null);
+      sheetOpenRef.current = false;
     }
-    bottomSheetRef.current?.close();
-    setSelectedDate(null);
   }
 
   return (
@@ -784,14 +875,27 @@ export default function AvailabilityScreen() {
               </View>
 
               <View style={styles.calendarWeekRow}>
-                {weekdayLabels.map((label) => (
-                  <Text key={label} style={styles.weekdayHeaderText}>
+                {weekdayLabels.map((label, idx) => (
+                  <Text
+                    key={label}
+                    style={[
+                      styles.weekdayHeaderText,
+                      (idx === 0 || idx === 6) ? styles.weekdayHeaderTextWeekend : null,
+                    ]}
+                  >
                     {label}
                   </Text>
                 ))}
               </View>
 
-              <View style={styles.calendarGrid}>
+              <GestureDetector gesture={calendarSwipeGesture}>
+              <View style={{ overflow: 'hidden', flex: 1 }}>
+              <Animated.View
+                key={`${visibleYear}-${visibleMonthIndex}`}
+                entering={slideDirection === 'left' ? SlideInRight.duration(200) : SlideInLeft.duration(200)}
+                exiting={FadeOut.duration(100)}
+                style={styles.calendarGrid}
+              >
                 {Array.from(
                   { length: Math.ceil(calendarDays.length / 7) },
                   (_, weekIndex) => (
@@ -916,7 +1020,9 @@ export default function AvailabilityScreen() {
                     </View>
                   ),
                 )}
+              </Animated.View>
               </View>
+              </GestureDetector>
 
               <View style={styles.bulkPricingRow}>
                 <CalendarDays size={16} color="#1a7f7f" strokeWidth={2.2} />
@@ -934,6 +1040,7 @@ export default function AvailabilityScreen() {
                       cancelBulkMode();
                     } else {
                       setIsBulkPricingMode(true);
+                      bulkModeRef.current = true;
                     }
                   }}
                   style={[
@@ -967,92 +1074,28 @@ export default function AvailabilityScreen() {
                   <Text style={styles.bottomSheetSub}>
                     {selectedDates.length === 0
                       ? "Select dates on the calendar"
-                      : "Tap more dates or apply price"}
+                      : "Tap more dates to add, then tap Edit"}
                   </Text>
                 </View>
                 <Pressable
                   onPress={cancelBulkMode}
                   style={styles.bottomSheetCloseButton}
+                  testID="bulk-close-button"
                 >
                   <X size={16} color="#5a6d82" strokeWidth={2.2} />
                 </Pressable>
               </View>
-              <View style={styles.verticalGap8}>
-                <View style={styles.cruisePriceRow}>
-                  <CruiseTypeIcon type="day" size="regular" />
-                  <Text style={styles.cruisePriceLabel}>Day cruise</Text>
-                  <View style={styles.cruisePriceField}>
-                    <Text style={styles.bottomSheetRupee}>₹</Text>
-                    <TextInput
-                      value={bulkDayCruisePrice}
-                      onChangeText={(v) =>
-                        setBulkDayCruisePrice(v.replace(/[^0-9]/g, ""))
-                      }
-                      keyboardType="numeric"
-                      placeholder="Price"
-                      placeholderTextColor="#9aafbf"
-                      style={styles.bottomSheetInput}
-                      testID="bulk-price-day"
-                    />
-                  </View>
-                </View>
-                <View style={styles.cruisePriceRow}>
-                  <CruiseTypeIcon type="overnight" size="regular" />
-                  <Text style={styles.cruisePriceLabel}>Overnight</Text>
-                  <View style={styles.cruisePriceField}>
-                    <Text style={styles.bottomSheetRupee}>₹</Text>
-                    <TextInput
-                      value={bulkOvernightPrice}
-                      onChangeText={(v) =>
-                        setBulkOvernightPrice(v.replace(/[^0-9]/g, ""))
-                      }
-                      keyboardType="numeric"
-                      placeholder="Price"
-                      placeholderTextColor="#9aafbf"
-                      style={styles.bottomSheetInput}
-                      testID="bulk-price-overnight"
-                    />
-                  </View>
-                </View>
-                <View style={styles.cruisePriceRow}>
-                  <CruiseTypeIcon type="night" size="regular" />
-                  <Text style={styles.cruisePriceLabel}>Night stay</Text>
-                  <View style={styles.cruisePriceField}>
-                    <Text style={styles.bottomSheetRupee}>₹</Text>
-                    <TextInput
-                      value={bulkNightPrice}
-                      onChangeText={(v) =>
-                        setBulkNightPrice(v.replace(/[^0-9]/g, ""))
-                      }
-                      keyboardType="numeric"
-                      placeholder="Price"
-                      placeholderTextColor="#9aafbf"
-                      style={styles.bottomSheetInput}
-                      testID="bulk-price-night"
-                    />
-                  </View>
-                </View>
-                <Pressable
-                  onPress={applyPriceToSelectedDates}
-                  disabled={
-                    selectedDates.length === 0 ||
-                    (!bulkDayCruisePrice &&
-                      !bulkOvernightPrice &&
-                      !bulkNightPrice)
-                  }
-                  style={[
-                    styles.applyPriceButton,
-                    selectedDates.length === 0 ||
-                    (!bulkDayCruisePrice &&
-                      !bulkOvernightPrice &&
-                      !bulkNightPrice)
-                      ? styles.applyPriceButtonDisabled
-                      : null,
-                  ]}
-                >
-                  <Text style={styles.applyPriceButtonText}>Apply Price</Text>
-                </Pressable>
-              </View>
+              <Pressable
+                onPress={handleOpenBulkEditSheet}
+                disabled={selectedDates.length === 0}
+                style={[
+                  styles.applyPriceButton,
+                  selectedDates.length === 0 ? styles.applyPriceButtonDisabled : null,
+                ]}
+                testID="edit-selected-dates-button"
+              >
+                <Text style={styles.applyPriceButtonText}>Edit Selected Dates</Text>
+              </Pressable>
             </View>
           ) : null}
 
@@ -1070,21 +1113,27 @@ export default function AvailabilityScreen() {
         handleIndicatorStyle={styles.sheetHandleIndicator}
       >
         <BottomSheetScrollView contentContainerStyle={styles.sheetScroll}>
-          {selectedDate ? (
+          {(selectedDate || (isSheetForBulk && selectedDates.length > 0)) ? (
             <>
               {/* Header: Date + actions */}
               <View style={styles.sheetDateHeader}>
                 <Text style={styles.sheetDateText}>
-                  {`${selectedDate.day} ${new Date(selectedDate.year, selectedDate.month, selectedDate.day).toLocaleString("en-US", { month: "short" })} ${selectedDate.year}`}
+                  {isSheetForBulk
+                    ? `Bulk Edit: ${selectedDates.length} ${selectedDates.length === 1 ? "date" : "dates"} selected`
+                    : selectedDate
+                      ? `${selectedDate.day} ${new Date(selectedDate.year, selectedDate.month, selectedDate.day).toLocaleString("en-US", { month: "short" })} ${selectedDate.year}`
+                      : ""}
                 </Text>
-                <View style={styles.sheetHeaderActions}>
-                  <Pressable style={styles.sheetActionButton}>
-                    <Download size={16} color="#ffffff" strokeWidth={2.2} />
-                  </Pressable>
-                  <Pressable style={styles.sheetActionButton}>
-                    <MoreVertical size={16} color="#ffffff" strokeWidth={2.2} />
-                  </Pressable>
-                </View>
+                {!isSheetForBulk && (
+                  <View style={styles.sheetHeaderActions}>
+                    <Pressable style={styles.sheetActionButton}>
+                      <Download size={16} color="#ffffff" strokeWidth={2.2} />
+                    </Pressable>
+                    <Pressable style={styles.sheetActionButton}>
+                      <MoreVertical size={16} color="#ffffff" strokeWidth={2.2} />
+                    </Pressable>
+                  </View>
+                )}
               </View>
 
               {/* Info banner */}
@@ -1100,14 +1149,16 @@ export default function AvailabilityScreen() {
                 <View style={styles.cruiseCardHeader}>
                   <CruiseTypeIcon type="day" size="regular" />
                   <Text style={styles.cruiseCardLabel}>Day cruise</Text>
-                  <View style={selectedBooking.dayCruise ? styles.bookedPill : styles.notBookedPill}>
-                    {selectedBooking.dayCruise ? (
-                      <Check size={12} color="#ffffff" strokeWidth={2.5} />
-                    ) : null}
-                    <Text style={selectedBooking.dayCruise ? styles.bookedPillText : styles.notBookedPillText}>
-                      {selectedBooking.dayCruise ? "Booked" : "Not booked"}
-                    </Text>
-                  </View>
+                  {!isSheetForBulk && (
+                    <View style={selectedBooking.dayCruise ? styles.bookedPill : styles.notBookedPill}>
+                      {selectedBooking.dayCruise ? (
+                        <Check size={12} color="#ffffff" strokeWidth={2.5} />
+                      ) : null}
+                      <Text style={selectedBooking.dayCruise ? styles.bookedPillText : styles.notBookedPillText}>
+                        {selectedBooking.dayCruise ? "Booked" : "Not booked"}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.priceFieldsRow}>
                   <View style={styles.priceFieldBox}>
@@ -1163,14 +1214,16 @@ export default function AvailabilityScreen() {
                 <View style={styles.cruiseCardHeader}>
                   <CruiseTypeIcon type="overnight" size="regular" />
                   <Text style={styles.cruiseCardLabel}>Overnight</Text>
-                  <View style={selectedBooking.overnightCruise ? styles.bookedPill : styles.notBookedPill}>
-                    {selectedBooking.overnightCruise ? (
-                      <Check size={12} color="#ffffff" strokeWidth={2.5} />
-                    ) : null}
-                    <Text style={selectedBooking.overnightCruise ? styles.bookedPillText : styles.notBookedPillText}>
-                      {selectedBooking.overnightCruise ? "Booked" : "Not booked"}
-                    </Text>
-                  </View>
+                  {!isSheetForBulk && (
+                    <View style={selectedBooking.overnightCruise ? styles.bookedPill : styles.notBookedPill}>
+                      {selectedBooking.overnightCruise ? (
+                        <Check size={12} color="#ffffff" strokeWidth={2.5} />
+                      ) : null}
+                      <Text style={selectedBooking.overnightCruise ? styles.bookedPillText : styles.notBookedPillText}>
+                        {selectedBooking.overnightCruise ? "Booked" : "Not booked"}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.priceFieldsRow}>
                   <View style={styles.priceFieldBox}>
@@ -1226,14 +1279,16 @@ export default function AvailabilityScreen() {
                 <View style={styles.cruiseCardHeader}>
                   <CruiseTypeIcon type="night" size="regular" />
                   <Text style={styles.cruiseCardLabel}>Night stay</Text>
-                  <View style={selectedBooking.nightCruise ? styles.bookedPill : styles.notBookedPill}>
-                    {selectedBooking.nightCruise ? (
-                      <Check size={12} color="#ffffff" strokeWidth={2.5} />
-                    ) : null}
-                    <Text style={selectedBooking.nightCruise ? styles.bookedPillText : styles.notBookedPillText}>
-                      {selectedBooking.nightCruise ? "Booked" : "Not booked"}
-                    </Text>
-                  </View>
+                  {!isSheetForBulk && (
+                    <View style={selectedBooking.nightCruise ? styles.bookedPill : styles.notBookedPill}>
+                      {selectedBooking.nightCruise ? (
+                        <Check size={12} color="#ffffff" strokeWidth={2.5} />
+                      ) : null}
+                      <Text style={selectedBooking.nightCruise ? styles.bookedPillText : styles.notBookedPillText}>
+                        {selectedBooking.nightCruise ? "Booked" : "Not booked"}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 <View style={styles.priceFieldsRow}>
                   <View style={styles.priceFieldBox}>
@@ -1288,6 +1343,7 @@ export default function AvailabilityScreen() {
               <Pressable
                 onPress={handleSaveChanges}
                 style={styles.saveChangesButton}
+                testID="modal-save-changes-button"
               >
                 <Text style={styles.saveChangesButtonText}>Save changes</Text>
               </Pressable>

@@ -49,8 +49,15 @@ describe("App", () => {
 
     fireEvent.press(getByTestId(`calendar-day-${day3}`));
     fireEvent.press(getByTestId(`calendar-day-${day4}`));
-    fireEvent.changeText(getByTestId("bulk-price-day"), "15000");
-    await pressByText(findAllByText, "Apply Price");
+    
+    // Open the bulk edit bottom sheet
+    fireEvent.press(getByTestId("edit-selected-dates-button"));
+    
+    // Fill the price inside the bottom sheet
+    fireEvent.changeText(getByTestId("modal-price-input-day"), "15000");
+    
+    // Save the changes
+    await pressByText(findAllByText, "Save changes");
 
     expect(within(getByTestId(`calendar-day-${day3}`)).getByText("15000")).toBeTruthy();
     expect(within(getByTestId(`calendar-day-${day4}`)).getByText("15000")).toBeTruthy();
