@@ -13,7 +13,9 @@ import DashboardScreen from "../screens/DashboardScreen";
 import RequestsScreen from "../screens/RequestsScreen";
 import BoatProfileDetailScreen from "../screens/BoatProfileDetailScreen";
 import UserProfileScreen from "../screens/UserProfileScreen";
+import LoginScreen from "../screens/LoginScreen";
 import MoreStack from "./MoreStack";
+import { useAuth } from "../context/AuthContext";
 import type { MainTabParamList, RootStackParamList } from "./types";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -91,35 +93,43 @@ function MainTabs() {
 }
 
 export default function AppNavigator() {
+  const { isAuthenticated } = useAuth();
+
   return (
     <Root.Navigator screenOptions={{ headerShown: false }}>
-      <Root.Screen name="MainTabs" component={MainTabs} />
-      <Root.Screen
-        name="BoatAssetModal"
-        component={BoatProfileDetailScreen}
-        options={{
-          presentation: "modal",
-          headerShown: false,
-          title: "Boat asset",
-          headerStyle: { backgroundColor: "#faf6f1" },
-          headerTintColor: "#0f284e",
-          headerTitleStyle: { fontWeight: "700" },
-          contentStyle: { backgroundColor: "#f5f1ed" },
-        }}
-      />
-      <Root.Screen
-        name="UserProfileModal"
-        component={UserProfileScreen}
-        options={{
-          presentation: "modal",
-          headerShown: false,
-          title: "Profile",
-          headerStyle: { backgroundColor: "#faf6f1" },
-          headerTintColor: "#0f284e",
-          headerTitleStyle: { fontWeight: "700" },
-          contentStyle: { backgroundColor: "#f5f1ed" },
-        }}
-      />
+      {!isAuthenticated ? (
+        <Root.Screen name="Login" component={LoginScreen} />
+      ) : (
+        <>
+          <Root.Screen name="MainTabs" component={MainTabs} />
+          <Root.Screen
+            name="BoatAssetModal"
+            component={BoatProfileDetailScreen}
+            options={{
+              presentation: "modal",
+              headerShown: false,
+              title: "Boat asset",
+              headerStyle: { backgroundColor: "#faf6f1" },
+              headerTintColor: "#0f284e",
+              headerTitleStyle: { fontWeight: "700" },
+              contentStyle: { backgroundColor: "#f5f1ed" },
+            }}
+          />
+          <Root.Screen
+            name="UserProfileModal"
+            component={UserProfileScreen}
+            options={{
+              presentation: "modal",
+              headerShown: false,
+              title: "Profile",
+              headerStyle: { backgroundColor: "#faf6f1" },
+              headerTintColor: "#0f284e",
+              headerTitleStyle: { fontWeight: "700" },
+              contentStyle: { backgroundColor: "#f5f1ed" },
+            }}
+          />
+        </>
+      )}
     </Root.Navigator>
   );
 }

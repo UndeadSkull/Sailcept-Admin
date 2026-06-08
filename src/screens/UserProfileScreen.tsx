@@ -1,7 +1,8 @@
-import { ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, Text, View } from "react-native";
 import { Ship } from "lucide-react-native";
 import { useNavigation } from "@react-navigation/native";
 import { Card, PageHeader } from "../components";
+import { useAuth } from "../context/AuthContext";
 import styles from "../styles";
 
 const USER = { name: "Ethan Walker", phone: "+1 415 555 0134", email: "ethan.walker@sailcept.com" };
@@ -9,6 +10,7 @@ const BOATS = ["Vembanad Crest", "Backwater Pearl", "Kerala Dream"];
 
 export default function UserProfileScreen() {
   const navigation = useNavigation();
+  const { logout } = useAuth();
 
   return (
     <ScrollView contentContainerStyle={styles.pageScrollContent}>
@@ -43,6 +45,19 @@ export default function UserProfileScreen() {
           ))}
         </View>
       </Card>
+
+      <Pressable
+        style={({ pressed }) => [
+          styles.loginLogoutButton,
+          pressed && styles.loginLogoutButtonPressed,
+        ]}
+        onPress={async () => {
+          await logout();
+        }}
+        accessibilityLabel="Sign out of your account"
+      >
+        <Text style={styles.loginLogoutButtonText}>Sign Out</Text>
+      </Pressable>
     </ScrollView>
   );
 }

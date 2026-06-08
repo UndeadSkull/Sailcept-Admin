@@ -3,6 +3,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Pressable, Text, View, Platform, ActionSheetIOS } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import { useBoat } from "../context/BoatContext";
+import { useAuth } from "../context/AuthContext";
 import type { RootStackParamList } from "../navigation/types";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import styles from "../styles";
@@ -12,6 +13,11 @@ type RootNav = NativeStackNavigationProp<RootStackParamList>;
 export default function AppHeader({ currentRouteName }: { currentRouteName: string | null }) {
   const navigation = useNavigation<RootNav>();
   const { boats, selectedBoat, setSelectedBoat } = useBoat();
+  const { isAuthenticated } = useAuth();
+
+  if (!isAuthenticated) {
+    return null;
+  }
 
   // If navigation is not initialized yet, default to showing the selector
   // (since the initial route is "Overview")

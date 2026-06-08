@@ -3,6 +3,7 @@ import { NavigationContainer, useNavigationContainerRef } from "@react-navigatio
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { BoatProvider } from "./context/BoatContext";
+import { AuthProvider } from "./context/AuthContext";
 import AppNavigator from "./navigation/AppNavigator";
 import styles from "./styles";
 import AppHeader from "./components/AppHeader";
@@ -20,16 +21,18 @@ export default function App() {
   }, [navigationRef]);
 
   return (
-    <BoatProvider>
-      <SafeAreaProvider>
-        <SafeAreaView style={styles.safeArea}>
-          <NavigationContainer ref={navigationRef}>
-            <AppHeader currentRouteName={currentRouteName} />
-            <StatusBar style="dark" />
-            <AppNavigator />
-          </NavigationContainer>
-        </SafeAreaView>
-      </SafeAreaProvider>
-    </BoatProvider>
+    <AuthProvider>
+      <BoatProvider>
+        <SafeAreaProvider>
+          <SafeAreaView style={styles.safeArea}>
+            <NavigationContainer ref={navigationRef}>
+              <AppHeader currentRouteName={currentRouteName} />
+              <StatusBar style="dark" />
+              <AppNavigator />
+            </NavigationContainer>
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </BoatProvider>
+    </AuthProvider>
   );
 }

@@ -54,6 +54,30 @@ function getDateKey(year: number, month: number, day: number): string {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+function formatLocalPrice(price?: number): string {
+  if (price === undefined || price === null) return "—";
+  return price.toLocaleString("en-IN");
+}
+
+function formatLocalNumber(val?: number): string {
+  if (val === undefined || val === null) return "";
+  return val.toLocaleString("en-IN");
+}
+
+function formatInputWithCommas(v: string): string {
+  const digits = v.replace(/[^0-9]/g, "");
+  if (!digits) return "";
+  const num = parseInt(digits, 10);
+  return isNaN(num) ? "" : num.toLocaleString("en-IN");
+}
+
+function parsePriceString(val: string): number | undefined {
+  if (!val) return undefined;
+  const cleaned = val.replace(/,/g, "");
+  const num = Number(cleaned);
+  return isNaN(num) ? undefined : num;
+}
+
 export default function AvailabilityScreen() {
   const { boats } = useBoat();
   const [activeBoatForCalendar, setActiveBoatForCalendar] = useState<
@@ -116,7 +140,7 @@ export default function AvailabilityScreen() {
   );
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener("beforeRemove", (e) => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e: any) => {
       // If bottom sheet is open, close it first
       if (sheetOpenRef.current) {
         e.preventDefault();
@@ -395,35 +419,15 @@ export default function AvailabilityScreen() {
     }
     const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
     const existing = bookingsByDate[dateKey];
-    setModalDayCruisePrice(
-      existing?.dayCruisePrice ? String(existing.dayCruisePrice) : "",
-    );
-    setModalDayExtraGuest(
-      existing?.dayCruiseExtraGuest ? String(existing.dayCruiseExtraGuest) : "",
-    );
-    setModalDayExtraRoom(
-      existing?.dayCruiseExtraRoom ? String(existing.dayCruiseExtraRoom) : "",
-    );
-    setModalOvernightPrice(
-      existing?.overnightCruisePrice
-        ? String(existing.overnightCruisePrice)
-        : "",
-    );
-    setModalOvernightExtraBed(
-      existing?.overnightExtraBed ? String(existing.overnightExtraBed) : "",
-    );
-    setModalOvernightExtraCot(
-      existing?.overnightExtraCot ? String(existing.overnightExtraCot) : "",
-    );
-    setModalNightPrice(
-      existing?.nightCruisePrice ? String(existing.nightCruisePrice) : "",
-    );
-    setModalNightExtraGuest(
-      existing?.nightCruiseExtraGuest ? String(existing.nightCruiseExtraGuest) : "",
-    );
-    setModalNightExtraRoom(
-      existing?.nightCruiseExtraRoom ? String(existing.nightCruiseExtraRoom) : "",
-    );
+    setModalDayCruisePrice(formatLocalNumber(existing?.dayCruisePrice));
+    setModalDayExtraGuest(formatLocalNumber(existing?.dayCruiseExtraGuest));
+    setModalDayExtraRoom(formatLocalNumber(existing?.dayCruiseExtraRoom));
+    setModalOvernightPrice(formatLocalNumber(existing?.overnightCruisePrice));
+    setModalOvernightExtraBed(formatLocalNumber(existing?.overnightExtraBed));
+    setModalOvernightExtraCot(formatLocalNumber(existing?.overnightExtraCot));
+    setModalNightPrice(formatLocalNumber(existing?.nightCruisePrice));
+    setModalNightExtraGuest(formatLocalNumber(existing?.nightCruiseExtraGuest));
+    setModalNightExtraRoom(formatLocalNumber(existing?.nightCruiseExtraRoom));
     setIsSheetForBulk(false);
     setSelectedDate({ year: visibleYear, month: visibleMonthIndex, day });
     sheetOpenRef.current = true;
@@ -585,15 +589,15 @@ export default function AvailabilityScreen() {
     if (!activeBoatForCalendar) return;
 
     if (isSheetForBulk) {
-      const parsedDay = modalDayCruisePrice ? Number(modalDayCruisePrice) : undefined;
-      const parsedDayExtraGuest = modalDayExtraGuest ? Number(modalDayExtraGuest) : undefined;
-      const parsedDayExtraRoom = modalDayExtraRoom ? Number(modalDayExtraRoom) : undefined;
-      const parsedOvernight = modalOvernightPrice ? Number(modalOvernightPrice) : undefined;
-      const parsedOvernightExtraBed = modalOvernightExtraBed ? Number(modalOvernightExtraBed) : undefined;
-      const parsedOvernightExtraCot = modalOvernightExtraCot ? Number(modalOvernightExtraCot) : undefined;
-      const parsedNight = modalNightPrice ? Number(modalNightPrice) : undefined;
-      const parsedNightExtraGuest = modalNightExtraGuest ? Number(modalNightExtraGuest) : undefined;
-      const parsedNightExtraRoom = modalNightExtraRoom ? Number(modalNightExtraRoom) : undefined;
+      const parsedDay = parsePriceString(modalDayCruisePrice);
+      const parsedDayExtraGuest = parsePriceString(modalDayExtraGuest);
+      const parsedDayExtraRoom = parsePriceString(modalDayExtraRoom);
+      const parsedOvernight = parsePriceString(modalOvernightPrice);
+      const parsedOvernightExtraBed = parsePriceString(modalOvernightExtraBed);
+      const parsedOvernightExtraCot = parsePriceString(modalOvernightExtraCot);
+      const parsedNight = parsePriceString(modalNightPrice);
+      const parsedNightExtraGuest = parsePriceString(modalNightExtraGuest);
+      const parsedNightExtraRoom = parsePriceString(modalNightExtraRoom);
 
       setBookingsByBoat((current) => {
         const boatBookings = { ...(current[activeBoatForCalendar] ?? {}) };
@@ -636,15 +640,15 @@ export default function AvailabilityScreen() {
         selectedDate.month,
         selectedDate.day,
       );
-      const parsedDay = modalDayCruisePrice ? Number(modalDayCruisePrice) : undefined;
-      const parsedDayExtraGuest = modalDayExtraGuest ? Number(modalDayExtraGuest) : undefined;
-      const parsedDayExtraRoom = modalDayExtraRoom ? Number(modalDayExtraRoom) : undefined;
-      const parsedOvernight = modalOvernightPrice ? Number(modalOvernightPrice) : undefined;
-      const parsedOvernightExtraBed = modalOvernightExtraBed ? Number(modalOvernightExtraBed) : undefined;
-      const parsedOvernightExtraCot = modalOvernightExtraCot ? Number(modalOvernightExtraCot) : undefined;
-      const parsedNight = modalNightPrice ? Number(modalNightPrice) : undefined;
-      const parsedNightExtraGuest = modalNightExtraGuest ? Number(modalNightExtraGuest) : undefined;
-      const parsedNightExtraRoom = modalNightExtraRoom ? Number(modalNightExtraRoom) : undefined;
+      const parsedDay = parsePriceString(modalDayCruisePrice);
+      const parsedDayExtraGuest = parsePriceString(modalDayExtraGuest);
+      const parsedDayExtraRoom = parsePriceString(modalDayExtraRoom);
+      const parsedOvernight = parsePriceString(modalOvernightPrice);
+      const parsedOvernightExtraBed = parsePriceString(modalOvernightExtraBed);
+      const parsedOvernightExtraCot = parsePriceString(modalOvernightExtraCot);
+      const parsedNight = parsePriceString(modalNightPrice);
+      const parsedNightExtraGuest = parsePriceString(modalNightExtraGuest);
+      const parsedNightExtraRoom = parsePriceString(modalNightExtraRoom);
       setBookingsByBoat((current) => {
         const boatBookings = current[activeBoatForCalendar] ?? {};
         const existing = boatBookings[dateKey] ?? {
@@ -979,9 +983,7 @@ export default function AvailabilityScreen() {
                                     style={styles.dayCellCruisePrice}
                                     numberOfLines={1}
                                   >
-                                    {booking.dayCruisePrice
-                                      ? booking.dayCruisePrice
-                                      : "—"}
+                                    {formatLocalPrice(booking.dayCruisePrice)}
                                   </Text>
                                 </View>
                               ) : null}
@@ -993,9 +995,7 @@ export default function AvailabilityScreen() {
                                     style={styles.dayCellCruisePrice}
                                     numberOfLines={1}
                                   >
-                                    {booking.overnightCruisePrice
-                                      ? booking.overnightCruisePrice
-                                      : "—"}
+                                    {formatLocalPrice(booking.overnightCruisePrice)}
                                   </Text>
                                 </View>
                               ) : null}
@@ -1007,9 +1007,7 @@ export default function AvailabilityScreen() {
                                     style={styles.dayCellCruisePrice}
                                     numberOfLines={1}
                                   >
-                                    {booking.nightCruisePrice
-                                      ? booking.nightCruisePrice
-                                      : "—"}
+                                    {formatLocalPrice(booking.nightCruisePrice)}
                                   </Text>
                                 </View>
                               ) : null}
@@ -1167,7 +1165,7 @@ export default function AvailabilityScreen() {
                       <Text style={styles.priceFieldRupee}>₹</Text>
                       <TextInput
                         value={modalDayCruisePrice}
-                        onChangeText={(v) => setModalDayCruisePrice(v.replace(/[^0-9]/g, ""))}
+                        onChangeText={(v) => setModalDayCruisePrice(formatInputWithCommas(v))}
                         keyboardType="numeric"
                         placeholder="0"
                         placeholderTextColor="#9aafbf"
@@ -1182,7 +1180,7 @@ export default function AvailabilityScreen() {
                       <Text style={styles.priceFieldRupee}>₹</Text>
                       <TextInput
                         value={modalDayExtraGuest}
-                        onChangeText={(v) => setModalDayExtraGuest(v.replace(/[^0-9]/g, ""))}
+                        onChangeText={(v) => setModalDayExtraGuest(formatInputWithCommas(v))}
                         keyboardType="numeric"
                         placeholder="0"
                         placeholderTextColor="#9aafbf"
@@ -1197,7 +1195,7 @@ export default function AvailabilityScreen() {
                       <Text style={styles.priceFieldRupee}>₹</Text>
                       <TextInput
                         value={modalDayExtraRoom}
-                        onChangeText={(v) => setModalDayExtraRoom(v.replace(/[^0-9]/g, ""))}
+                        onChangeText={(v) => setModalDayExtraRoom(formatInputWithCommas(v))}
                         keyboardType="numeric"
                         placeholder="0"
                         placeholderTextColor="#9aafbf"
@@ -1232,7 +1230,7 @@ export default function AvailabilityScreen() {
                       <Text style={styles.priceFieldRupee}>₹</Text>
                       <TextInput
                         value={modalOvernightPrice}
-                        onChangeText={(v) => setModalOvernightPrice(v.replace(/[^0-9]/g, ""))}
+                        onChangeText={(v) => setModalOvernightPrice(formatInputWithCommas(v))}
                         keyboardType="numeric"
                         placeholder="0"
                         placeholderTextColor="#9aafbf"
@@ -1247,7 +1245,7 @@ export default function AvailabilityScreen() {
                       <Text style={styles.priceFieldRupee}>₹</Text>
                       <TextInput
                         value={modalOvernightExtraBed}
-                        onChangeText={(v) => setModalOvernightExtraBed(v.replace(/[^0-9]/g, ""))}
+                        onChangeText={(v) => setModalOvernightExtraBed(formatInputWithCommas(v))}
                         keyboardType="numeric"
                         placeholder="0"
                         placeholderTextColor="#9aafbf"
@@ -1262,7 +1260,7 @@ export default function AvailabilityScreen() {
                       <Text style={styles.priceFieldRupee}>₹</Text>
                       <TextInput
                         value={modalOvernightExtraCot}
-                        onChangeText={(v) => setModalOvernightExtraCot(v.replace(/[^0-9]/g, ""))}
+                        onChangeText={(v) => setModalOvernightExtraCot(formatInputWithCommas(v))}
                         keyboardType="numeric"
                         placeholder="0"
                         placeholderTextColor="#9aafbf"
@@ -1297,7 +1295,7 @@ export default function AvailabilityScreen() {
                       <Text style={styles.priceFieldRupee}>₹</Text>
                       <TextInput
                         value={modalNightPrice}
-                        onChangeText={(v) => setModalNightPrice(v.replace(/[^0-9]/g, ""))}
+                        onChangeText={(v) => setModalNightPrice(formatInputWithCommas(v))}
                         keyboardType="numeric"
                         placeholder="0"
                         placeholderTextColor="#9aafbf"
@@ -1312,7 +1310,7 @@ export default function AvailabilityScreen() {
                       <Text style={styles.priceFieldRupee}>₹</Text>
                       <TextInput
                         value={modalNightExtraGuest}
-                        onChangeText={(v) => setModalNightExtraGuest(v.replace(/[^0-9]/g, ""))}
+                        onChangeText={(v) => setModalNightExtraGuest(formatInputWithCommas(v))}
                         keyboardType="numeric"
                         placeholder="0"
                         placeholderTextColor="#9aafbf"
@@ -1327,7 +1325,7 @@ export default function AvailabilityScreen() {
                       <Text style={styles.priceFieldRupee}>₹</Text>
                       <TextInput
                         value={modalNightExtraRoom}
-                        onChangeText={(v) => setModalNightExtraRoom(v.replace(/[^0-9]/g, ""))}
+                        onChangeText={(v) => setModalNightExtraRoom(formatInputWithCommas(v))}
                         keyboardType="numeric"
                         placeholder="0"
                         placeholderTextColor="#9aafbf"

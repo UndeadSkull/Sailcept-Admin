@@ -3,6 +3,7 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import type { CompositeScreenProps } from "@react-navigation/native";
 
 export type RootStackParamList = {
+  Login: undefined;
   MainTabs: undefined;
   BoatAssetModal: { boatName: string };
   UserProfileModal: undefined;

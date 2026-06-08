@@ -59,8 +59,8 @@ describe("App", () => {
     // Save the changes
     await pressByText(findAllByText, "Save changes");
 
-    expect(within(getByTestId(`calendar-day-${day3}`)).getByText("15000")).toBeTruthy();
-    expect(within(getByTestId(`calendar-day-${day4}`)).getByText("15000")).toBeTruthy();
+    expect(within(getByTestId(`calendar-day-${day3}`)).getByText("15,000")).toBeTruthy();
+    expect(within(getByTestId(`calendar-day-${day4}`)).getByText("15,000")).toBeTruthy();
   });
 
   it("opens bottom sheet with cruise cards when a date is tapped", async () => {
