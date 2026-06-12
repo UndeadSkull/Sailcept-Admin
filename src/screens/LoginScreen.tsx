@@ -9,13 +9,14 @@ import {
   Platform,
   ScrollView,
   LayoutAnimation,
+  Alert,
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import { ArrowLeft } from "lucide-react-native";
 import styles from "../styles";
 
 export default function LoginScreen() {
-  const { login } = useAuth();
+  const { login, verifyOtp } = useAuth();
   
   const [phoneNumber, setPhoneNumber] = useState("");
   const [countryCode, setCountryCode] = useState("+1");
@@ -30,7 +31,6 @@ export default function LoginScreen() {
   // Focus the OTP text input when transitioning to OTP step
   useEffect(() => {
     if (step === "otp") {
-      // Small timeout to allow transition layout to settle
       const timeout = setTimeout(() => {
         otpInputRef.current?.focus();
       }, 300);
@@ -48,7 +48,7 @@ export default function LoginScreen() {
     }
   }, [timer]);
 
-  const handleSendOTP = () => {
+  const handleSendOTP = async () => {
     setError("");
     const cleanedPhone = phoneNumber.replace(/[^0-9]/g, "");
     if (cleanedPhone.length < 10) {
@@ -56,15 +56,23 @@ export default function LoginScreen() {
       return;
     }
 
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setIsSubmitting(true);
-
-    // Simulate OTP generation delay
-    setTimeout(() => {
+    try {
+      const fullPhone = `${countryCode}${cleanedPhone}`;
+      const response = await login(fullPhone);
+      
       setIsSubmitting(false);
-      setStep("otp");
-      setTimer(30);
-    }, 1000);
+      if (response.error) {
+        setError(response.error.message);
+      } else {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setStep("otp");
+        setTimer(30);
+      }
+    } catch {
+      setIsSubmitting(false);
+      Alert.alert("Network Error", "Unable to send verification code. Please check your connection.");
+    }
   };
 
   const handleVerifyOTP = async () => {
@@ -76,26 +84,40 @@ export default function LoginScreen() {
 
     setIsSubmitting(true);
     try {
-      if (otp === "123456") {
-        await login(`${countryCode}${phoneNumber}`);
-      } else {
-        setError("Invalid verification code. Use '123456' for testing.");
+      const fullPhone = `${countryCode}${phoneNumber.replace(/[^0-9]/g, "")}`;
+      const response = await verifyOtp(fullPhone, otp);
+      
+      if (response.error) {
+        setError(response.error.message);
         setIsSubmitting(false);
       }
-    } catch (err) {
-      setError("Authentication failed. Please try again.");
+      // If successful, AuthContext will set isAuthenticated=true which triggers redirection automatically.
+    } catch {
       setIsSubmitting(false);
+      Alert.alert("Verification Error", "Verification failed. Please check your network and try again.");
     }
   };
 
-  const handleResendOTP = () => {
+  const handleResendOTP = async () => {
     setError("");
     setOtp("");
-    setTimer(30);
-    
-    // Simulate sending OTP
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    otpInputRef.current?.focus();
+    setIsSubmitting(true);
+
+    try {
+      const fullPhone = `${countryCode}${phoneNumber.replace(/[^0-9]/g, "")}`;
+      const response = await login(fullPhone);
+      setIsSubmitting(false);
+      if (response.error) {
+        setError(response.error.message);
+      } else {
+        setTimer(30);
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        otpInputRef.current?.focus();
+      }
+    } catch {
+      setIsSubmitting(false);
+      Alert.alert("Error", "Failed to resend code. Please try again.");
+    }
   };
 
   const goBackToPhone = () => {
@@ -105,7 +127,6 @@ export default function LoginScreen() {
     setStep("phone");
   };
 
-  // Render styled OTP boxes using a hidden text input overlay
   const renderOtpBoxes = () => {
     const boxes = [];
     for (let i = 0; i < 6; i++) {

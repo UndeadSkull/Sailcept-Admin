@@ -101,10 +101,10 @@ const styles = StyleSheet.create({
     opacity: 0,
     width: "100%",
     height: "100%",
-    ...Platform.select({
+    ...Platform.select<Record<string, string>>({
       web: {
         cursor: "pointer",
-      } as any,
+      },
     }),
   },
   boatDropdown: {

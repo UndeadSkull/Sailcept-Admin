@@ -7,6 +7,7 @@ import {
   UIManager,
   View,
   Platform,
+  ActivityIndicator,
 } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView, Directions } from "react-native-gesture-handler";
 import Animated, { SlideInRight, SlideInLeft, runOnJS } from "react-native-reanimated";
@@ -14,15 +15,9 @@ import { Card, PageHeader, CruiseTypeIcon } from "../components";
 import { useBoat } from "../context/BoatContext";
 import type { MainTabScreenProps } from "../navigation/types";
 import styles from "../styles";
+import { fetchBookings } from "../services/bookings";
+import { BookingRecord } from "../data/bookings";
 
-type BookingRecord = {
-  id: string;
-  guestName: string;
-  boatName: string;
-  bookingId: string;
-  details: Array<[string, string]>;
-  notes: string;
-};
 
 const now = new Date();
 const currentYear = now.getFullYear();
@@ -40,148 +35,6 @@ const months = [
   "Oct",
   "Nov",
   "Dec",
-];
-const currentMonthStr = months[currentMonthIndex];
-
-const ALL_BOOKINGS: BookingRecord[] = [
-  {
-    id: "booking-1",
-    guestName: "Ethan Walker",
-    boatName: "Vembanad Crest",
-    bookingId: "#SC-2025-0041",
-    details: [
-      ["Cruise type", "Day cruise"],
-      [
-        "Date & time",
-        `15 ${currentMonthStr} ${currentYear} · 11:00 AM - 5:00 PM`,
-      ],
-      ["Configuration", "2 adults · 1 room · Private · Premium"],
-      ["Total agreed price", "INR 12,500"],
-      ["Inclusions", "Meals, water, A/C, fishing equipment"],
-      ["Pickup arranged", "Taxi confirmed · Alleppey Jetty"],
-      ["Meal preference", "Vegetarian · Anniversary decoration"],
-    ],
-    notes:
-      "Sailcept commitments: cruise-time support, check-in coordination, taxi pickup, operator compliance enforcement, backup boat if required.",
-  },
-  {
-    id: "booking-2",
-    guestName: "Olivia Bennett",
-    boatName: "Vembanad Crest",
-    bookingId: "#SC-2025-0042",
-    details: [
-      ["Cruise type", "Overnight stay"],
-      [
-        "Date & time",
-        `18 ${currentMonthStr} ${currentYear} · 3:00 PM - Next day 11:00 AM`,
-      ],
-      ["Configuration", "4 adults · 2 rooms · Private · Luxury"],
-      ["Total agreed price", "INR 28,000"],
-      ["Inclusions", "All meals, spa, sunset deck access"],
-      ["Pickup arranged", "Hotel pickup confirmed"],
-      ["Special requests", "Champagne breakfast on day 2"],
-    ],
-    notes:
-      "Premium service package. Guest is VIP. Ensure extra staff on board.",
-  },
-  {
-    id: "booking-3",
-    guestName: "Nora Ali",
-    boatName: "Backwater Pearl",
-    bookingId: "#SC-2025-0050",
-    details: [
-      ["Cruise type", "Day cruise"],
-      [
-        "Date & time",
-        `21 ${currentMonthStr} ${currentYear} · 10:00 AM - 4:00 PM`,
-      ],
-      ["Configuration", "3 adults · 1 room · Private · Standard"],
-      ["Total agreed price", "INR 10,800"],
-      ["Inclusions", "Meals, tea service, local guide"],
-    ],
-    notes: "Standard service package with guided village stop.",
-  },
-  {
-    id: "booking-4",
-    guestName: "Rohan P.K",
-    boatName: "Kerala Dream",
-    bookingId: "#SC-2025-0053",
-    details: [
-      ["Cruise type", "Overnight stay"],
-      [
-        "Date & time",
-        `27 ${currentMonthStr} ${currentYear} · 4:00 PM - Next day 10:00 AM`,
-      ],
-      ["Configuration", "4 adults · 2 rooms · Private · Luxury"],
-      ["Total agreed price", "INR 31,500"],
-      ["Inclusions", "All meals, deck dinner, sunset cruise"],
-    ],
-    notes: "Luxury package with chef special menu requested.",
-  },
-  {
-    id: "booking-5",
-    guestName: "Mason Reed",
-    boatName: "Backwater Pearl",
-    bookingId: "#SC-2025-0054",
-    details: [
-      ["Cruise type", "Day cruise"],
-      [
-        "Date & time",
-        `12 ${currentMonthStr} ${currentYear} · 10:30 AM - 4:30 PM`,
-      ],
-      ["Configuration", "3 adults · 1 room · Private · Standard"],
-      ["Total agreed price", "INR 10,800"],
-    ],
-    notes: "Guest requested local cuisine lunch and calm-route itinerary.",
-  },
-  {
-    id: "booking-6",
-    guestName: "Ava Stone",
-    boatName: "Backwater Pearl",
-    bookingId: "#SC-2025-0055",
-    details: [
-      ["Cruise type", "Night stay"],
-      [
-        "Date & time",
-        `20 ${currentMonthStr} ${currentYear} · 6:00 PM - 10:00 PM`,
-      ],
-      ["Configuration", "5 guests · Shared · Premium"],
-      ["Total agreed price", "INR 18,900"],
-    ],
-    notes: "Shared night package with onboard music setup confirmed.",
-  },
-  {
-    id: "booking-7",
-    guestName: "Noah Patel",
-    boatName: "Kerala Dream",
-    bookingId: "#SC-2025-0056",
-    details: [
-      ["Cruise type", "Overnight stay"],
-      [
-        "Date & time",
-        `16 ${currentMonthStr} ${currentYear} · 3:00 PM - Next day 11:00 AM`,
-      ],
-      ["Configuration", "4 adults · 2 rooms · Private · Luxury"],
-      ["Total agreed price", "INR 31,500"],
-    ],
-    notes: "Luxury itinerary with sunrise breakfast arrangement.",
-  },
-  {
-    id: "booking-8",
-    guestName: "Liam Carter",
-    boatName: "Kerala Dream",
-    bookingId: "#SC-2025-0057",
-    details: [
-      ["Cruise type", "Day cruise"],
-      [
-        "Date & time",
-        `23 ${currentMonthStr} ${currentYear} · 11:00 AM - 5:00 PM`,
-      ],
-      ["Configuration", "2 adults · 1 room · Private · Premium"],
-      ["Total agreed price", "INR 12,500"],
-    ],
-    notes: "Anniversary day trip with decoration and photo-stop included.",
-  },
 ];
 
 function getCruiseType(
@@ -259,13 +112,38 @@ export default function BookingsScreen({ route }: Props) {
   }));
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [bookings, setBookings] = useState<BookingRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
   useEffect(() => {
-    setIsInitialLoad(false);
+    const timer = setTimeout(() => {
+      setIsInitialLoad(false);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
-  const visibleBookings = useMemo(() => {
-    return ALL_BOOKINGS.filter((b) => b.boatName === selectedBoat);
+  useEffect(() => {
+    let active = true;
+    const loadBookings = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetchBookings(selectedBoat);
+        if (active && response.data) {
+          setBookings(response.data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (active) setIsLoading(false);
+      }
+    };
+    loadBookings();
+    return () => {
+      active = false;
+    };
   }, [selectedBoat]);
+
+  const visibleBookings = bookings;
 
   const parsedBookings = useMemo(() => {
     return visibleBookings.map((b) => {
@@ -335,15 +213,14 @@ export default function BookingsScreen({ route }: Props) {
       (b) => b.guestName.toLowerCase() === focusGuest.toLowerCase(),
     );
     if (booking && booking.parsedDate) {
-      setSelectedDate({
-        year: booking.parsedDate.year,
-        month: booking.parsedDate.month,
-        day: booking.parsedDate.day,
-      });
-      setVisibleMonth(
-        new Date(booking.parsedDate.year, booking.parsedDate.month, 1),
-      );
-      setExpandedBookings(new Set([booking.id]));
+      const { year, month, day } = booking.parsedDate;
+      const bId = booking.id;
+      const timer = setTimeout(() => {
+        setSelectedDate({ year, month, day });
+        setVisibleMonth(new Date(year, month, 1));
+        setExpandedBookings(new Set([bId]));
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [focusGuest, focusToken, parsedBookings]);
 
@@ -417,7 +294,13 @@ export default function BookingsScreen({ route }: Props) {
           sub={`Track accepted bookings with complete trip details and guest preferences. · Boat: ${selectedBoat}`}
         />
 
-        {/* Calendar Card */}
+        {isLoading ? (
+          <View style={{ paddingVertical: 80, justifyContent: "center", alignItems: "center" }}>
+            <ActivityIndicator size="large" color="#0c5eac" />
+            <Text style={{ marginTop: 10, color: "#4f6e8c", fontSize: 14 }}>Loading bookings...</Text>
+          </View>
+        ) : (
+          <>
         <View style={styles.card}>
           <View style={styles.calendarMonthRow}>
             <Pressable
@@ -602,6 +485,8 @@ export default function BookingsScreen({ route }: Props) {
             </Card>
           ) : null}
         </View>
+        </>
+        )}
       </ScrollView>
       </View>
     </GestureHandlerRootView>

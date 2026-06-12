@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Gesture, GestureDetector, GestureHandlerRootView, Directions } from "react-native-gesture-handler";
@@ -18,55 +19,25 @@ import {
   useFocusEffect,
   useRoute,
   useNavigation,
+  type RouteProp,
+  type NavigationProp,
 } from "@react-navigation/native";
-import Animated, { FadeIn, FadeOut, Keyframe, runOnJS, SlideInRight, SlideInLeft } from "react-native-reanimated";
+import type { MainTabParamList } from "../navigation/types";
+import Animated, { FadeOut, Keyframe, runOnJS, SlideInRight, SlideInLeft } from "react-native-reanimated";
 import { CruiseTypeIcon, PageHeader } from "../components";
 import { useBoat } from "../context/BoatContext";
 import styles from "../styles";
+import { fetchCalendarBookings, saveAllCalendarBookings } from "../services/bookings";
+import { DayBooking } from "../data/bookings";
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
 
-type DayBooking = {
-  dayCruise: boolean;
-  overnightCruise: boolean;
-  nightCruise: boolean;
-  details: string;
-  dayCruiseDetails?: string;
-  overnightCruiseDetails?: string;
-  nightCruiseDetails?: string;
-  dayCruiseGuestName?: string;
-  dayCruiseGuestCount?: string;
-  dayCruiseNotes?: string;
-  overnightCruiseGuestName?: string;
-  overnightCruiseGuestCount?: string;
-  overnightCruiseNotes?: string;
-  nightCruiseGuestName?: string;
-  nightCruiseGuestCount?: string;
-  nightCruiseNotes?: string;
-  dayCruisePrice?: number;
-  dayCruiseExtraGuest?: number;
-  dayCruiseExtraRoom?: number;
-  dayCruiseExtraGuestQty?: number;
-  dayCruiseExtraRoomQty?: number;
-  overnightCruisePrice?: number;
-  overnightExtraBed?: number;
-  overnightExtraCot?: number;
-  overnightExtraBedQty?: number;
-  overnightExtraCotQty?: number;
-  nightCruisePrice?: number;
-  nightCruiseExtraGuest?: number;
-  nightCruiseExtraRoom?: number;
-  nightCruiseExtraGuestQty?: number;
-  nightCruiseExtraRoomQty?: number;
-  dayCruiseBookedAmount?: number;
-  overnightCruiseBookedAmount?: number;
-  nightCruiseBookedAmount?: number;
-};
+
 
 type SelectedDate = { year: number; month: number; day: number };
 
 function normalizeBooking(booking: DayBooking): DayBooking {
-  let normalized = { ...booking };
+  const normalized = { ...booking };
   if (normalized.overnightCruise && normalized.nightCruise) {
     normalized.nightCruise = false;
   }
@@ -151,17 +122,56 @@ export default function AvailabilityScreen() {
     x: screenWidth / 2,
     y: screenHeight / 2,
   });
-  const route = useRoute<any>();
-  const navigation = useNavigation<any>();
+  const route = useRoute<RouteProp<{ Availability: { selectBoat?: string } }, 'Availability'>>();
+  const navigation = useNavigation<NavigationProp<MainTabParamList, 'Availability'>>();
+
+  const today = new Date();
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth();
+
+  const [visibleMonth, setVisibleMonth] = useState(
+    () => new Date(todayYear, todayMonth, 1),
+  );
+  const [isBulkPricingMode, setIsBulkPricingMode] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<number[]>([]);
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
+  const [isCalendarFirstMount, setIsCalendarFirstMount] = useState(true);
+  const [isSheetForBulk, setIsSheetForBulk] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<SelectedDate | null>(null);
+  const [modalDayCruisePrice, setModalDayCruisePrice] = useState("");
+  const [modalOvernightPrice, setModalOvernightPrice] = useState("");
+  const [modalNightPrice, setModalNightPrice] = useState("");
+  const [modalDayExtraGuest, setModalDayExtraGuest] = useState("");
+  const [modalDayExtraRoom, setModalDayExtraRoom] = useState("");
+  const [modalOvernightExtraBed, setModalOvernightExtraBed] = useState("");
+  const [modalOvernightExtraCot, setModalOvernightExtraCot] = useState("");
+  const [modalNightExtraGuest, setModalNightExtraGuest] = useState("");
+  const [modalNightExtraRoom, setModalNightExtraRoom] = useState("");
+
+  const [activeAddBookingType, setActiveAddBookingType] = useState<"day" | "overnight" | "night" | null>(null);
+  const [bookingGuestName, setBookingGuestName] = useState("");
+  const [bookingGuestCount, setBookingGuestCount] = useState("");
+  const [bookingSpecialNotes, setBookingSpecialNotes] = useState("");
+  const [bookingBasePrice, setBookingBasePrice] = useState("");
+  const [bookingExtra1, setBookingExtra1] = useState("");
+  const [bookingExtra2, setBookingExtra2] = useState("");
+  const [bookingExtra1Qty, setBookingExtra1Qty] = useState("0");
+  const [bookingExtra2Qty, setBookingExtra2Qty] = useState("0");
+  const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
+  const [bookingBookedAmount, setBookingBookedAmount] = useState("");
+  const [isBookedAmountManuallyEdited, setIsBookedAmountManuallyEdited] = useState(false);
 
   useEffect(() => {
     if (route.params?.selectBoat) {
       const boat = route.params.selectBoat;
       navigation.setParams({ selectBoat: undefined });
-      setZoomOrigin({ x: screenWidth / 2, y: screenHeight / 2 });
-      setActiveBoatForCalendar(boat);
+      const timer = setTimeout(() => {
+        setZoomOrigin({ x: screenWidth / 2, y: screenHeight / 2 });
+        setActiveBoatForCalendar(boat);
+      }, 0);
+      return () => clearTimeout(timer);
     }
-  }, [route.params?.selectBoat]);
+  }, [route.params?.selectBoat, navigation]);
 
   const sheetOpenRef = useRef(false);
   const bulkModeRef = useRef(false);
@@ -204,7 +214,7 @@ export default function AvailabilityScreen() {
   );
 
   useEffect(() => {
-    const unsubscribe = navigation.addListener("beforeRemove", (e: any) => {
+    const unsubscribe = navigation.addListener("beforeRemove", (e: { preventDefault: () => void }) => {
       // If bottom sheet is open, close it first
       if (sheetOpenRef.current) {
         e.preventDefault();
@@ -234,20 +244,12 @@ export default function AvailabilityScreen() {
     return unsubscribe;
   }, [navigation, activeBoatForCalendar]);
 
-  const today = new Date();
-  const todayYear = today.getFullYear();
-  const todayMonth = today.getMonth();
-
-  const [visibleMonth, setVisibleMonth] = useState(
-    () => new Date(todayYear, todayMonth, 1),
-  );
-  const [isBulkPricingMode, setIsBulkPricingMode] = useState(false);
-  const [selectedDates, setSelectedDates] = useState<number[]>([]);
-  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
-  const [isCalendarFirstMount, setIsCalendarFirstMount] = useState(true);
   useEffect(() => {
     if (activeBoatForCalendar === null) {
-      setIsCalendarFirstMount(true);
+      const timer = setTimeout(() => {
+        setIsCalendarFirstMount(true);
+      }, 0);
+      return () => clearTimeout(timer);
     } else {
       const timer = setTimeout(() => {
         setIsCalendarFirstMount(false);
@@ -255,30 +257,6 @@ export default function AvailabilityScreen() {
       return () => clearTimeout(timer);
     }
   }, [activeBoatForCalendar]);
-  const [isSheetForBulk, setIsSheetForBulk] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<SelectedDate | null>(null);
-  const [modalDayCruisePrice, setModalDayCruisePrice] = useState("");
-  const [modalOvernightPrice, setModalOvernightPrice] = useState("");
-  const [modalNightPrice, setModalNightPrice] = useState("");
-  const [modalDayExtraGuest, setModalDayExtraGuest] = useState("");
-  const [modalDayExtraRoom, setModalDayExtraRoom] = useState("");
-  const [modalOvernightExtraBed, setModalOvernightExtraBed] = useState("");
-  const [modalOvernightExtraCot, setModalOvernightExtraCot] = useState("");
-  const [modalNightExtraGuest, setModalNightExtraGuest] = useState("");
-  const [modalNightExtraRoom, setModalNightExtraRoom] = useState("");
-
-  const [activeAddBookingType, setActiveAddBookingType] = useState<"day" | "overnight" | "night" | null>(null);
-  const [bookingGuestName, setBookingGuestName] = useState("");
-  const [bookingGuestCount, setBookingGuestCount] = useState("");
-  const [bookingSpecialNotes, setBookingSpecialNotes] = useState("");
-  const [bookingBasePrice, setBookingBasePrice] = useState("");
-  const [bookingExtra1, setBookingExtra1] = useState("");
-  const [bookingExtra2, setBookingExtra2] = useState("");
-  const [bookingExtra1Qty, setBookingExtra1Qty] = useState("0");
-  const [bookingExtra2Qty, setBookingExtra2Qty] = useState("0");
-  const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
-  const [bookingBookedAmount, setBookingBookedAmount] = useState("");
-  const [isBookedAmountManuallyEdited, setIsBookedAmountManuallyEdited] = useState(false);
 
   useEffect(() => {
     if (!isBookedAmountManuallyEdited) {
@@ -288,7 +266,10 @@ export default function AvailabilityScreen() {
       const extra2 = parsePriceString(bookingExtra2) || 0;
       const qty2 = parseInt(bookingExtra2Qty, 10) || 0;
       const total = base + (extra1 * qty1) + (extra2 * qty2);
-      setBookingBookedAmount(total > 0 ? formatLocalNumber(total) : "");
+      const timer = setTimeout(() => {
+        setBookingBookedAmount(total > 0 ? formatLocalNumber(total) : "");
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [bookingBasePrice, bookingExtra1, bookingExtra2, bookingExtra1Qty, bookingExtra2Qty, isBookedAmountManuallyEdited]);
 
@@ -297,141 +278,44 @@ export default function AvailabilityScreen() {
 
   const [bookingsByBoat, setBookingsByBoat] = useState<
     Record<string, Record<string, DayBooking>>
-  >(() => ({
-    "Vembanad Crest": {
-      [getDateKey(todayYear, todayMonth, 2)]: normalizeBooking({
-        dayCruise: true,
-        overnightCruise: false,
-        nightCruise: false,
-        details: "Corporate day outing for 8 guests.",
-        dayCruisePrice: 12500,
-      }),
-      [getDateKey(todayYear, todayMonth, 5)]: normalizeBooking({
-        dayCruise: true,
-        overnightCruise: true,
-        nightCruise: false,
-        details: "Wedding group full-day charter with overnight extension.",
-        dayCruisePrice: 14000,
-        overnightCruisePrice: 14000,
-      }),
-      [getDateKey(todayYear, todayMonth, 9)]: normalizeBooking({
-        dayCruise: false,
-        overnightCruise: true,
-        nightCruise: false,
-        details: "Family overnight package.",
-        overnightCruisePrice: 21000,
-      }),
-      [getDateKey(todayYear, todayMonth, 13)]: normalizeBooking({
-        dayCruise: true,
-        overnightCruise: false,
-        nightCruise: true,
-        details: "Festival special day and night package booking.",
-        dayCruisePrice: 11500,
-        nightCruisePrice: 12000,
-      }),
-      [getDateKey(todayYear, todayMonth, 18)]: normalizeBooking({
-        dayCruise: false,
-        overnightCruise: false,
-        nightCruise: true,
-        details: "Couple moonlight cruise with dinner.",
-        nightCruisePrice: 14500,
-      }),
-      [getDateKey(todayYear, todayMonth, 24)]: normalizeBooking({
-        dayCruise: true,
-        overnightCruise: false,
-        nightCruise: true,
-        details: "Private anniversary plan with sunset and night ride.",
-        dayCruisePrice: 12000,
-        nightCruisePrice: 14000,
-      }),
-    },
-    "Backwater Pearl": {
-      [getDateKey(todayYear, todayMonth, 3)]: normalizeBooking({
-        dayCruise: true,
-        overnightCruise: false,
-        nightCruise: false,
-        details: "Corporate lunch cruise.",
-        dayCruisePrice: 10000,
-      }),
-      [getDateKey(todayYear, todayMonth, 8)]: normalizeBooking({
-        dayCruise: false,
-        overnightCruise: true,
-        nightCruise: false,
-        details: "Weekend stay for family.",
-        overnightCruisePrice: 18000,
-      }),
-      [getDateKey(todayYear, todayMonth, 12)]: normalizeBooking({
-        dayCruise: true,
-        overnightCruise: false,
-        nightCruise: true,
-        details: "Day and night celebration.",
-        dayCruisePrice: 11000,
-        nightCruisePrice: 11500,
-      }),
-      [getDateKey(todayYear, todayMonth, 20)]: normalizeBooking({
-        dayCruise: false,
-        overnightCruise: false,
-        nightCruise: true,
-        details: "Dinner cruise.",
-        nightCruisePrice: 13000,
-      }),
-      [getDateKey(todayYear, todayMonth, 26)]: normalizeBooking({
-        dayCruise: true,
-        overnightCruise: true,
-        nightCruise: false,
-        details: "Premium overnight cruise.",
-        dayCruisePrice: 12500,
-        overnightCruisePrice: 15000,
-      }),
-    },
-    "Kerala Dream": {
-      [getDateKey(todayYear, todayMonth, 4)]: normalizeBooking({
-        dayCruise: true,
-        overnightCruise: false,
-        nightCruise: true,
-        details: "Sightseeing tour.",
-        dayCruisePrice: 13000,
-        nightCruisePrice: 13500,
-      }),
-      [getDateKey(todayYear, todayMonth, 7)]: normalizeBooking({
-        dayCruise: true,
-        overnightCruise: true,
-        nightCruise: false,
-        details: "Honeymoon special package.",
-        dayCruisePrice: 15000,
-        overnightCruisePrice: 22000,
-      }),
-      [getDateKey(todayYear, todayMonth, 15)]: normalizeBooking({
-        dayCruise: false,
-        overnightCruise: true,
-        nightCruise: false,
-        details: "Overnight backwater explore.",
-        overnightCruisePrice: 19500,
-      }),
-      [getDateKey(todayYear, todayMonth, 16)]: normalizeBooking({
-        dayCruise: false,
-        overnightCruise: false,
-        nightCruise: true,
-        details: "Night photography ride.",
-        nightCruisePrice: 15000,
-      }),
-      [getDateKey(todayYear, todayMonth, 22)]: normalizeBooking({
-        dayCruise: true,
-        overnightCruise: false,
-        nightCruise: false,
-        details: "Photography crew day trip.",
-        dayCruisePrice: 14000,
-      }),
-      [getDateKey(todayYear, todayMonth, 28)]: normalizeBooking({
-        dayCruise: true,
-        overnightCruise: false,
-        nightCruise: true,
-        details: "Sunset & dinner cruise.",
-        dayCruisePrice: 12000,
-        nightCruisePrice: 14000,
-      }),
-    },
-  }));
+  >({});
+  const [isLoadingCalendar, setIsLoadingCalendar] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    const loadCalendar = async () => {
+      if (boats.length === 0) return;
+      setIsLoadingCalendar(true);
+      try {
+        const allBookings: Record<string, Record<string, DayBooking>> = {};
+        for (const boat of boats) {
+          const res = await fetchCalendarBookings(boat);
+          if (res.data) {
+            allBookings[boat] = res.data;
+          }
+        }
+        if (active) {
+          setBookingsByBoat(allBookings);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        if (active) setIsLoadingCalendar(false);
+      }
+    };
+    loadCalendar();
+    return () => {
+      active = false;
+    };
+  }, [boats]);
+
+  useEffect(() => {
+    if (isLoadingCalendar || !activeBoatForCalendar) return;
+    const boatBookings = bookingsByBoat[activeBoatForCalendar];
+    if (boatBookings) {
+      saveAllCalendarBookings(activeBoatForCalendar, boatBookings);
+    }
+  }, [bookingsByBoat, activeBoatForCalendar, isLoadingCalendar]);
 
   const bookingsByDate = activeBoatForCalendar
     ? (bookingsByBoat[activeBoatForCalendar] ?? {})
@@ -477,36 +361,7 @@ export default function AvailabilityScreen() {
         details: "No bookings for this day.",
       };
 
-  function updateSelectedDayAvailability(
-    key: "dayCruise" | "overnightCruise" | "nightCruise",
-    value: boolean,
-  ) {
-    if (!selectedDate || !activeBoatForCalendar) return;
-    const selectedDateKey = getDateKey(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-    );
-    setBookingsByBoat((current) => {
-      const boatBookings = current[activeBoatForCalendar] ?? {};
-      const currentDayBooking = boatBookings[selectedDateKey] ?? {
-        dayCruise: false,
-        overnightCruise: false,
-        nightCruise: false,
-        details: "No bookings for this day.",
-      };
-      const nextBooking: DayBooking = { ...currentDayBooking, [key]: value };
-      if (value && key === "overnightCruise") nextBooking.nightCruise = false;
-      if (value && key === "nightCruise") nextBooking.overnightCruise = false;
-      return {
-        ...current,
-        [activeBoatForCalendar]: {
-          ...boatBookings,
-          [selectedDateKey]: normalizeBooking(nextBooking),
-        },
-      };
-    });
-  }
+
 
   function saveBooking(
     type: "day" | "overnight" | "night",
@@ -649,7 +504,7 @@ export default function AvailabilityScreen() {
     );
 
     setBookingsByBoat((current) => {
-      const boatBookings = current[current.hasOwnProperty(activeBoatForCalendar) ? activeBoatForCalendar : ""] ?? {};
+      const boatBookings = current[activeBoatForCalendar] ?? {};
       const currentDayBooking = boatBookings[dateKey];
       if (!currentDayBooking) return current;
 
@@ -993,113 +848,120 @@ export default function AvailabilityScreen() {
               sub={`Select a boat to manage detailed availability · ${currentMonthTitle}`}
             />
 
-            <View style={styles.boatGrid}>
-              {boats.map((boat) => (
-                <Pressable
-                  key={boat}
-                  onPress={(event) => {
-                    const pageX = event?.nativeEvent?.pageX;
-                    const pageY = event?.nativeEvent?.pageY;
-                    setZoomOrigin({
-                      x: pageX ?? screenWidth / 2,
-                      y: pageY ?? screenHeight / 2,
-                    });
-                    if (process.env.NODE_ENV === "test") {
-                      setActiveBoatForCalendar(boat);
-                      setVisibleMonth(new Date(todayYear, todayMonth, 1));
-                    } else {
-                      // Defer view toggle state updates to the next frame to ensure the
-                      // home view re-renders with the correct zoomOrigin before unmounting.
-                      requestAnimationFrame(() => {
+            {isLoadingCalendar ? (
+              <View style={{ paddingVertical: 100, justifyContent: "center", alignItems: "center" }}>
+                <ActivityIndicator size="large" color="#0c5eac" />
+                <Text style={{ marginTop: 10, color: "#4f6e8c", fontSize: 14 }}>Loading calendar...</Text>
+              </View>
+            ) : (
+              <View style={styles.boatGrid}>
+                {boats.map((boat) => (
+                  <Pressable
+                    key={boat}
+                    onPress={(event) => {
+                      const pageX = event?.nativeEvent?.pageX;
+                      const pageY = event?.nativeEvent?.pageY;
+                      setZoomOrigin({
+                        x: pageX ?? screenWidth / 2,
+                        y: pageY ?? screenHeight / 2,
+                      });
+                      if (process.env.NODE_ENV === "test") {
                         setActiveBoatForCalendar(boat);
                         setVisibleMonth(new Date(todayYear, todayMonth, 1));
-                      });
-                    }
-                  }}
-                  style={({ pressed }) => [
-                    styles.boatCard,
-                    pressed ? styles.boatCardPressed : null,
-                  ]}
-                  testID={`boat-card-${boat.replace(/\s+/g, "-").toLowerCase()}`}
-                >
-                  <Text style={styles.boatCardTitle} numberOfLines={1}>
-                    {boat}
-                  </Text>
+                      } else {
+                        // Defer view toggle state updates to the next frame to ensure the
+                        // home view re-renders with the correct zoomOrigin before unmounting.
+                        requestAnimationFrame(() => {
+                          setActiveBoatForCalendar(boat);
+                          setVisibleMonth(new Date(todayYear, todayMonth, 1));
+                        });
+                      }
+                    }}
+                    style={({ pressed }) => [
+                      styles.boatCard,
+                      pressed ? styles.boatCardPressed : null,
+                    ]}
+                    testID={`boat-card-${boat.replace(/\s+/g, "-").toLowerCase()}`}
+                  >
+                    <Text style={styles.boatCardTitle} numberOfLines={1}>
+                      {boat}
+                    </Text>
 
-                  <View style={styles.miniCalendarContainer}>
-                    <View style={styles.miniCalendarHeader}>
-                      {miniWeekdayLabels.map((l, idx) => (
-                        <Text key={idx} style={styles.miniCalendarHeaderLabel}>
-                          {l}
-                        </Text>
-                      ))}
-                    </View>
-                    <View style={styles.miniCalendarGrid}>
-                      {miniCalendarWeeks.map((week, weekIdx) => (
-                        <View key={weekIdx} style={styles.miniCalendarWeekRow}>
-                          {week.map((day, dayIdx) => {
-                            if (day === null) {
+                    <View style={styles.miniCalendarContainer}>
+                      <View style={styles.miniCalendarHeader}>
+                        {miniWeekdayLabels.map((l, idx) => (
+                          <Text key={idx} style={styles.miniCalendarHeaderLabel}>
+                            {l}
+                          </Text>
+                        ))}
+                      </View>
+                      <View style={styles.miniCalendarGrid}>
+                        {miniCalendarWeeks.map((week, weekIdx) => (
+                          <View key={weekIdx} style={styles.miniCalendarWeekRow}>
+                            {week.map((day, dayIdx) => {
+                              if (day === null) {
+                                return (
+                                  <View
+                                    key={`empty-${dayIdx}`}
+                                    style={styles.miniCalendarCellBlank}
+                                  />
+                                );
+                              }
+                              const dateKey = getDateKey(
+                                todayYear,
+                                todayMonth,
+                                day,
+                              );
+                              const booking = bookingsByBoat[boat]?.[dateKey];
+                              const allCruisesBooked =
+                                booking?.dayCruise &&
+                                (booking?.overnightCruise ||
+                                  booking?.nightCruise);
+                              const anyCruiseBooked =
+                                booking?.dayCruise ||
+                                booking?.overnightCruise ||
+                                booking?.nightCruise;
+
+                              let cellColor = "#dbf8ea";
+                              let borderColor = "#9dd8bc";
+                              if (allCruisesBooked) {
+                                cellColor = "#ffe5e5";
+                                borderColor = "#ffcccc";
+                              } else if (anyCruiseBooked) {
+                                cellColor = "#fff1d6";
+                                borderColor = "#f5d392";
+                              }
+
                               return (
                                 <View
-                                  key={`empty-${dayIdx}`}
-                                  style={styles.miniCalendarCellBlank}
+                                  key={day}
+                                  style={[
+                                    styles.miniCalendarCell,
+                                    {
+                                      backgroundColor: cellColor,
+                                      borderColor: borderColor,
+                                    },
+                                  ]}
                                 />
                               );
-                            }
-                            const dateKey = getDateKey(
-                              todayYear,
-                              todayMonth,
-                              day,
-                            );
-                            const booking = bookingsByBoat[boat]?.[dateKey];
-                            const allCruisesBooked =
-                              booking?.dayCruise &&
-                              (booking?.overnightCruise ||
-                                booking?.nightCruise);
-                            const anyCruiseBooked =
-                              booking?.dayCruise ||
-                              booking?.overnightCruise ||
-                              booking?.nightCruise;
-
-                            let cellColor = "#dbf8ea";
-                            let borderColor = "#9dd8bc";
-                            if (allCruisesBooked) {
-                              cellColor = "#ffe5e5";
-                              borderColor = "#ffcccc";
-                            } else if (anyCruiseBooked) {
-                              cellColor = "#fff1d6";
-                              borderColor = "#f5d392";
-                            }
-
-                            return (
-                              <View
-                                key={day}
-                                style={[
-                                  styles.miniCalendarCell,
-                                  {
-                                    backgroundColor: cellColor,
-                                    borderColor: borderColor,
-                                  },
-                                ]}
-                              />
-                            );
-                          })}
-                          {week.length < 7 &&
-                            Array.from({ length: 7 - week.length }).map(
-                              (_, padIdx) => (
-                                <View
-                                  key={`pad-${padIdx}`}
-                                  style={styles.miniCalendarCellBlank}
-                                />
-                              ),
-                            )}
-                        </View>
-                      ))}
+                            })}
+                            {week.length < 7 &&
+                              Array.from({ length: 7 - week.length }).map(
+                                (_, padIdx) => (
+                                  <View
+                                    key={`pad-${padIdx}`}
+                                    style={styles.miniCalendarCellBlank}
+                                  />
+                                ),
+                              )}
+                          </View>
+                        ))}
+                      </View>
                     </View>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
+                  </Pressable>
+                ))}
+              </View>
+            )}
 
             <View style={styles.calendarLegendRow}>
               <View style={styles.legendItem}>

@@ -15,7 +15,7 @@ export default function App() {
 
   useEffect(() => {
     const unsubscribe = navigationRef.addListener("state", () => {
-      const route = navigationRef.getCurrentRoute() as any;
+      const route = navigationRef.getCurrentRoute() as { name: string } | undefined;
       setCurrentRouteName(route ? route.name : null);
     });
     return unsubscribe;

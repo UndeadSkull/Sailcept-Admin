@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { ScrollView, Text, View, Pressable } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, type NavigationProp, type ParamListBase } from "@react-navigation/native";
 import {
   MessageSquarePlus,
   CalendarDays,
@@ -12,13 +12,14 @@ import {
   CheckCheck,
 } from "lucide-react-native";
 import { PageHeader, Card } from "../components";
-import { useNotification, Notification } from "../context/NotificationContext";
+import { useNotification } from "../context/NotificationContext";
+import { Notification } from "../data/notifications";
 import styles from "../styles";
 
 // Visual configurations for each notification type
 const typeConfigs: Record<
   Notification["type"],
-  { icon: React.ComponentType<any>; color: string; bgColor: string }
+  { icon: React.ComponentType<{ size?: number; color?: string }>; color: string; bgColor: string }
 > = {
   new_request: {
     icon: MessageSquarePlus,
@@ -53,7 +54,7 @@ const typeConfigs: Record<
 };
 
 export default function NotificationsScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
   const { notifications, markAsRead, markAsUnread, markAllAsRead, respondToRequest } = useNotification();
   const [activeTab, setActiveTab] = useState<"all" | "unread" | "read">("all");
 

@@ -1,4 +1,5 @@
-import { fireEvent, render, within } from "@testing-library/react-native";
+import { fireEvent, render, within, waitFor } from "@testing-library/react-native";
+import { ActionSheetIOS } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import App from "./App";
 
@@ -44,37 +45,37 @@ describe("App", () => {
   });
 
   it("applies one cruise-type price to multiple selected dates in bulk mode", async () => {
-    const { findAllByText, getByTestId } = await renderApp();
+    const { findAllByText, findByTestId } = await renderApp();
     const day3 = dateKeyForCurrentMonth(3);
     const day4 = dateKeyForCurrentMonth(4);
 
     await pressByText(findAllByText, "Availability");
-    fireEvent.press(getByTestId("boat-card-vembanad-crest"));
+    fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
     await pressByText(findAllByText, "Enable");
 
-    fireEvent.press(getByTestId(`calendar-day-${day3}`));
-    fireEvent.press(getByTestId(`calendar-day-${day4}`));
+    fireEvent.press(await findByTestId(`calendar-day-${day3}`));
+    fireEvent.press(await findByTestId(`calendar-day-${day4}`));
     
     // Open the bulk edit bottom sheet
-    fireEvent.press(getByTestId("edit-selected-dates-button"));
+    fireEvent.press(await findByTestId("edit-selected-dates-button"));
     
     // Fill the price inside the bottom sheet
-    fireEvent.changeText(getByTestId("modal-price-input-day"), "15000");
+    fireEvent.changeText(await findByTestId("modal-price-input-day"), "15000");
     
     // Save the changes
     await pressByText(findAllByText, "Save changes");
 
-    expect(within(getByTestId(`calendar-day-${day3}`)).getByText("15,000")).toBeTruthy();
-    expect(within(getByTestId(`calendar-day-${day4}`)).getByText("15,000")).toBeTruthy();
+    expect(within(await findByTestId(`calendar-day-${day3}`)).getByText("15,000")).toBeTruthy();
+    expect(within(await findByTestId(`calendar-day-${day4}`)).getByText("15,000")).toBeTruthy();
   });
 
   it("opens bottom sheet with cruise cards when a date is tapped", async () => {
-    const { findAllByText, getByTestId, findByText } = await renderApp();
+    const { findAllByText, findByTestId, findByText } = await renderApp();
     const day5 = dateKeyForCurrentMonth(5);
 
     await pressByText(findAllByText, "Availability");
-    fireEvent.press(getByTestId("boat-card-vembanad-crest"));
-    fireEvent.press(getByTestId(`calendar-day-${day5}`));
+    fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
+    fireEvent.press(await findByTestId(`calendar-day-${day5}`));
 
     // Bottom sheet should show cruise type labels
     expect(await findByText("Day cruise")).toBeTruthy();
@@ -84,44 +85,44 @@ describe("App", () => {
   });
 
   it("shows current month title and weekday headers", async () => {
-    const { findAllByText, findByText, getByTestId } = await renderApp();
+    const { findAllByText, findByText, findByTestId } = await renderApp();
     const now = new Date();
     const expectedMonth = now.toLocaleString("en-US", { month: "long", year: "numeric" });
 
     await pressByText(findAllByText, "Availability");
-    fireEvent.press(getByTestId("boat-card-vembanad-crest"));
+    fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
 
-    expect(getByTestId("calendar-month-title").props.children).toBe(expectedMonth);
+    expect((await findByTestId("calendar-month-title")).props.children).toBe(expectedMonth);
     expect(await findByText("Sun")).toBeTruthy();
     expect(await findByText("Sat")).toBeTruthy();
   });
 
   it("enables bulk pricing on day long press", async () => {
-    const { findAllByText, findByText, getByTestId } = await renderApp();
+    const { findAllByText, findByText, findByTestId } = await renderApp();
     const day6 = dateKeyForCurrentMonth(6);
 
     await pressByText(findAllByText, "Availability");
-    fireEvent.press(getByTestId("boat-card-vembanad-crest"));
-    fireEvent(getByTestId(`calendar-day-${day6}`), "longPress");
+    fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
+    fireEvent(await findByTestId(`calendar-day-${day6}`), "longPress");
 
     expect(await findByText("1 date selected")).toBeTruthy();
   });
 
   it("propagates selected boat across all main screens", async () => {
-    const { findAllByText, findByText, getByTestId } = await renderApp();
+    const { findAllByText, findByText, findByTestId } = await renderApp();
 
     // Mock ActionSheetIOS to select "Backwater Pearl" (index 1)
-    const spy = jest.spyOn(require("react-native").ActionSheetIOS, "showActionSheetWithOptions");
-    spy.mockImplementationOnce((options, callback: any) => {
+    const spy = jest.spyOn(ActionSheetIOS, "showActionSheetWithOptions");
+    spy.mockImplementationOnce((options, callback: (index: number) => void) => {
       callback(1); // Index 1 is Backwater Pearl
     });
 
-    fireEvent.press(getByTestId("boat-selector-trigger"));
+    fireEvent.press(await findByTestId("boat-selector-trigger"));
 
     expect(await findByText(/Boat: Backwater Pearl/)).toBeTruthy();
 
     await pressByText(findAllByText, "Availability");
-    fireEvent.press(getByTestId("boat-card-backwater-pearl"));
+    fireEvent.press(await findByTestId("boat-card-backwater-pearl"));
     expect(await findByText("Backwater Pearl")).toBeTruthy();
 
     await pressByText(findAllByText, "Requests");
@@ -134,22 +135,22 @@ describe("App", () => {
   });
 
   it("shows '+ Add booking' button and can add a new booking via the modal with quantities and custom booked amount", async () => {
-    const { findAllByText, getByTestId, findByText, queryByText } = await renderApp();
+    const { findAllByText, getByTestId, findByTestId, findByText, queryByText } = await renderApp();
     const day10 = dateKeyForCurrentMonth(10);
 
     await pressByText(findAllByText, "Availability");
-    fireEvent.press(getByTestId("boat-card-vembanad-crest"));
-    fireEvent.press(getByTestId(`calendar-day-${day10}`));
+    fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
+    fireEvent.press(await findByTestId(`calendar-day-${day10}`));
 
     // Verify "+ Add booking" button is visible for day cruise
-    const addBookingBtn = getByTestId("add-booking-button-day");
+    const addBookingBtn = await findByTestId("add-booking-button-day");
     expect(addBookingBtn).toBeTruthy();
 
     // Click "+ Add booking"
     fireEvent.press(addBookingBtn);
 
     // Verify form fields are visible in modal
-    const nameInput = getByTestId("form-guest-name");
+    const nameInput = await findByTestId("form-guest-name");
     const countInput = getByTestId("form-guest-count");
     const basePriceInput = getByTestId("form-base-price");
     const extraPriceInput = getByTestId("form-extra-1");
@@ -175,14 +176,14 @@ describe("App", () => {
     fireEvent.changeText(notesInput, "No seafood");
 
     // Booked amount should be auto-calculated to 13000 + 1000 * 2 = 15000
-    expect(bookedAmountInput.props.value).toBe("15,000");
+    await waitFor(() => expect(bookedAmountInput.props.value).toBe("15,000"));
 
     // Manually override the booked amount to 14,500
     fireEvent.changeText(bookedAmountInput, "14500");
 
     // Change base price to 12,000 and ensure booked amount is NOT auto-recalculated (remains 14,500)
     fireEvent.changeText(basePriceInput, "12000");
-    expect(bookedAmountInput.props.value).toBe("14,500");
+    await waitFor(() => expect(bookedAmountInput.props.value).toBe("14,500"));
 
     // Click confirm
     fireEvent.press(confirmBtn);
@@ -195,21 +196,21 @@ describe("App", () => {
     expect(await findByText(/Booked For: ₹14,500/)).toBeTruthy();
 
     // Click edit booking
-    const editBtn = getByTestId("edit-booking-button-day");
+    const editBtn = await findByTestId("edit-booking-button-day");
     fireEvent.press(editBtn);
 
     // Verify the form fields are pre-filled
-    expect(getByTestId("form-guest-name").props.value).toBe("Alice Smith");
+    expect((await findByTestId("form-guest-name")).props.value).toBe("Alice Smith");
     expect(getByTestId("form-base-price").props.value).toBe("12,000");
     expect(getByTestId("form-extra-1-qty").props.value).toBe("2");
     expect(getByTestId("form-booked-amount").props.value).toBe("14,500");
 
     // Modify details
-    fireEvent.changeText(getByTestId("form-guest-name"), "Alice Johnson");
-    fireEvent.changeText(getByTestId("form-extra-1-qty"), "3");
+    fireEvent.changeText(await findByTestId("form-guest-name"), "Alice Johnson");
+    fireEvent.changeText(await findByTestId("form-extra-1-qty"), "3");
 
     // Save changes
-    fireEvent.press(getByTestId("form-confirm-button"));
+    fireEvent.press(await findByTestId("form-confirm-button"));
 
     // Verify updated details
     expect(await findByText(/Alice Johnson · 5 guests · Notes: No seafood/)).toBeTruthy();
@@ -217,12 +218,12 @@ describe("App", () => {
     expect(await findByText(/Booked For: ₹14,500/)).toBeTruthy();
 
     // Click remove booking
-    const removeBtn = getByTestId("remove-booking-button-day");
+    const removeBtn = await findByTestId("remove-booking-button-day");
     fireEvent.press(removeBtn);
 
     // Verify it goes back to "+ Add booking"
     expect(queryByText("Booked")).toBeNull();
-    expect(getByTestId("add-booking-button-day")).toBeTruthy();
+    expect(await findByTestId("add-booking-button-day")).toBeTruthy();
   });
 
 });

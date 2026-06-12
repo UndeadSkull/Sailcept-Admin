@@ -1,75 +1,68 @@
-import { useState } from "react";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { Card, PageHeader, StatusPill, type Request } from "../components";
+import React, { useState, useEffect } from "react";
+import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert } from "react-native";
+import { Card, PageHeader, StatusPill } from "../components";
 import { useBoat } from "../context/BoatContext";
+import { fetchRequests, submitRequestOutcome } from "../services/bookings";
+import { BookingRequest } from "../data/bookings";
 import styles from "../styles";
-
-type RequestCard = Request & {
-  boatName: string;
-  subtitle: string;
-  details: string;
-  request?: string;
-  outcome?: "accepted" | "rejected";
-  actedOn?: string;
-};
-
-const ALL_CARDS: RequestCard[] = [
-  {
-    name: "Ethan Walker",
-    boatName: "Vembanad Crest",
-    dateLine: "Received 2 hrs ago - Date held until 6 PM today",
-    subtitle: "Day cruise · 15 Jan 2025",
-    status: "Date locked",
-    config: "Price shown to guest: INR 12,500",
-    details:
-      "Premium · Private · 2 adults, 0 children · 1 room · 2 guests per room · No extra bed",
-    request:
-      "Special request: Vegetarian meals preferred. Celebrating anniversary.",
-  },
-  {
-    name: "Emma Collins",
-    boatName: "Kerala Dream",
-    dateLine: "Received yesterday - Overnight stay · 22 Jan",
-    subtitle: "Overnight stay · 22 Jan 2025",
-    status: "Pending",
-    config: "Price shown to guest: INR 21,000",
-    details:
-      "Premium · Private · 4 adults, 1 child · 2 rooms · Room 1: 2 guests · Room 2: 2 guests + 1 extra bed",
-  },
-  {
-    name: "Sofia Turner",
-    boatName: "Vembanad Crest",
-    dateLine: "Handled 3 days ago - Day cruise · 10 Jan",
-    subtitle: "Day cruise · 10 Jan 2025",
-    status: "Confirmed",
-    config: "Final booking value: INR 13,000",
-    details:
-      "Deluxe · Private · 2 adults, 1 child · 1 room · Extra bed included",
-    outcome: "accepted",
-    actedOn: "Accepted by admin on 08 Jan, 4:42 PM",
-  },
-  {
-    name: "Noah Parker",
-    boatName: "Backwater Pearl",
-    dateLine: "Handled 4 days ago - Night cruise · 09 Jan",
-    subtitle: "Night cruise · 09 Jan 2025",
-    status: "Rejected",
-    config: "Quoted value: INR 18,500",
-    details: "Premium · Shared · 3 adults · 2 rooms",
-    outcome: "rejected",
-    actedOn: "Rejected by admin on 07 Jan, 6:10 PM",
-  },
-];
 
 export default function RequestsScreen() {
   const { selectedBoat } = useBoat();
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  const [cards, setCards] = useState<BookingRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isActionLoading, setIsActionLoading] = useState(false);
 
-  const pendingCards = ALL_CARDS.filter(
-    (c) => !c.outcome && c.boatName === selectedBoat,
+  useEffect(() => {
+    let active = true;
+    const loadRequests = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetchRequests(selectedBoat);
+        if (active && response.data) {
+          setCards(response.data);
+        }
+      } catch (err) {
+        console.error(err);
+        Alert.alert("Error", "Failed to load booking requests.");
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadRequests();
+    return () => {
+      active = false;
+    };
+  }, [selectedBoat]);
+
+  const handleRespond = async (guestName: string, outcome: "accepted" | "rejected") => {
+    setIsActionLoading(true);
+    try {
+      const response = await submitRequestOutcome(selectedBoat, guestName, outcome);
+      if (response.error) {
+        Alert.alert("Error", response.error.message);
+      } else {
+        // Reload requests list
+        const res = await fetchRequests(selectedBoat);
+        if (res.data) {
+          setCards(res.data);
+        }
+      }
+    } catch {
+      Alert.alert("Error", "Failed to process booking request response.");
+    } finally {
+      setIsActionLoading(false);
+    }
+  };
+
+  const pendingCards = cards.filter(
+    (c) => !c.outcome && c.boatName === selectedBoat
   );
-  const historyCards = ALL_CARDS.filter(
-    (c) => c.outcome && c.boatName === selectedBoat,
+  const historyCards = cards.filter(
+    (c) => c.outcome && c.boatName === selectedBoat
   );
   const visibleCards = activeTab === "pending" ? pendingCards : historyCards;
 
@@ -116,41 +109,58 @@ export default function RequestsScreen() {
           </Pressable>
         </View>
 
-        {visibleCards.map((card) => (
-          <Card key={card.name} title={card.name} sub={card.dateLine}>
-            <View style={styles.inlineWrapRow}>
-              <StatusPill status={card.status} />
-              <Text style={styles.inlineMuted}>{card.subtitle}</Text>
-            </View>
-            <Text style={styles.detailText}>{card.details}</Text>
-            <Text style={styles.detailStrong}>{card.config}</Text>
-            {card.request ? (
-              <Text style={styles.detailMuted}>{card.request}</Text>
-            ) : null}
-            {activeTab === "pending" ? (
-              <View style={styles.buttonRowBetween}>
-                <Pressable style={styles.declineButton}>
-                  <Text style={styles.actionButtonText}>Decline</Text>
-                </Pressable>
-                <Pressable style={styles.acceptButton}>
-                  <Text style={styles.actionButtonText}>Accept booking</Text>
-                </Pressable>
-              </View>
-            ) : (
-              <Text style={styles.detailMuted}>{card.actedOn}</Text>
-            )}
-          </Card>
-        ))}
-
-        {visibleCards.length === 0 ? (
-          <Card title="No requests">
-            <Text style={styles.detailMuted}>
-              {activeTab === "pending"
-                ? "There are no pending requests right now."
-                : "Accepted and rejected requests will appear here."}
+        {isLoading || isActionLoading ? (
+          <View style={{ paddingVertical: 60, justifyContent: "center", alignItems: "center" }}>
+            <ActivityIndicator size="large" color="#0c5eac" />
+            <Text style={{ marginTop: 10, color: "#4f6e8c", fontSize: 14 }}>
+              {isActionLoading ? "Updating request status..." : "Loading requests..."}
             </Text>
-          </Card>
-        ) : null}
+          </View>
+        ) : (
+          <>
+            {visibleCards.map((card) => (
+              <Card key={card.name} title={card.name} sub={card.dateLine}>
+                <View style={styles.inlineWrapRow}>
+                  <StatusPill status={card.status as "Date locked" | "Confirmed" | "Pending" | "Rejected"} />
+                  <Text style={styles.inlineMuted}>{card.subtitle}</Text>
+                </View>
+                <Text style={styles.detailText}>{card.details}</Text>
+                <Text style={styles.detailStrong}>{card.config}</Text>
+                {card.request ? (
+                  <Text style={styles.detailMuted}>{card.request}</Text>
+                ) : null}
+                {activeTab === "pending" ? (
+                  <View style={styles.buttonRowBetween}>
+                    <Pressable
+                      style={styles.declineButton}
+                      onPress={() => handleRespond(card.name, "rejected")}
+                    >
+                      <Text style={styles.actionButtonText}>Decline</Text>
+                    </Pressable>
+                    <Pressable
+                      style={styles.acceptButton}
+                      onPress={() => handleRespond(card.name, "accepted")}
+                    >
+                      <Text style={styles.actionButtonText}>Accept booking</Text>
+                    </Pressable>
+                  </View>
+                ) : (
+                  <Text style={styles.detailMuted}>{card.actedOn}</Text>
+                )}
+              </Card>
+            ))}
+
+            {visibleCards.length === 0 ? (
+              <Card title="No requests">
+                <Text style={styles.detailMuted}>
+                  {activeTab === "pending"
+                    ? "There are no pending requests right now."
+                    : "Accepted and rejected requests will appear here."}
+                </Text>
+              </Card>
+            ) : null}
+          </>
+        )}
       </ScrollView>
     </View>
   );

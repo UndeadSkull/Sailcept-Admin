@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
+import React, { useState, useEffect } from "react";
+import { Pressable, ScrollView, Switch, Text, TextInput, View, ActivityIndicator, Alert } from "react-native";
 import { Card, OptionSelect, PageHeader } from "../components";
 import { useBoat } from "../context/BoatContext";
+import { fetchBoatDetails, updateBoatDetails } from "../services/boats";
 import type { RootStackScreenProps } from "../navigation/types";
 import styles from "../styles";
+import { Boat, ExperienceTier, BookingType } from "../data/boats";
 
 const allStructuralFeatures = ["Full upper deck", "Partial deck", "Sundeck", "Balcony"];
 const roomRules: Array<{ label: string; options: string[] }> = [
@@ -15,29 +17,113 @@ const roomRules: Array<{ label: string; options: string[] }> = [
 type Props = RootStackScreenProps<"BoatAssetModal">;
 
 export default function BoatProfileDetailScreen({ route, navigation }: Props) {
-  const { selectedBoat } = useBoat();
+  const { selectedBoat, refreshBoats, setSelectedBoat } = useBoat();
   const boatName = route.params.boatName ?? selectedBoat;
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+
   const [identity, setIdentity] = useState({
-    boatName,
-    experienceTier: "Premium",
-    bookingType: "Private only",
+    boatName: "",
+    experienceTier: "Premium" as ExperienceTier,
+    bookingType: "Private only" as BookingType,
     maxGuests: 6,
     bedrooms: 2,
     maxGuestsPerRoom: "2 + 1 extra bed",
   });
-  const [features, setFeatures] = useState<string[]>(["Full upper deck", "Sundeck"]);
+  const [features, setFeatures] = useState<string[]>([]);
   const [cruiseTypes, setCruiseTypes] = useState([
-    { label: "Day cruise", on: true },
-    { label: "Overnight stay", on: true },
+    { label: "Day cruise", on: false },
+    { label: "Overnight stay", on: false },
     { label: "Night stay", on: false },
   ]);
   const [roomSettings, setRoomSettings] = useState({ maxGuests: "2 guests", extraBed: "Allowed", children: "Allowed" });
 
+  useEffect(() => {
+    const loadBoatDetails = async () => {
+      setIsLoading(true);
+      try {
+        const response = await fetchBoatDetails(boatName);
+        if (response.error) {
+          Alert.alert("Error", response.error.message);
+        } else if (response.data) {
+          const boat = response.data;
+          setIdentity({
+            boatName: boat.name,
+            experienceTier: boat.experienceTier,
+            bookingType: boat.bookingType,
+            maxGuests: boat.maxGuests,
+            bedrooms: boat.bedrooms,
+            maxGuestsPerRoom: boat.maxGuestsPerRoom,
+          });
+          setFeatures(boat.features);
+          setCruiseTypes(boat.cruiseTypes);
+          setRoomSettings(boat.roomSettings);
+        }
+      } catch {
+        Alert.alert("Error", "Failed to fetch boat specification details.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadBoatDetails();
+  }, [boatName]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const updatedBoatPayload: Partial<Boat> = {
+        name: identity.boatName,
+        experienceTier: identity.experienceTier,
+        bookingType: identity.bookingType,
+        maxGuests: identity.maxGuests,
+        bedrooms: identity.bedrooms,
+        maxGuestsPerRoom: identity.maxGuestsPerRoom,
+        features,
+        cruiseTypes,
+        roomSettings,
+      };
+
+      const response = await updateBoatDetails(boatName, updatedBoatPayload);
+      setIsSaving(false);
+
+      if (response.error) {
+        Alert.alert("Save Error", response.error.message);
+      } else if (response.data) {
+        setIsEditing(false);
+        // Refresh the list of boats in the global context
+        await refreshBoats();
+        // If the boat name was renamed and it was the selected one, update the selection
+        if (boatName === selectedBoat && identity.boatName !== selectedBoat) {
+          setSelectedBoat(identity.boatName);
+        }
+      }
+    } catch {
+      setIsSaving(false);
+      Alert.alert("Error", "An error occurred while saving the boat details.");
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    // Reload state from current boatName
+    navigation.replace("BoatAssetModal", { boatName });
+  };
+
   function toggleFeature(feature: string) {
     setFeatures((current) =>
       current.includes(feature) ? current.filter((f) => f !== feature) : [...current, feature],
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#f6f8fa" }}>
+        <ActivityIndicator size="large" color="#0c5eac" />
+        <Text style={{ marginTop: 10, color: "#4f6e8c" }}>Loading boat definition...</Text>
+      </View>
     );
   }
 
@@ -51,14 +137,22 @@ export default function BoatProfileDetailScreen({ route, navigation }: Props) {
         <View style={styles.rowGap8}>
           {isEditing ? (
             <>
-              <Pressable onPress={() => setIsEditing(false)} style={styles.outlineButton}>
+              <Pressable onPress={handleCancel} disabled={isSaving} style={styles.outlineButton}>
                 <Text style={styles.outlineButtonText}>Cancel</Text>
               </Pressable>
-              <Pressable onPress={() => setIsEditing(false)} style={styles.softBlueButton}>
-                <Text style={styles.softBlueButtonText}>Save</Text>
+              <Pressable onPress={handleSave} disabled={isSaving} style={styles.softBlueButton}>
+                {isSaving ? (
+                  <ActivityIndicator size="small" color="#faf6f1" />
+                ) : (
+                  <Text style={styles.softBlueButtonText}>Save</Text>
+                )}
               </Pressable>
             </>
-          ) : null}
+          ) : (
+            <Pressable onPress={() => setIsEditing(true)} style={styles.softBlueButton}>
+              <Text style={styles.softBlueButtonText}>Edit</Text>
+            </Pressable>
+          )}
         </View>
       </PageHeader>
 
@@ -75,7 +169,7 @@ export default function BoatProfileDetailScreen({ route, navigation }: Props) {
           <View style={styles.metaBox}>
             <Text style={styles.metaLabel}>Experience tier</Text>
             {isEditing ? (
-              <OptionSelect value={identity.experienceTier} onChange={(v) => setIdentity((c) => ({ ...c, experienceTier: v }))} options={[{ label: "Premium", value: "Premium" }, { label: "Luxury", value: "Luxury" }, { label: "Standard", value: "Standard" }]} />
+              <OptionSelect value={identity.experienceTier} onChange={(v) => setIdentity((c) => ({ ...c, experienceTier: v as ExperienceTier }))} options={[{ label: "Premium", value: "Premium" }, { label: "Luxury", value: "Luxury" }, { label: "Standard", value: "Standard" }]} />
             ) : (
               <Text style={styles.metaValue}>{identity.experienceTier}</Text>
             )}
@@ -83,7 +177,7 @@ export default function BoatProfileDetailScreen({ route, navigation }: Props) {
           <View style={styles.metaBox}>
             <Text style={styles.metaLabel}>Booking type</Text>
             {isEditing ? (
-              <OptionSelect value={identity.bookingType} onChange={(v) => setIdentity((c) => ({ ...c, bookingType: v }))} options={[{ label: "Private only", value: "Private only" }, { label: "Shared", value: "Shared" }, { label: "Private + shared", value: "Private + shared" }]} />
+              <OptionSelect value={identity.bookingType} onChange={(v) => setIdentity((c) => ({ ...c, bookingType: v as BookingType }))} options={[{ label: "Private only", value: "Private only" }, { label: "Shared", value: "Shared" }, { label: "Private + shared", value: "Private + shared" }]} />
             ) : (
               <Text style={styles.metaValue}>{identity.bookingType}</Text>
             )}

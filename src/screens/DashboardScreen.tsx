@@ -168,7 +168,7 @@ export default function DashboardScreen() {
                       if (stat.tab === "Availability") {
                         navigation.navigate("Availability", { selectBoat: selectedBoat });
                       } else {
-                        navigation.navigate(stat.tab as any);
+                        navigation.navigate(stat.tab as Exclude<keyof MainTabParamList, "Availability">);
                       }
                     }
                   : undefined

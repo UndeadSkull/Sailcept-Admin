@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 import "react-native-gesture-handler/jestSetup";
 
 jest.mock("@react-native-async-storage/async-storage", () =>
@@ -11,7 +12,7 @@ jest.mock("@expo/vector-icons", () => ({
 jest.mock("@gorhom/bottom-sheet", () => {
   const React = require("react");
   const { View, ScrollView } = require("react-native");
-  const BottomSheet = React.forwardRef(({ children, snapPoints, onChange }: any, ref: any) => {
+  const BottomSheet = React.forwardRef(({ children }: { children?: React.ReactNode }, ref: React.Ref<unknown>) => {
     React.useImperativeHandle(ref, () => ({
       snapToIndex: jest.fn(),
       close: jest.fn(),
@@ -21,7 +22,7 @@ jest.mock("@gorhom/bottom-sheet", () => {
   return {
     __esModule: true,
     default: BottomSheet,
-    BottomSheetScrollView: ({ children, contentContainerStyle }: any) =>
+    BottomSheetScrollView: ({ children, contentContainerStyle }: { children?: React.ReactNode; contentContainerStyle?: unknown }) =>
       React.createElement(ScrollView, { contentContainerStyle }, children),
   };
 });
@@ -46,8 +47,8 @@ jest.mock("react-native-safe-area-context", () => {
 	const SafeAreaContext = React.createContext(inset);
 	const SafeAreaInsetsContext = SafeAreaContext;
 	return {
-		SafeAreaProvider: ({ children }: any) => children,
-		SafeAreaView: ({ children }: any) => children,
+		SafeAreaProvider: ({ children }: { children?: React.ReactNode }) => children,
+		SafeAreaView: ({ children }: { children?: React.ReactNode }) => children,
 		SafeAreaContext,
 		SafeAreaConsumer: SafeAreaContext.Consumer,
 		SafeAreaInsetsContext,
@@ -61,8 +62,8 @@ jest.mock("react-native-safe-area-context", () => {
 
 jest.mock("@react-native-picker/picker", () => {
 	const React = require("react");
-	class MockPicker extends React.Component {
-		static Item = (props: any) => React.createElement("PickerItem", props);
+	class MockPicker extends React.Component<{ children?: React.ReactNode }> {
+		static Item = (props: Record<string, unknown>) => React.createElement("PickerItem", props);
 		render() {
 			return React.createElement("Picker", this.props, this.props.children);
 		}
