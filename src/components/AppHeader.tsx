@@ -2,8 +2,10 @@ import React from "react";
 import { useNavigation } from "@react-navigation/native";
 import { Pressable, Text, View, Platform, ActionSheetIOS } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+import { Bell } from "lucide-react-native";
 import { useBoat } from "../context/BoatContext";
 import { useAuth } from "../context/AuthContext";
+import { useNotification } from "../context/NotificationContext";
 import type { RootStackParamList } from "../navigation/types";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import styles from "../styles";
@@ -14,6 +16,7 @@ export default function AppHeader({ currentRouteName }: { currentRouteName: stri
   const navigation = useNavigation<RootNav>();
   const { boats, selectedBoat, setSelectedBoat } = useBoat();
   const { isAuthenticated } = useAuth();
+  const { unreadCount } = useNotification();
 
   if (!isAuthenticated) {
     return null;
@@ -85,6 +88,24 @@ export default function AppHeader({ currentRouteName }: { currentRouteName: stri
             )}
           </View>
         )}
+
+        {/* Notification Bell Button */}
+        <Pressable
+          onPress={() => navigation.navigate("Notifications")}
+          style={({ pressed }) => [
+            styles.notificationBellButton,
+            currentRouteName === "Notifications" ? styles.notificationBellButtonActive : null,
+            pressed ? { opacity: 0.7 } : null,
+          ]}
+          testID="notification-bell-trigger"
+        >
+          <Bell
+            size={20}
+            color={currentRouteName === "Notifications" ? "#1a7f7f" : "#0f274d"}
+            strokeWidth={2.2}
+          />
+          {unreadCount > 0 && <View style={styles.notificationBadgeDot} />}
+        </Pressable>
       </View>
     </View>
   );

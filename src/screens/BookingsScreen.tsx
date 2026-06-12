@@ -258,6 +258,10 @@ export default function BookingsScreen({ route }: Props) {
     day: now.getDate(),
   }));
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  useEffect(() => {
+    setIsInitialLoad(false);
+  }, []);
 
   const visibleBookings = useMemo(() => {
     return ALL_BOOKINGS.filter((b) => b.boatName === selectedBoat);
@@ -448,8 +452,9 @@ export default function BookingsScreen({ route }: Props) {
 
           <GestureDetector gesture={calendarSwipeGesture}>
             <Animated.View
+              key={`${visibleYear}-${visibleMonthIndex}`}
               style={styles.calendarGrid}
-              entering={slideDirection === 'left' ? SlideInRight.duration(200) : SlideInLeft.duration(200)}
+              entering={isInitialLoad ? undefined : (slideDirection === 'left' ? SlideInRight.duration(200) : SlideInLeft.duration(200))}
               testID="calendar-grid-view"
             >
               {Array.from(

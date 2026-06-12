@@ -7,6 +7,7 @@ export type RootStackParamList = {
   MainTabs: undefined;
   BoatAssetModal: { boatName: string };
   UserProfileModal: undefined;
+  Notifications: undefined;
 };
 
 export type MainTabParamList = {

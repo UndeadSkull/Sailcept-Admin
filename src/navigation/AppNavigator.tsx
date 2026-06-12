@@ -14,6 +14,7 @@ import RequestsScreen from "../screens/RequestsScreen";
 import BoatProfileDetailScreen from "../screens/BoatProfileDetailScreen";
 import UserProfileScreen from "../screens/UserProfileScreen";
 import LoginScreen from "../screens/LoginScreen";
+import NotificationsScreen from "../screens/NotificationsScreen";
 import MoreStack from "./MoreStack";
 import { useAuth } from "../context/AuthContext";
 import type { MainTabParamList, RootStackParamList } from "./types";
@@ -102,6 +103,15 @@ export default function AppNavigator() {
       ) : (
         <>
           <Root.Screen name="MainTabs" component={MainTabs} />
+          <Root.Screen
+            name="Notifications"
+            component={NotificationsScreen}
+            options={{
+              title: "Notifications",
+              headerShown: false,
+              contentStyle: { backgroundColor: "#f5f1ed" },
+            }}
+          />
           <Root.Screen
             name="BoatAssetModal"
             component={BoatProfileDetailScreen}

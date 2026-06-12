@@ -10,6 +10,7 @@ import {
   Text,
   TextInput,
   View,
+  Modal,
 } from "react-native";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Gesture, GestureDetector, GestureHandlerRootView, Directions } from "react-native-gesture-handler";
@@ -30,24 +31,87 @@ type DayBooking = {
   overnightCruise: boolean;
   nightCruise: boolean;
   details: string;
+  dayCruiseDetails?: string;
+  overnightCruiseDetails?: string;
+  nightCruiseDetails?: string;
+  dayCruiseGuestName?: string;
+  dayCruiseGuestCount?: string;
+  dayCruiseNotes?: string;
+  overnightCruiseGuestName?: string;
+  overnightCruiseGuestCount?: string;
+  overnightCruiseNotes?: string;
+  nightCruiseGuestName?: string;
+  nightCruiseGuestCount?: string;
+  nightCruiseNotes?: string;
   dayCruisePrice?: number;
   dayCruiseExtraGuest?: number;
   dayCruiseExtraRoom?: number;
+  dayCruiseExtraGuestQty?: number;
+  dayCruiseExtraRoomQty?: number;
   overnightCruisePrice?: number;
   overnightExtraBed?: number;
   overnightExtraCot?: number;
+  overnightExtraBedQty?: number;
+  overnightExtraCotQty?: number;
   nightCruisePrice?: number;
   nightCruiseExtraGuest?: number;
   nightCruiseExtraRoom?: number;
+  nightCruiseExtraGuestQty?: number;
+  nightCruiseExtraRoomQty?: number;
+  dayCruiseBookedAmount?: number;
+  overnightCruiseBookedAmount?: number;
+  nightCruiseBookedAmount?: number;
 };
 
 type SelectedDate = { year: number; month: number; day: number };
 
 function normalizeBooking(booking: DayBooking): DayBooking {
-  if (booking.overnightCruise && booking.nightCruise) {
-    return { ...booking, nightCruise: false };
+  let normalized = { ...booking };
+  if (normalized.overnightCruise && normalized.nightCruise) {
+    normalized.nightCruise = false;
   }
-  return booking;
+  if (normalized.details) {
+    if (normalized.dayCruise && !normalized.dayCruiseDetails) {
+      normalized.dayCruiseDetails = normalized.details;
+    }
+    if (normalized.overnightCruise && !normalized.overnightCruiseDetails) {
+      normalized.overnightCruiseDetails = normalized.details;
+    }
+    if (normalized.nightCruise && !normalized.nightCruiseDetails) {
+      normalized.nightCruiseDetails = normalized.details;
+    }
+  }
+  // Initialize booked amounts from rates if not present
+  if (normalized.dayCruise && normalized.dayCruiseBookedAmount === undefined) {
+    normalized.dayCruiseBookedAmount = normalized.dayCruisePrice;
+  }
+  if (normalized.overnightCruise && normalized.overnightCruiseBookedAmount === undefined) {
+    normalized.overnightCruiseBookedAmount = normalized.overnightCruisePrice;
+  }
+  if (normalized.nightCruise && normalized.nightCruiseBookedAmount === undefined) {
+    normalized.nightCruiseBookedAmount = normalized.nightCruisePrice;
+  }
+
+  // Initialize extra quantities to 1 if not present but rate is present
+  if (normalized.dayCruiseExtraGuest !== undefined && normalized.dayCruiseExtraGuestQty === undefined) {
+    normalized.dayCruiseExtraGuestQty = 1;
+  }
+  if (normalized.dayCruiseExtraRoom !== undefined && normalized.dayCruiseExtraRoomQty === undefined) {
+    normalized.dayCruiseExtraRoomQty = 1;
+  }
+  if (normalized.overnightExtraBed !== undefined && normalized.overnightExtraBedQty === undefined) {
+    normalized.overnightExtraBedQty = 1;
+  }
+  if (normalized.overnightExtraCot !== undefined && normalized.overnightExtraCotQty === undefined) {
+    normalized.overnightExtraCotQty = 1;
+  }
+  if (normalized.nightCruiseExtraGuest !== undefined && normalized.nightCruiseExtraGuestQty === undefined) {
+    normalized.nightCruiseExtraGuestQty = 1;
+  }
+  if (normalized.nightCruiseExtraRoom !== undefined && normalized.nightCruiseExtraRoomQty === undefined) {
+    normalized.nightCruiseExtraRoomQty = 1;
+  }
+  return normalized;
 }
 
 function getDateKey(year: number, month: number, day: number): string {
@@ -180,6 +244,17 @@ export default function AvailabilityScreen() {
   const [isBulkPricingMode, setIsBulkPricingMode] = useState(false);
   const [selectedDates, setSelectedDates] = useState<number[]>([]);
   const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
+  const [isCalendarFirstMount, setIsCalendarFirstMount] = useState(true);
+  useEffect(() => {
+    if (activeBoatForCalendar === null) {
+      setIsCalendarFirstMount(true);
+    } else {
+      const timer = setTimeout(() => {
+        setIsCalendarFirstMount(false);
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [activeBoatForCalendar]);
   const [isSheetForBulk, setIsSheetForBulk] = useState(false);
   const [selectedDate, setSelectedDate] = useState<SelectedDate | null>(null);
   const [modalDayCruisePrice, setModalDayCruisePrice] = useState("");
@@ -191,6 +266,31 @@ export default function AvailabilityScreen() {
   const [modalOvernightExtraCot, setModalOvernightExtraCot] = useState("");
   const [modalNightExtraGuest, setModalNightExtraGuest] = useState("");
   const [modalNightExtraRoom, setModalNightExtraRoom] = useState("");
+
+  const [activeAddBookingType, setActiveAddBookingType] = useState<"day" | "overnight" | "night" | null>(null);
+  const [bookingGuestName, setBookingGuestName] = useState("");
+  const [bookingGuestCount, setBookingGuestCount] = useState("");
+  const [bookingSpecialNotes, setBookingSpecialNotes] = useState("");
+  const [bookingBasePrice, setBookingBasePrice] = useState("");
+  const [bookingExtra1, setBookingExtra1] = useState("");
+  const [bookingExtra2, setBookingExtra2] = useState("");
+  const [bookingExtra1Qty, setBookingExtra1Qty] = useState("0");
+  const [bookingExtra2Qty, setBookingExtra2Qty] = useState("0");
+  const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
+  const [bookingBookedAmount, setBookingBookedAmount] = useState("");
+  const [isBookedAmountManuallyEdited, setIsBookedAmountManuallyEdited] = useState(false);
+
+  useEffect(() => {
+    if (!isBookedAmountManuallyEdited) {
+      const base = parsePriceString(bookingBasePrice) || 0;
+      const extra1 = parsePriceString(bookingExtra1) || 0;
+      const qty1 = parseInt(bookingExtra1Qty, 10) || 0;
+      const extra2 = parsePriceString(bookingExtra2) || 0;
+      const qty2 = parseInt(bookingExtra2Qty, 10) || 0;
+      const total = base + (extra1 * qty1) + (extra2 * qty2);
+      setBookingBookedAmount(total > 0 ? formatLocalNumber(total) : "");
+    }
+  }, [bookingBasePrice, bookingExtra1, bookingExtra2, bookingExtra1Qty, bookingExtra2Qty, isBookedAmountManuallyEdited]);
 
   const bottomSheetRef = useRef<BottomSheet>(null);
   const sheetSnapPoints = useMemo(() => ["75%", "95%"], []);
@@ -408,6 +508,189 @@ export default function AvailabilityScreen() {
     });
   }
 
+  function saveBooking(
+    type: "day" | "overnight" | "night",
+    guestName: string,
+    guestCount: string,
+    notes: string,
+    basePrice: string,
+    extra1: string,
+    extra2: string,
+    bookedAmount: string,
+    extra1Qty: string,
+    extra2Qty: string,
+  ) {
+    if (!selectedDate || !activeBoatForCalendar) return;
+    const dateKey = getDateKey(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+    );
+
+    const guestText = guestName.trim() || "Guest";
+    const countText = guestCount.trim() ? `${guestCount.trim()} guests` : "";
+    const notesText = notes.trim() ? `Notes: ${notes.trim()}` : "";
+    const detailParts = [guestText, countText, notesText].filter(Boolean);
+    const constructedDetails = detailParts.join(" · ");
+
+    const parsedBase = parsePriceString(basePrice);
+    const parsedExtra1 = parsePriceString(extra1);
+    const parsedExtra2 = parsePriceString(extra2);
+    const parsedBookedAmount = parsePriceString(bookedAmount);
+
+    const parsedQty1 = parseInt(extra1Qty, 10) || 0;
+    const parsedQty2 = parseInt(extra2Qty, 10) || 0;
+
+    setBookingsByBoat((current) => {
+      const boatBookings = current[activeBoatForCalendar] ?? {};
+      const currentDayBooking = boatBookings[dateKey] ?? {
+        dayCruise: false,
+        overnightCruise: false,
+        nightCruise: false,
+        details: "",
+      };
+
+      const key = type === "day" ? "dayCruise" : type === "overnight" ? "overnightCruise" : "nightCruise";
+      const detailsKey = type === "day" ? "dayCruiseDetails" : type === "overnight" ? "overnightCruiseDetails" : "nightCruiseDetails";
+      const guestNameKey = type === "day" ? "dayCruiseGuestName" : type === "overnight" ? "overnightCruiseGuestName" : "nightCruiseGuestName";
+      const guestCountKey = type === "day" ? "dayCruiseGuestCount" : type === "overnight" ? "overnightCruiseGuestCount" : "nightCruiseGuestCount";
+      const notesKey = type === "day" ? "dayCruiseNotes" : type === "overnight" ? "overnightCruiseNotes" : "nightCruiseNotes";
+
+      let priceUpdates: Partial<DayBooking> = {};
+      if (type === "day") {
+        priceUpdates = {
+          dayCruisePrice: parsedBase,
+          dayCruiseExtraGuest: parsedExtra1,
+          dayCruiseExtraRoom: parsedExtra2,
+          dayCruiseBookedAmount: parsedBookedAmount,
+          dayCruiseExtraGuestQty: parsedQty1,
+          dayCruiseExtraRoomQty: parsedQty2,
+        };
+      } else if (type === "overnight") {
+        priceUpdates = {
+          overnightCruisePrice: parsedBase,
+          overnightExtraBed: parsedExtra1,
+          overnightExtraCot: parsedExtra2,
+          overnightCruiseBookedAmount: parsedBookedAmount,
+          overnightExtraBedQty: parsedQty1,
+          overnightExtraCotQty: parsedQty2,
+        };
+      } else if (type === "night") {
+        priceUpdates = {
+          nightCruisePrice: parsedBase,
+          nightCruiseExtraGuest: parsedExtra1,
+          nightCruiseExtraRoom: parsedExtra2,
+          nightCruiseBookedAmount: parsedBookedAmount,
+          nightCruiseExtraGuestQty: parsedQty1,
+          nightCruiseExtraRoomQty: parsedQty2,
+        };
+      }
+
+      const nextBooking: DayBooking = {
+        ...currentDayBooking,
+        [key]: true,
+        [detailsKey]: constructedDetails,
+        [guestNameKey]: guestName.trim(),
+        [guestCountKey]: guestCount.trim(),
+        [notesKey]: notes.trim(),
+        ...priceUpdates,
+      };
+
+      if (type === "overnight") {
+        nextBooking.nightCruise = false;
+        nextBooking.nightCruiseDetails = undefined;
+        nextBooking.nightCruiseGuestName = undefined;
+        nextBooking.nightCruiseGuestCount = undefined;
+        nextBooking.nightCruiseNotes = undefined;
+        nextBooking.nightCruiseBookedAmount = undefined;
+        nextBooking.nightCruiseExtraGuestQty = undefined;
+        nextBooking.nightCruiseExtraRoomQty = undefined;
+      } else if (type === "night") {
+        nextBooking.overnightCruise = false;
+        nextBooking.overnightCruiseDetails = undefined;
+        nextBooking.overnightCruiseGuestName = undefined;
+        nextBooking.overnightCruiseGuestCount = undefined;
+        nextBooking.overnightCruiseNotes = undefined;
+        nextBooking.overnightCruiseBookedAmount = undefined;
+        nextBooking.overnightExtraBedQty = undefined;
+        nextBooking.overnightExtraCotQty = undefined;
+      }
+
+      return {
+        ...current,
+        [activeBoatForCalendar]: {
+          ...boatBookings,
+          [dateKey]: normalizeBooking(nextBooking),
+        },
+      };
+    });
+
+    if (type === "day") {
+      setModalDayCruisePrice(basePrice);
+      setModalDayExtraGuest(extra1);
+      setModalDayExtraRoom(extra2);
+    } else if (type === "overnight") {
+      setModalOvernightPrice(basePrice);
+      setModalOvernightExtraBed(extra1);
+      setModalOvernightExtraCot(extra2);
+    } else if (type === "night") {
+      setModalNightPrice(basePrice);
+      setModalNightExtraGuest(extra1);
+      setModalNightExtraRoom(extra2);
+    }
+  }
+
+  function removeBooking(type: "day" | "overnight" | "night") {
+    if (!selectedDate || !activeBoatForCalendar) return;
+    const dateKey = getDateKey(
+      selectedDate.year,
+      selectedDate.month,
+      selectedDate.day,
+    );
+
+    setBookingsByBoat((current) => {
+      const boatBookings = current[current.hasOwnProperty(activeBoatForCalendar) ? activeBoatForCalendar : ""] ?? {};
+      const currentDayBooking = boatBookings[dateKey];
+      if (!currentDayBooking) return current;
+
+      const key = type === "day" ? "dayCruise" : type === "overnight" ? "overnightCruise" : "nightCruise";
+      const detailsKey = type === "day" ? "dayCruiseDetails" : type === "overnight" ? "overnightCruiseDetails" : "nightCruiseDetails";
+      const guestNameKey = type === "day" ? "dayCruiseGuestName" : type === "overnight" ? "overnightCruiseGuestName" : "nightCruiseGuestName";
+      const guestCountKey = type === "day" ? "dayCruiseGuestCount" : type === "overnight" ? "overnightCruiseGuestCount" : "nightCruiseGuestCount";
+      const notesKey = type === "day" ? "dayCruiseNotes" : type === "overnight" ? "overnightCruiseNotes" : "nightCruiseNotes";
+      const bookedAmountKey = type === "day" ? "dayCruiseBookedAmount" : type === "overnight" ? "overnightCruiseBookedAmount" : "nightCruiseBookedAmount";
+
+      const nextBooking: DayBooking = {
+        ...currentDayBooking,
+        [key]: false,
+        [detailsKey]: undefined,
+        [guestNameKey]: undefined,
+        [guestCountKey]: undefined,
+        [notesKey]: undefined,
+        [bookedAmountKey]: undefined,
+      };
+
+      if (type === "day") {
+        nextBooking.dayCruiseExtraGuestQty = undefined;
+        nextBooking.dayCruiseExtraRoomQty = undefined;
+      } else if (type === "overnight") {
+        nextBooking.overnightExtraBedQty = undefined;
+        nextBooking.overnightExtraCotQty = undefined;
+      } else if (type === "night") {
+        nextBooking.nightCruiseExtraGuestQty = undefined;
+        nextBooking.nightCruiseExtraRoomQty = undefined;
+      }
+
+      return {
+        ...current,
+        [activeBoatForCalendar]: {
+          ...boatBookings,
+          [dateKey]: normalizeBooking(nextBooking),
+        },
+      };
+    });
+  }
+
   function handleDayPress(day: number) {
     if (isBulkPricingMode) {
       setSelectedDates((current) =>
@@ -582,6 +865,15 @@ export default function AvailabilityScreen() {
     if (index === -1) {
       setSelectedDate(null);
       setIsSheetForBulk(false);
+      setActiveAddBookingType(null);
+      setBookingGuestName("");
+      setBookingGuestCount("");
+      setBookingSpecialNotes("");
+      setBookingBasePrice("");
+      setBookingExtra1("");
+      setBookingExtra2("");
+      setBookingBookedAmount("");
+      setIsBookingModalVisible(false);
     }
   }
 
@@ -896,7 +1188,7 @@ export default function AvailabilityScreen() {
               <View style={{ overflow: 'hidden', flex: 1 }}>
               <Animated.View
                 key={`${visibleYear}-${visibleMonthIndex}`}
-                entering={slideDirection === 'left' ? SlideInRight.duration(200) : SlideInLeft.duration(200)}
+                entering={isCalendarFirstMount ? undefined : (slideDirection === 'left' ? SlideInRight.duration(200) : SlideInLeft.duration(200))}
                 exiting={FadeOut.duration(100)}
                 style={styles.calendarGrid}
               >
@@ -983,7 +1275,7 @@ export default function AvailabilityScreen() {
                                     style={styles.dayCellCruisePrice}
                                     numberOfLines={1}
                                   >
-                                    {formatLocalPrice(booking.dayCruisePrice)}
+                                    {formatLocalPrice(booking.dayCruise ? (booking.dayCruiseBookedAmount ?? booking.dayCruisePrice) : booking.dayCruisePrice)}
                                   </Text>
                                 </View>
                               ) : null}
@@ -995,7 +1287,7 @@ export default function AvailabilityScreen() {
                                     style={styles.dayCellCruisePrice}
                                     numberOfLines={1}
                                   >
-                                    {formatLocalPrice(booking.overnightCruisePrice)}
+                                    {formatLocalPrice(booking.overnightCruise ? (booking.overnightCruiseBookedAmount ?? booking.overnightCruisePrice) : booking.overnightCruisePrice)}
                                   </Text>
                                 </View>
                               ) : null}
@@ -1007,7 +1299,7 @@ export default function AvailabilityScreen() {
                                     style={styles.dayCellCruisePrice}
                                     numberOfLines={1}
                                   >
-                                    {formatLocalPrice(booking.nightCruisePrice)}
+                                    {formatLocalPrice(booking.nightCruise ? (booking.nightCruiseBookedAmount ?? booking.nightCruisePrice) : booking.nightCruisePrice)}
                                   </Text>
                                 </View>
                               ) : null}
@@ -1138,63 +1430,163 @@ export default function AvailabilityScreen() {
                   <CruiseTypeIcon type="day" size="regular" />
                   <Text style={styles.cruiseCardLabel}>Day cruise</Text>
                   {!isSheetForBulk && (
-                    <View style={selectedBooking.dayCruise ? styles.bookedPill : styles.notBookedPill}>
+                    <>
                       {selectedBooking.dayCruise ? (
-                        <Check size={12} color="#ffffff" strokeWidth={2.5} />
-                      ) : null}
-                      <Text style={selectedBooking.dayCruise ? styles.bookedPillText : styles.notBookedPillText}>
-                        {selectedBooking.dayCruise ? "Booked" : "Not booked"}
-                      </Text>
-                    </View>
+                        <View style={styles.bookedPill}>
+                          <Check size={12} color="#ffffff" strokeWidth={2.5} />
+                          <Text style={styles.bookedPillText}>Booked</Text>
+                        </View>
+                      ) : (
+                        <Pressable
+                          onPress={() => {
+                            setBookingGuestName("");
+                            setBookingGuestCount("");
+                            setBookingSpecialNotes("");
+                            setBookingBasePrice(modalDayCruisePrice);
+                            setBookingExtra1(modalDayExtraGuest);
+                            setBookingExtra2(modalDayExtraRoom);
+                            setBookingExtra1Qty("0");
+                            setBookingExtra2Qty("0");
+                            setIsBookedAmountManuallyEdited(false);
+                            setBookingBookedAmount(modalDayCruisePrice);
+                            setActiveAddBookingType("day");
+                            setIsBookingModalVisible(true);
+                          }}
+                          style={styles.addBookingButtonPill}
+                          testID="add-booking-button-day"
+                        >
+                          <Text style={styles.addBookingButtonPillText}>+ Add booking</Text>
+                        </Pressable>
+                      )}
+                    </>
                   )}
                 </View>
-                <View style={styles.priceFieldsRow}>
-                  <View style={styles.priceFieldBox}>
-                    <Text style={styles.priceFieldLabel}>Base price</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={modalDayCruisePrice}
-                        onChangeText={(v) => setModalDayCruisePrice(formatInputWithCommas(v))}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID="modal-price-input-day"
-                      />
+
+                {/* Booking details when booked */}
+                {!isSheetForBulk && selectedBooking.dayCruise && (
+                  <View style={styles.bookingDetailsDisplay}>
+                    <Text style={styles.bookingDetailsText}>
+                      {selectedBooking.dayCruiseDetails || "No details provided"}
+                    </Text>
+                    
+                    {/* Prices summary */}
+                    <View style={styles.bookedPriceSummary}>
+                      <Text style={styles.bookedPriceItem}>
+                        Base Rate: ₹{formatLocalPrice(selectedBooking.dayCruisePrice)}
+                      </Text>
+                      {selectedBooking.dayCruiseExtraGuest !== undefined && (
+                        <Text style={styles.bookedPriceItem}>
+                          Extra Guest (x{selectedBooking.dayCruiseExtraGuestQty ?? 1}): ₹{formatLocalPrice(selectedBooking.dayCruiseExtraGuest * (selectedBooking.dayCruiseExtraGuestQty ?? 1))}
+                        </Text>
+                      )}
+                      {selectedBooking.dayCruiseExtraRoom !== undefined && (
+                        <Text style={styles.bookedPriceItem}>
+                          Extra Room (x{selectedBooking.dayCruiseExtraRoomQty ?? 1}): ₹{formatLocalPrice(selectedBooking.dayCruiseExtraRoom * (selectedBooking.dayCruiseExtraRoomQty ?? 1))}
+                        </Text>
+                      )}
+                      <Text style={[styles.bookedPriceItem, styles.bookedAmountHighlight]}>
+                        Booked For: ₹{formatLocalPrice(selectedBooking.dayCruiseBookedAmount ?? selectedBooking.dayCruisePrice)}
+                      </Text>
+                    </View>
+
+                    <View style={styles.formActionsRow}>
+                      <Pressable
+                        onPress={() => {
+                          let guestName = selectedBooking.dayCruiseGuestName || "";
+                          let guestCount = selectedBooking.dayCruiseGuestCount || "";
+                          let notes = selectedBooking.dayCruiseNotes || "";
+                          if (!guestName && !guestCount && !notes && selectedBooking.dayCruiseDetails) {
+                            const parts = selectedBooking.dayCruiseDetails.split(" · ");
+                            guestName = parts[0] || "";
+                            if (parts[1] && parts[1].includes("guests")) {
+                              guestCount = parts[1].replace(/[^0-9]/g, "");
+                            }
+                            const notesPart = parts.find(p => p.startsWith("Notes: "));
+                            if (notesPart) {
+                              notes = notesPart.replace("Notes: ", "");
+                            } else if (parts.length > 2) {
+                              notes = parts[2];
+                            }
+                          }
+                          setBookingGuestName(guestName);
+                          setBookingGuestCount(guestCount);
+                          setBookingSpecialNotes(notes);
+                          setBookingBasePrice(selectedBooking.dayCruisePrice ? formatLocalNumber(selectedBooking.dayCruisePrice) : "");
+                          setBookingExtra1(selectedBooking.dayCruiseExtraGuest ? formatLocalNumber(selectedBooking.dayCruiseExtraGuest) : "");
+                          setBookingExtra2(selectedBooking.dayCruiseExtraRoom ? formatLocalNumber(selectedBooking.dayCruiseExtraRoom) : "");
+                          setBookingExtra1Qty(selectedBooking.dayCruiseExtraGuestQty !== undefined ? String(selectedBooking.dayCruiseExtraGuestQty) : "1");
+                          setBookingExtra2Qty(selectedBooking.dayCruiseExtraRoomQty !== undefined ? String(selectedBooking.dayCruiseExtraRoomQty) : "1");
+                          setBookingBookedAmount(selectedBooking.dayCruiseBookedAmount ? formatLocalNumber(selectedBooking.dayCruiseBookedAmount) : (selectedBooking.dayCruisePrice ? formatLocalNumber(selectedBooking.dayCruisePrice) : ""));
+                          setIsBookedAmountManuallyEdited(true);
+                          setActiveAddBookingType("day");
+                          setIsBookingModalVisible(true);
+                        }}
+                        style={styles.editBookingButton}
+                        testID="edit-booking-button-day"
+                      >
+                        <Text style={styles.editBookingButtonText}>Edit</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => removeBooking("day")}
+                        style={styles.removeBookingButton}
+                        testID="remove-booking-button-day"
+                      >
+                        <Text style={styles.removeBookingButtonText}>Remove booking</Text>
+                      </Pressable>
                     </View>
                   </View>
-                  <View style={styles.priceFieldBox}>
-                    <Text style={styles.priceFieldLabel}>Extra guest</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={modalDayExtraGuest}
-                        onChangeText={(v) => setModalDayExtraGuest(formatInputWithCommas(v))}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID="modal-day-extra-guest"
-                      />
+                )}
+
+                {/* Price fields only visible when not booked, OR when editing in bulk */}
+                {(isSheetForBulk || !selectedBooking.dayCruise) && (
+                  <View style={styles.priceFieldsRow}>
+                    <View style={styles.priceFieldBox}>
+                      <Text style={styles.priceFieldLabel}>Base price</Text>
+                      <View style={styles.priceFieldInput}>
+                        <Text style={styles.priceFieldRupee}>₹</Text>
+                        <TextInput
+                          value={modalDayCruisePrice}
+                          onChangeText={(v) => setModalDayCruisePrice(formatInputWithCommas(v))}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          placeholderTextColor="#9aafbf"
+                          style={styles.priceFieldTextInput}
+                          testID="modal-price-input-day"
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.priceFieldBox}>
+                      <Text style={styles.priceFieldLabel}>Extra guest</Text>
+                      <View style={styles.priceFieldInput}>
+                        <Text style={styles.priceFieldRupee}>₹</Text>
+                        <TextInput
+                          value={modalDayExtraGuest}
+                          onChangeText={(v) => setModalDayExtraGuest(formatInputWithCommas(v))}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          placeholderTextColor="#9aafbf"
+                          style={styles.priceFieldTextInput}
+                          testID="modal-day-extra-guest"
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.priceFieldBox}>
+                      <Text style={styles.priceFieldLabel}>Extra room</Text>
+                      <View style={styles.priceFieldInput}>
+                        <Text style={styles.priceFieldRupee}>₹</Text>
+                        <TextInput
+                          value={modalDayExtraRoom}
+                          onChangeText={(v) => setModalDayExtraRoom(formatInputWithCommas(v))}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          placeholderTextColor="#9aafbf"
+                          style={styles.priceFieldTextInput}
+                          testID="modal-day-extra-room"
+                        />
+                      </View>
                     </View>
                   </View>
-                  <View style={styles.priceFieldBox}>
-                    <Text style={styles.priceFieldLabel}>Extra room</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={modalDayExtraRoom}
-                        onChangeText={(v) => setModalDayExtraRoom(formatInputWithCommas(v))}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID="modal-day-extra-room"
-                      />
-                    </View>
-                  </View>
-                </View>
+                )}
               </View>
 
               {/* Overnight Card */}
@@ -1203,63 +1595,163 @@ export default function AvailabilityScreen() {
                   <CruiseTypeIcon type="overnight" size="regular" />
                   <Text style={styles.cruiseCardLabel}>Overnight</Text>
                   {!isSheetForBulk && (
-                    <View style={selectedBooking.overnightCruise ? styles.bookedPill : styles.notBookedPill}>
+                    <>
                       {selectedBooking.overnightCruise ? (
-                        <Check size={12} color="#ffffff" strokeWidth={2.5} />
-                      ) : null}
-                      <Text style={selectedBooking.overnightCruise ? styles.bookedPillText : styles.notBookedPillText}>
-                        {selectedBooking.overnightCruise ? "Booked" : "Not booked"}
-                      </Text>
-                    </View>
+                        <View style={styles.bookedPill}>
+                          <Check size={12} color="#ffffff" strokeWidth={2.5} />
+                          <Text style={styles.bookedPillText}>Booked</Text>
+                        </View>
+                      ) : (
+                        <Pressable
+                          onPress={() => {
+                            setBookingGuestName("");
+                            setBookingGuestCount("");
+                            setBookingSpecialNotes("");
+                            setBookingBasePrice(modalOvernightPrice);
+                            setBookingExtra1(modalOvernightExtraBed);
+                            setBookingExtra2(modalOvernightExtraCot);
+                            setBookingExtra1Qty("0");
+                            setBookingExtra2Qty("0");
+                            setIsBookedAmountManuallyEdited(false);
+                            setBookingBookedAmount(modalOvernightPrice);
+                            setActiveAddBookingType("overnight");
+                            setIsBookingModalVisible(true);
+                          }}
+                          style={styles.addBookingButtonPill}
+                          testID="add-booking-button-overnight"
+                        >
+                          <Text style={styles.addBookingButtonPillText}>+ Add booking</Text>
+                        </Pressable>
+                      )}
+                    </>
                   )}
                 </View>
-                <View style={styles.priceFieldsRow}>
-                  <View style={styles.priceFieldBox}>
-                    <Text style={styles.priceFieldLabel}>Base price</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={modalOvernightPrice}
-                        onChangeText={(v) => setModalOvernightPrice(formatInputWithCommas(v))}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID="modal-price-input-overnight"
-                      />
+
+                {/* Booking details when booked */}
+                {!isSheetForBulk && selectedBooking.overnightCruise && (
+                  <View style={styles.bookingDetailsDisplay}>
+                    <Text style={styles.bookingDetailsText}>
+                      {selectedBooking.overnightCruiseDetails || "No details provided"}
+                    </Text>
+                    
+                    {/* Prices summary */}
+                    <View style={styles.bookedPriceSummary}>
+                      <Text style={styles.bookedPriceItem}>
+                        Base Rate: ₹{formatLocalPrice(selectedBooking.overnightCruisePrice)}
+                      </Text>
+                      {selectedBooking.overnightExtraBed !== undefined && (
+                        <Text style={styles.bookedPriceItem}>
+                          Extra Bed (x{selectedBooking.overnightExtraBedQty ?? 1}): ₹{formatLocalPrice(selectedBooking.overnightExtraBed * (selectedBooking.overnightExtraBedQty ?? 1))}
+                        </Text>
+                      )}
+                      {selectedBooking.overnightExtraCot !== undefined && (
+                        <Text style={styles.bookedPriceItem}>
+                          Extra Cot (x{selectedBooking.overnightExtraCotQty ?? 1}): ₹{formatLocalPrice(selectedBooking.overnightExtraCot * (selectedBooking.overnightExtraCotQty ?? 1))}
+                        </Text>
+                      )}
+                      <Text style={[styles.bookedPriceItem, styles.bookedAmountHighlight]}>
+                        Booked For: ₹{formatLocalPrice(selectedBooking.overnightCruiseBookedAmount ?? selectedBooking.overnightCruisePrice)}
+                      </Text>
+                    </View>
+
+                    <View style={styles.formActionsRow}>
+                      <Pressable
+                        onPress={() => {
+                          let guestName = selectedBooking.overnightCruiseGuestName || "";
+                          let guestCount = selectedBooking.overnightCruiseGuestCount || "";
+                          let notes = selectedBooking.overnightCruiseNotes || "";
+                          if (!guestName && !guestCount && !notes && selectedBooking.overnightCruiseDetails) {
+                            const parts = selectedBooking.overnightCruiseDetails.split(" · ");
+                            guestName = parts[0] || "";
+                            if (parts[1] && parts[1].includes("guests")) {
+                              guestCount = parts[1].replace(/[^0-9]/g, "");
+                            }
+                            const notesPart = parts.find(p => p.startsWith("Notes: "));
+                            if (notesPart) {
+                              notes = notesPart.replace("Notes: ", "");
+                            } else if (parts.length > 2) {
+                              notes = parts[2];
+                            }
+                          }
+                          setBookingGuestName(guestName);
+                          setBookingGuestCount(guestCount);
+                          setBookingSpecialNotes(notes);
+                          setBookingBasePrice(selectedBooking.overnightCruisePrice ? formatLocalNumber(selectedBooking.overnightCruisePrice) : "");
+                          setBookingExtra1(selectedBooking.overnightExtraBed ? formatLocalNumber(selectedBooking.overnightExtraBed) : "");
+                          setBookingExtra2(selectedBooking.overnightExtraCot ? formatLocalNumber(selectedBooking.overnightExtraCot) : "");
+                          setBookingExtra1Qty(selectedBooking.overnightExtraBedQty !== undefined ? String(selectedBooking.overnightExtraBedQty) : "1");
+                          setBookingExtra2Qty(selectedBooking.overnightExtraCotQty !== undefined ? String(selectedBooking.overnightExtraCotQty) : "1");
+                          setBookingBookedAmount(selectedBooking.overnightCruiseBookedAmount ? formatLocalNumber(selectedBooking.overnightCruiseBookedAmount) : (selectedBooking.overnightCruisePrice ? formatLocalNumber(selectedBooking.overnightCruisePrice) : ""));
+                          setIsBookedAmountManuallyEdited(true);
+                          setActiveAddBookingType("overnight");
+                          setIsBookingModalVisible(true);
+                        }}
+                        style={styles.editBookingButton}
+                        testID="edit-booking-button-overnight"
+                      >
+                        <Text style={styles.editBookingButtonText}>Edit</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => removeBooking("overnight")}
+                        style={styles.removeBookingButton}
+                        testID="remove-booking-button-overnight"
+                      >
+                        <Text style={styles.removeBookingButtonText}>Remove booking</Text>
+                      </Pressable>
                     </View>
                   </View>
-                  <View style={styles.priceFieldBox}>
-                    <Text style={styles.priceFieldLabel}>Extra bed</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={modalOvernightExtraBed}
-                        onChangeText={(v) => setModalOvernightExtraBed(formatInputWithCommas(v))}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID="modal-overnight-extra-bed"
-                      />
+                )}
+
+                {/* Price fields only visible when not booked, OR when editing in bulk */}
+                {(isSheetForBulk || !selectedBooking.overnightCruise) && (
+                  <View style={styles.priceFieldsRow}>
+                    <View style={styles.priceFieldBox}>
+                      <Text style={styles.priceFieldLabel}>Base price</Text>
+                      <View style={styles.priceFieldInput}>
+                        <Text style={styles.priceFieldRupee}>₹</Text>
+                        <TextInput
+                          value={modalOvernightPrice}
+                          onChangeText={(v) => setModalOvernightPrice(formatInputWithCommas(v))}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          placeholderTextColor="#9aafbf"
+                          style={styles.priceFieldTextInput}
+                          testID="modal-price-input-overnight"
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.priceFieldBox}>
+                      <Text style={styles.priceFieldLabel}>Extra bed</Text>
+                      <View style={styles.priceFieldInput}>
+                        <Text style={styles.priceFieldRupee}>₹</Text>
+                        <TextInput
+                          value={modalOvernightExtraBed}
+                          onChangeText={(v) => setModalOvernightExtraBed(formatInputWithCommas(v))}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          placeholderTextColor="#9aafbf"
+                          style={styles.priceFieldTextInput}
+                          testID="modal-overnight-extra-bed"
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.priceFieldBox}>
+                      <Text style={styles.priceFieldLabel}>Extra cot</Text>
+                      <View style={styles.priceFieldInput}>
+                        <Text style={styles.priceFieldRupee}>₹</Text>
+                        <TextInput
+                          value={modalOvernightExtraCot}
+                          onChangeText={(v) => setModalOvernightExtraCot(formatInputWithCommas(v))}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          placeholderTextColor="#9aafbf"
+                          style={styles.priceFieldTextInput}
+                          testID="modal-overnight-extra-cot"
+                        />
+                      </View>
                     </View>
                   </View>
-                  <View style={styles.priceFieldBox}>
-                    <Text style={styles.priceFieldLabel}>Extra cot</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={modalOvernightExtraCot}
-                        onChangeText={(v) => setModalOvernightExtraCot(formatInputWithCommas(v))}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID="modal-overnight-extra-cot"
-                      />
-                    </View>
-                  </View>
-                </View>
+                )}
               </View>
 
               {/* Night Stay Card */}
@@ -1268,63 +1760,163 @@ export default function AvailabilityScreen() {
                   <CruiseTypeIcon type="night" size="regular" />
                   <Text style={styles.cruiseCardLabel}>Night stay</Text>
                   {!isSheetForBulk && (
-                    <View style={selectedBooking.nightCruise ? styles.bookedPill : styles.notBookedPill}>
+                    <>
                       {selectedBooking.nightCruise ? (
-                        <Check size={12} color="#ffffff" strokeWidth={2.5} />
-                      ) : null}
-                      <Text style={selectedBooking.nightCruise ? styles.bookedPillText : styles.notBookedPillText}>
-                        {selectedBooking.nightCruise ? "Booked" : "Not booked"}
-                      </Text>
-                    </View>
+                        <View style={styles.bookedPill}>
+                          <Check size={12} color="#ffffff" strokeWidth={2.5} />
+                          <Text style={styles.bookedPillText}>Booked</Text>
+                        </View>
+                      ) : (
+                        <Pressable
+                          onPress={() => {
+                            setBookingGuestName("");
+                            setBookingGuestCount("");
+                            setBookingSpecialNotes("");
+                            setBookingBasePrice(modalNightPrice);
+                            setBookingExtra1(modalNightExtraGuest);
+                            setBookingExtra2(modalNightExtraRoom);
+                            setBookingExtra1Qty("0");
+                            setBookingExtra2Qty("0");
+                            setIsBookedAmountManuallyEdited(false);
+                            setBookingBookedAmount(modalNightPrice);
+                            setActiveAddBookingType("night");
+                            setIsBookingModalVisible(true);
+                          }}
+                          style={styles.addBookingButtonPill}
+                          testID="add-booking-button-night"
+                        >
+                          <Text style={styles.addBookingButtonPillText}>+ Add booking</Text>
+                        </Pressable>
+                      )}
+                    </>
                   )}
                 </View>
-                <View style={styles.priceFieldsRow}>
-                  <View style={styles.priceFieldBox}>
-                    <Text style={styles.priceFieldLabel}>Base price</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={modalNightPrice}
-                        onChangeText={(v) => setModalNightPrice(formatInputWithCommas(v))}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID="modal-price-input-night"
-                      />
+
+                {/* Booking details when booked */}
+                {!isSheetForBulk && selectedBooking.nightCruise && (
+                  <View style={styles.bookingDetailsDisplay}>
+                    <Text style={styles.bookingDetailsText}>
+                      {selectedBooking.nightCruiseDetails || "No details provided"}
+                    </Text>
+                    
+                    {/* Prices summary */}
+                    <View style={styles.bookedPriceSummary}>
+                      <Text style={styles.bookedPriceItem}>
+                        Base Rate: ₹{formatLocalPrice(selectedBooking.nightCruisePrice)}
+                      </Text>
+                      {selectedBooking.nightCruiseExtraGuest !== undefined && (
+                        <Text style={styles.bookedPriceItem}>
+                          Extra Guest (x{selectedBooking.nightCruiseExtraGuestQty ?? 1}): ₹{formatLocalPrice(selectedBooking.nightCruiseExtraGuest * (selectedBooking.nightCruiseExtraGuestQty ?? 1))}
+                        </Text>
+                      )}
+                      {selectedBooking.nightCruiseExtraRoom !== undefined && (
+                        <Text style={styles.bookedPriceItem}>
+                          Extra Room (x{selectedBooking.nightCruiseExtraRoomQty ?? 1}): ₹{formatLocalPrice(selectedBooking.nightCruiseExtraRoom * (selectedBooking.nightCruiseExtraRoomQty ?? 1))}
+                        </Text>
+                      )}
+                      <Text style={[styles.bookedPriceItem, styles.bookedAmountHighlight]}>
+                        Booked For: ₹{formatLocalPrice(selectedBooking.nightCruiseBookedAmount ?? selectedBooking.nightCruisePrice)}
+                      </Text>
+                    </View>
+
+                    <View style={styles.formActionsRow}>
+                      <Pressable
+                        onPress={() => {
+                          let guestName = selectedBooking.nightCruiseGuestName || "";
+                          let guestCount = selectedBooking.nightCruiseGuestCount || "";
+                          let notes = selectedBooking.nightCruiseNotes || "";
+                          if (!guestName && !guestCount && !notes && selectedBooking.nightCruiseDetails) {
+                            const parts = selectedBooking.nightCruiseDetails.split(" · ");
+                            guestName = parts[0] || "";
+                            if (parts[1] && parts[1].includes("guests")) {
+                              guestCount = parts[1].replace(/[^0-9]/g, "");
+                            }
+                            const notesPart = parts.find(p => p.startsWith("Notes: "));
+                            if (notesPart) {
+                              notes = notesPart.replace("Notes: ", "");
+                            } else if (parts.length > 2) {
+                              notes = parts[2];
+                            }
+                          }
+                          setBookingGuestName(guestName);
+                          setBookingGuestCount(guestCount);
+                          setBookingSpecialNotes(notes);
+                          setBookingBasePrice(selectedBooking.nightCruisePrice ? formatLocalNumber(selectedBooking.nightCruisePrice) : "");
+                          setBookingExtra1(selectedBooking.nightCruiseExtraGuest ? formatLocalNumber(selectedBooking.nightCruiseExtraGuest) : "");
+                          setBookingExtra2(selectedBooking.nightCruiseExtraRoom ? formatLocalNumber(selectedBooking.nightCruiseExtraRoom) : "");
+                          setBookingExtra1Qty(selectedBooking.nightCruiseExtraGuestQty !== undefined ? String(selectedBooking.nightCruiseExtraGuestQty) : "1");
+                          setBookingExtra2Qty(selectedBooking.nightCruiseExtraRoomQty !== undefined ? String(selectedBooking.nightCruiseExtraRoomQty) : "1");
+                          setBookingBookedAmount(selectedBooking.nightCruiseBookedAmount ? formatLocalNumber(selectedBooking.nightCruiseBookedAmount) : (selectedBooking.nightCruisePrice ? formatLocalNumber(selectedBooking.nightCruisePrice) : ""));
+                          setIsBookedAmountManuallyEdited(true);
+                          setActiveAddBookingType("night");
+                          setIsBookingModalVisible(true);
+                        }}
+                        style={styles.editBookingButton}
+                        testID="edit-booking-button-night"
+                      >
+                        <Text style={styles.editBookingButtonText}>Edit</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => removeBooking("night")}
+                        style={styles.removeBookingButton}
+                        testID="remove-booking-button-night"
+                      >
+                        <Text style={styles.removeBookingButtonText}>Remove booking</Text>
+                      </Pressable>
                     </View>
                   </View>
-                  <View style={styles.priceFieldBox}>
-                    <Text style={styles.priceFieldLabel}>Extra guest</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={modalNightExtraGuest}
-                        onChangeText={(v) => setModalNightExtraGuest(formatInputWithCommas(v))}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID="modal-night-extra-guest"
-                      />
+                )}
+
+                {/* Price fields only visible when not booked, OR when editing in bulk */}
+                {(isSheetForBulk || !selectedBooking.nightCruise) && (
+                  <View style={styles.priceFieldsRow}>
+                    <View style={styles.priceFieldBox}>
+                      <Text style={styles.priceFieldLabel}>Base price</Text>
+                      <View style={styles.priceFieldInput}>
+                        <Text style={styles.priceFieldRupee}>₹</Text>
+                        <TextInput
+                          value={modalNightPrice}
+                          onChangeText={(v) => setModalNightPrice(formatInputWithCommas(v))}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          placeholderTextColor="#9aafbf"
+                          style={styles.priceFieldTextInput}
+                          testID="modal-price-input-night"
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.priceFieldBox}>
+                      <Text style={styles.priceFieldLabel}>Extra guest</Text>
+                      <View style={styles.priceFieldInput}>
+                        <Text style={styles.priceFieldRupee}>₹</Text>
+                        <TextInput
+                          value={modalNightExtraGuest}
+                          onChangeText={(v) => setModalNightExtraGuest(formatInputWithCommas(v))}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          placeholderTextColor="#9aafbf"
+                          style={styles.priceFieldTextInput}
+                          testID="modal-night-extra-guest"
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.priceFieldBox}>
+                      <Text style={styles.priceFieldLabel}>Extra room</Text>
+                      <View style={styles.priceFieldInput}>
+                        <Text style={styles.priceFieldRupee}>₹</Text>
+                        <TextInput
+                          value={modalNightExtraRoom}
+                          onChangeText={(v) => setModalNightExtraRoom(formatInputWithCommas(v))}
+                          keyboardType="numeric"
+                          placeholder="0"
+                          placeholderTextColor="#9aafbf"
+                          style={styles.priceFieldTextInput}
+                          testID="modal-night-extra-room"
+                        />
+                      </View>
                     </View>
                   </View>
-                  <View style={styles.priceFieldBox}>
-                    <Text style={styles.priceFieldLabel}>Extra room</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={modalNightExtraRoom}
-                        onChangeText={(v) => setModalNightExtraRoom(formatInputWithCommas(v))}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID="modal-night-extra-room"
-                      />
-                    </View>
-                  </View>
-                </View>
+                )}
               </View>
 
               {/* Save Changes Button */}
@@ -1339,6 +1931,267 @@ export default function AvailabilityScreen() {
           ) : null}
         </BottomSheetScrollView>
       </BottomSheet>
+
+      {/* Booking Form Modal Overlay */}
+      <Modal
+        visible={isBookingModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsBookingModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalContent}>
+            <ScrollView contentContainerStyle={styles.modalScrollContent}>
+              <View style={styles.modalFormHeader}>
+                <Text style={styles.modalTitle}>
+                  {activeAddBookingType === "day"
+                    ? (selectedBooking.dayCruise ? "Edit Offline Booking" : "Add Offline Booking")
+                    : activeAddBookingType === "overnight"
+                      ? (selectedBooking.overnightCruise ? "Edit Offline Booking" : "Add Offline Booking")
+                      : (selectedBooking.nightCruise ? "Edit Offline Booking" : "Add Offline Booking")}
+                </Text>
+                <Text style={styles.modalHeaderSubtitle}>
+                  {activeBoatForCalendar} · {selectedDate?.day}{" "}
+                  {selectedDate
+                    ? new Date(
+                        selectedDate.year,
+                        selectedDate.month,
+                        selectedDate.day,
+                      ).toLocaleString("en-US", { month: "short" })
+                    : ""}{" "}
+                  {selectedDate?.year} · {activeAddBookingType === "day" ? "Day Cruise" : activeAddBookingType === "overnight" ? "Overnight stay" : "Night stay"}
+                </Text>
+              </View>
+
+              {/* Guest Name */}
+              <View style={styles.formField}>
+                <Text style={styles.formLabel}>Guest Name</Text>
+                <TextInput
+                  value={bookingGuestName}
+                  onChangeText={setBookingGuestName}
+                  placeholder="e.g. John Doe"
+                  placeholderTextColor="#9aafbf"
+                  style={styles.formInput}
+                  testID="form-guest-name"
+                />
+              </View>
+
+              {/* Number of Guests */}
+              <View style={styles.formField}>
+                <Text style={styles.formLabel}>Number of Guests</Text>
+                <TextInput
+                  value={bookingGuestCount}
+                  onChangeText={setBookingGuestCount}
+                  placeholder="e.g. 4"
+                  placeholderTextColor="#9aafbf"
+                  keyboardType="numeric"
+                  style={styles.formInput}
+                  testID="form-guest-count"
+                />
+              </View>
+
+              {/* Base Price Rate */}
+              <View style={styles.formField}>
+                <Text style={styles.formLabel}>Base Price Rate (₹)</Text>
+                <TextInput
+                  value={bookingBasePrice}
+                  onChangeText={(v) => setBookingBasePrice(formatInputWithCommas(v))}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  placeholderTextColor="#9aafbf"
+                  style={styles.formInput}
+                  testID="form-base-price"
+                />
+              </View>
+
+              {/* Extra 1 Rate & Quantity */}
+              <View style={styles.formField}>
+                <Text style={styles.formLabel}>
+                  {activeAddBookingType === "overnight" ? "Extra Bed Price Rate (₹) & Quantity" : "Extra Guest Price Rate (₹) & Quantity"}
+                </Text>
+                <View style={styles.formRowWithCounter}>
+                  <TextInput
+                    value={bookingExtra1}
+                    onChangeText={(v) => {
+                      setBookingExtra1(formatInputWithCommas(v));
+                      if (v && (parseInt(bookingExtra1Qty, 10) || 0) === 0) {
+                        setBookingExtra1Qty("1");
+                      }
+                    }}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor="#9aafbf"
+                    style={[styles.formInput, { flex: 1, marginRight: 8 }]}
+                    testID="form-extra-1"
+                  />
+                  <View style={styles.counterContainer}>
+                    <Pressable
+                      onPress={() => {
+                        const cur = parseInt(bookingExtra1Qty, 10) || 0;
+                        if (cur > 0) setBookingExtra1Qty(String(cur - 1));
+                      }}
+                      style={styles.counterButton}
+                      testID="form-extra-1-dec"
+                    >
+                      <Text style={styles.counterButtonText}>-</Text>
+                    </Pressable>
+                    <TextInput
+                      value={bookingExtra1Qty}
+                      onChangeText={(v) => {
+                        const digits = v.replace(/[^0-9]/g, "");
+                        setBookingExtra1Qty(digits || "0");
+                      }}
+                      keyboardType="numeric"
+                      style={styles.counterValueInput}
+                      testID="form-extra-1-qty"
+                    />
+                    <Pressable
+                      onPress={() => {
+                        const cur = parseInt(bookingExtra1Qty, 10) || 0;
+                        setBookingExtra1Qty(String(cur + 1));
+                      }}
+                      style={styles.counterButton}
+                      testID="form-extra-1-inc"
+                    >
+                      <Text style={styles.counterButtonText}>+</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+
+              {/* Extra 2 Rate & Quantity */}
+              <View style={styles.formField}>
+                <Text style={styles.formLabel}>
+                  {activeAddBookingType === "overnight" ? "Extra Cot Price Rate (₹) & Quantity" : "Extra Room Price Rate (₹) & Quantity"}
+                </Text>
+                <View style={styles.formRowWithCounter}>
+                  <TextInput
+                    value={bookingExtra2}
+                    onChangeText={(v) => {
+                      setBookingExtra2(formatInputWithCommas(v));
+                      if (v && (parseInt(bookingExtra2Qty, 10) || 0) === 0) {
+                        setBookingExtra2Qty("1");
+                      }
+                    }}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor="#9aafbf"
+                    style={[styles.formInput, { flex: 1, marginRight: 8 }]}
+                    testID="form-extra-2"
+                  />
+                  <View style={styles.counterContainer}>
+                    <Pressable
+                      onPress={() => {
+                        const cur = parseInt(bookingExtra2Qty, 10) || 0;
+                        if (cur > 0) setBookingExtra2Qty(String(cur - 1));
+                      }}
+                      style={styles.counterButton}
+                      testID="form-extra-2-dec"
+                    >
+                      <Text style={styles.counterButtonText}>-</Text>
+                    </Pressable>
+                    <TextInput
+                      value={bookingExtra2Qty}
+                      onChangeText={(v) => {
+                        const digits = v.replace(/[^0-9]/g, "");
+                        setBookingExtra2Qty(digits || "0");
+                      }}
+                      keyboardType="numeric"
+                      style={styles.counterValueInput}
+                      testID="form-extra-2-qty"
+                    />
+                    <Pressable
+                      onPress={() => {
+                        const cur = parseInt(bookingExtra2Qty, 10) || 0;
+                        setBookingExtra2Qty(String(cur + 1));
+                      }}
+                      style={styles.counterButton}
+                      testID="form-extra-2-inc"
+                    >
+                      <Text style={styles.counterButtonText}>+</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              </View>
+
+              {/* Booked Amount / Total Agreed Price */}
+              <View style={styles.formField}>
+                <Text style={styles.formLabel}>Actual Booked Amount / Sold Price (₹)</Text>
+                <TextInput
+                  value={bookingBookedAmount}
+                  onChangeText={(v) => {
+                    setBookingBookedAmount(formatInputWithCommas(v));
+                    setIsBookedAmountManuallyEdited(true);
+                  }}
+                  keyboardType="numeric"
+                  placeholder="0"
+                  placeholderTextColor="#9aafbf"
+                  style={[styles.formInput, { borderColor: "#1a7f7f", borderWidth: 1.5, fontSize: 15, fontWeight: "700" }]}
+                  testID="form-booked-amount"
+                />
+              </View>
+
+              {/* Special Notes */}
+              <View style={styles.formField}>
+                <Text style={styles.formLabel}>Special Notes / Requests</Text>
+                <TextInput
+                  value={bookingSpecialNotes}
+                  onChangeText={setBookingSpecialNotes}
+                  placeholder="e.g. Vegetarian meals, anniversary setup"
+                  placeholderTextColor="#9aafbf"
+                  multiline={true}
+                  numberOfLines={3}
+                  style={[styles.formInput, styles.formInputMultiline]}
+                  testID="form-notes"
+                />
+              </View>
+
+              {/* Actions */}
+              <View style={styles.formActionsRow}>
+                <Pressable
+                  onPress={() => setIsBookingModalVisible(false)}
+                  style={styles.formCancelButton}
+                  testID="form-cancel-button"
+                >
+                  <Text style={styles.formCancelButtonText}>Cancel</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => {
+                    if (activeAddBookingType) {
+                      saveBooking(
+                        activeAddBookingType,
+                        bookingGuestName,
+                        bookingGuestCount,
+                        bookingSpecialNotes,
+                        bookingBasePrice,
+                        bookingExtra1,
+                        bookingExtra2,
+                        bookingBookedAmount,
+                        bookingExtra1Qty,
+                        bookingExtra2Qty,
+                      );
+                    }
+                    setIsBookingModalVisible(false);
+                  }}
+                  style={styles.formConfirmButton}
+                  testID="form-confirm-button"
+                >
+                  <Text style={styles.formConfirmButtonText}>
+                    {activeAddBookingType === "day"
+                      ? (selectedBooking.dayCruise ? "Save changes" : "Confirm Booking")
+                      : activeAddBookingType === "overnight"
+                        ? (selectedBooking.overnightCruise ? "Save changes" : "Confirm Booking")
+                        : (selectedBooking.nightCruise ? "Save changes" : "Confirm Booking")}
+                  </Text>
+                </Pressable>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </KeyboardAvoidingView>
     </GestureHandlerRootView>
   );
