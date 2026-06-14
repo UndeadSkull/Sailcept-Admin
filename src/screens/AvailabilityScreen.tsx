@@ -116,13 +116,13 @@ function parsePriceString(val: string): number | undefined {
 export default function AvailabilityScreen() {
   const { boats } = useBoat();
   const [activeBoatForCalendar, setActiveBoatForCalendar] = useState<
-    string | null
+    number | null
   >(null);
   const [zoomOrigin, setZoomOrigin] = useState({
     x: screenWidth / 2,
     y: screenHeight / 2,
   });
-  const route = useRoute<RouteProp<{ Availability: { selectBoat?: string } }, 'Availability'>>();
+  const route = useRoute<RouteProp<{ Availability: { selectBoatId?: number } }, 'Availability'>>();
   const navigation = useNavigation<NavigationProp<MainTabParamList, 'Availability'>>();
 
   const today = new Date();
@@ -162,16 +162,16 @@ export default function AvailabilityScreen() {
   const [isBookedAmountManuallyEdited, setIsBookedAmountManuallyEdited] = useState(false);
 
   useEffect(() => {
-    if (route.params?.selectBoat) {
-      const boat = route.params.selectBoat;
-      navigation.setParams({ selectBoat: undefined });
+    if (route.params?.selectBoatId) {
+      const boatId = route.params.selectBoatId;
+      navigation.setParams({ selectBoatId: undefined });
       const timer = setTimeout(() => {
         setZoomOrigin({ x: screenWidth / 2, y: screenHeight / 2 });
-        setActiveBoatForCalendar(boat);
+        setActiveBoatForCalendar(boatId);
       }, 0);
       return () => clearTimeout(timer);
     }
-  }, [route.params?.selectBoat, navigation]);
+  }, [route.params?.selectBoatId, navigation]);
 
   const sheetOpenRef = useRef(false);
   const bulkModeRef = useRef(false);
@@ -277,7 +277,7 @@ export default function AvailabilityScreen() {
   const sheetSnapPoints = useMemo(() => ["75%", "95%"], []);
 
   const [bookingsByBoat, setBookingsByBoat] = useState<
-    Record<string, Record<string, DayBooking>>
+    Record<number, Record<string, DayBooking>>
   >({});
   const [isLoadingCalendar, setIsLoadingCalendar] = useState(true);
 
@@ -287,11 +287,11 @@ export default function AvailabilityScreen() {
       if (boats.length === 0) return;
       setIsLoadingCalendar(true);
       try {
-        const allBookings: Record<string, Record<string, DayBooking>> = {};
+        const allBookings: Record<number, Record<string, DayBooking>> = {};
         for (const boat of boats) {
-          const res = await fetchCalendarBookings(boat);
+          const res = await fetchCalendarBookings(boat.id);
           if (res.data) {
-            allBookings[boat] = res.data;
+            allBookings[boat.id] = res.data;
           }
         }
         if (active) {
@@ -857,7 +857,7 @@ export default function AvailabilityScreen() {
               <View style={styles.boatGrid}>
                 {boats.map((boat) => (
                   <Pressable
-                    key={boat}
+                    key={boat.id}
                     onPress={(event) => {
                       const pageX = event?.nativeEvent?.pageX;
                       const pageY = event?.nativeEvent?.pageY;
@@ -866,13 +866,13 @@ export default function AvailabilityScreen() {
                         y: pageY ?? screenHeight / 2,
                       });
                       if (process.env.NODE_ENV === "test") {
-                        setActiveBoatForCalendar(boat);
+                        setActiveBoatForCalendar(boat.id);
                         setVisibleMonth(new Date(todayYear, todayMonth, 1));
                       } else {
                         // Defer view toggle state updates to the next frame to ensure the
                         // home view re-renders with the correct zoomOrigin before unmounting.
                         requestAnimationFrame(() => {
-                          setActiveBoatForCalendar(boat);
+                          setActiveBoatForCalendar(boat.id);
                           setVisibleMonth(new Date(todayYear, todayMonth, 1));
                         });
                       }
@@ -881,10 +881,10 @@ export default function AvailabilityScreen() {
                       styles.boatCard,
                       pressed ? styles.boatCardPressed : null,
                     ]}
-                    testID={`boat-card-${boat.replace(/\s+/g, "-").toLowerCase()}`}
+                    testID={`boat-card-${boat.name.replace(/\s+/g, "-").toLowerCase()}`}
                   >
                     <Text style={styles.boatCardTitle} numberOfLines={1}>
-                      {boat}
+                      {boat.name}
                     </Text>
 
                     <View style={styles.miniCalendarContainer}>
@@ -912,7 +912,7 @@ export default function AvailabilityScreen() {
                                 todayMonth,
                                 day,
                               );
-                              const booking = bookingsByBoat[boat]?.[dateKey];
+                              const booking = bookingsByBoat[boat.id]?.[dateKey];
                               const allCruisesBooked =
                                 booking?.dayCruise &&
                                 (booking?.overnightCruise ||
@@ -1003,8 +1003,8 @@ export default function AvailabilityScreen() {
         >
           <ScrollView contentContainerStyle={styles.pageScrollContent}>
             <PageHeader
-              title={activeBoatForCalendar}
-              sub="Set bulk prices for multiple dates and manage cruise availability by date."
+              title={boats.find((b) => b.id === activeBoatForCalendar)?.name || ""}
+              sub={`Manage detailed availability, override prices, and view bookings. · Date: ${currentMonthTitle}`}
               onBack={() => setActiveBoatForCalendar(null)}
             />
 
@@ -1816,7 +1816,7 @@ export default function AvailabilityScreen() {
                       : (selectedBooking.nightCruise ? "Edit Offline Booking" : "Add Offline Booking")}
                 </Text>
                 <Text style={styles.modalHeaderSubtitle}>
-                  {activeBoatForCalendar} · {selectedDate?.day}{" "}
+                  {boats.find((b) => b.id === activeBoatForCalendar)?.name || ""} · {selectedDate?.day}{" "}
                   {selectedDate
                     ? new Date(
                         selectedDate.year,

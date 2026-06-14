@@ -5,14 +5,14 @@ import type { CompositeScreenProps } from "@react-navigation/native";
 export type RootStackParamList = {
   Login: undefined;
   MainTabs: undefined;
-  BoatAssetModal: { boatName: string };
+  BoatAssetModal: { boatId: number };
   UserProfileModal: undefined;
   Notifications: undefined;
 };
 
 export type MainTabParamList = {
   Overview: undefined;
-  Availability: { selectBoat?: string } | undefined;
+  Availability: { selectBoatId?: number } | undefined;
   Requests: undefined;
   Bookings: { focusGuest?: string; focusToken?: number } | undefined;
   More: undefined;
@@ -22,7 +22,7 @@ export type MoreStackParamList = {
   MoreMenu: undefined;
   UserProfile: undefined;
   BoatProfilesList: undefined;
-  BoatProfileDetail: { boatName: string };
+  BoatProfileDetail: { boatId: number };
   Reviews: undefined;
   Invoices: undefined;
   Settings: undefined;

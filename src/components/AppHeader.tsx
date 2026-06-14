@@ -25,6 +25,8 @@ export default function AppHeader({ currentRouteName }: { currentRouteName: stri
   // If navigation is not initialized yet, default to showing the selector
   // (since the initial route is "Overview")
   const showBoatSelector = currentRouteName === null || currentRouteName === "Overview" || currentRouteName === "Requests";
+  
+  const selectedBoatName = boats.find((b) => b.id === selectedBoat)?.name || "";
 
   return (
     <View style={styles.mobileTopBar}>
@@ -49,13 +51,13 @@ export default function AppHeader({ currentRouteName }: { currentRouteName: stri
                 if (Platform.OS === "ios") {
                   ActionSheetIOS.showActionSheetWithOptions(
                     {
-                      options: [...boats, "Cancel"],
+                      options: [...boats.map((b) => b.name), "Cancel"],
                       cancelButtonIndex: boats.length,
                       title: "Select Boat",
                     },
                     (buttonIndex) => {
                       if (buttonIndex < boats.length) {
-                        setSelectedBoat(boats[buttonIndex]);
+                        setSelectedBoat(boats[buttonIndex].id);
                       }
                     }
                   );
@@ -69,7 +71,7 @@ export default function AppHeader({ currentRouteName }: { currentRouteName: stri
                 numberOfLines={1}
                 ellipsizeMode="tail"
               >
-                {selectedBoat}
+                {selectedBoatName}
               </Text>
               <Text style={styles.dropdownArrow}>▼</Text>
             </Pressable>
@@ -77,12 +79,12 @@ export default function AppHeader({ currentRouteName }: { currentRouteName: stri
             {Platform.OS !== "ios" && (
               <Picker
                 selectedValue={selectedBoat}
-                onValueChange={(itemValue) => setSelectedBoat(itemValue)}
+                onValueChange={(itemValue) => setSelectedBoat(Number(itemValue))}
                 style={styles.pickerOverlay}
                 testID="boat-picker"
               >
                 {boats.map((boat) => (
-                  <Picker.Item key={boat} label={boat} value={boat} />
+                  <Picker.Item key={boat.id} label={boat.name} value={boat.id} />
                 ))}
               </Picker>
             )}

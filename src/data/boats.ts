@@ -13,6 +13,7 @@ export type CruiseType = {
 };
 
 export type Boat = {
+  id: number;
   name: string;
   experienceTier: ExperienceTier;
   bookingType: BookingType;
@@ -22,4 +23,9 @@ export type Boat = {
   features: string[];
   cruiseTypes: CruiseType[];
   roomSettings: RoomSettings;
+};
+
+export type BoatListItem = {
+  id: number;
+  name: string;
 };

@@ -12,6 +12,7 @@ const mockBookings: BookingRecord[] = [
   {
     id: "booking-1",
     guestName: "Ethan Walker",
+    boatId: 1,
     boatName: "Vembanad Crest",
     bookingId: "#SC-2025-0041",
     details: [
@@ -28,6 +29,7 @@ const mockBookings: BookingRecord[] = [
   {
     id: "booking-2",
     guestName: "Olivia Bennett",
+    boatId: 1,
     boatName: "Vembanad Crest",
     bookingId: "#SC-2025-0042",
     details: [
@@ -44,6 +46,7 @@ const mockBookings: BookingRecord[] = [
   {
     id: "booking-3",
     guestName: "Nora Ali",
+    boatId: 2,
     boatName: "Backwater Pearl",
     bookingId: "#SC-2025-0050",
     details: [
@@ -60,6 +63,7 @@ const mockBookings: BookingRecord[] = [
 const mockRequests: BookingRequest[] = [
   {
     name: "Ethan Walker",
+    boatId: 1,
     boatName: "Vembanad Crest",
     dateLine: "Received 2 hrs ago - Date held until 6 PM today",
     subtitle: "Day cruise · 15 Jan 2025",
@@ -70,6 +74,7 @@ const mockRequests: BookingRequest[] = [
   },
   {
     name: "Emma Collins",
+    boatId: 3,
     boatName: "Kerala Dream",
     dateLine: "Received yesterday - Overnight stay · 22 Jan",
     subtitle: "Overnight stay · 22 Jan 2025",
@@ -79,6 +84,7 @@ const mockRequests: BookingRequest[] = [
   },
   {
     name: "Sofia Turner",
+    boatId: 1,
     boatName: "Vembanad Crest",
     dateLine: "Handled 3 days ago - Day cruise · 10 Jan",
     subtitle: "Day cruise · 10 Jan 2025",
@@ -90,6 +96,7 @@ const mockRequests: BookingRequest[] = [
   },
   {
     name: "Noah Parker",
+    boatId: 2,
     boatName: "Backwater Pearl",
     dateLine: "Handled 4 days ago - Night cruise · 09 Jan",
     subtitle: "Night cruise · 09 Jan 2025",
@@ -151,8 +158,8 @@ function normalizeBooking(booking: DayBooking): DayBooking {
   return normalized;
 }
 
-const mockCalendarBookings: Record<string, Record<string, DayBooking>> = {
-  "Vembanad Crest": {
+const mockCalendarBookings: Record<number, Record<string, DayBooking>> = {
+  1: {
     [getDateKey(currentYear, currentMonthIndex, 2)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: false,
@@ -199,7 +206,7 @@ const mockCalendarBookings: Record<string, Record<string, DayBooking>> = {
       nightCruisePrice: 14000,
     }),
   },
-  "Backwater Pearl": {
+  2: {
     [getDateKey(currentYear, currentMonthIndex, 3)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: false,
@@ -208,7 +215,7 @@ const mockCalendarBookings: Record<string, Record<string, DayBooking>> = {
       dayCruisePrice: 10800,
     }),
   },
-  "Kerala Dream": {
+  3: {
     [getDateKey(currentYear, currentMonthIndex, 10)]: normalizeBooking({
       dayCruise: true,
       overnightCruise: true,
@@ -224,25 +231,25 @@ const mockCalendarBookings: Record<string, Record<string, DayBooking>> = {
 const delay = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, process.env.NODE_ENV === "test" ? 0 : ms));
 
-export async function fetchBookings(boatName: string): Promise<ApiResponse<BookingRecord[]>> {
+export async function fetchBookings(boatId: number): Promise<ApiResponse<BookingRecord[]>> {
   await delay(500);
-  const filtered = mockBookings.filter((b) => b.boatName === boatName);
+  const filtered = mockBookings.filter((b) => b.boatId === boatId);
   return { data: filtered, error: null };
 }
 
-export async function fetchRequests(boatName: string): Promise<ApiResponse<BookingRequest[]>> {
+export async function fetchRequests(boatId: number): Promise<ApiResponse<BookingRequest[]>> {
   await delay(500);
-  const filtered = mockRequests.filter((r) => r.boatName === boatName);
+  const filtered = mockRequests.filter((r) => r.boatId === boatId);
   return { data: filtered, error: null };
 }
 
 export async function submitRequestOutcome(
-  boatName: string,
+  boatId: number,
   guestName: string,
   outcome: "accepted" | "rejected"
 ): Promise<ApiResponse<BookingRequest>> {
   await delay(600);
-  const req = mockRequests.find((r) => r.boatName === boatName && r.name === guestName);
+  const req = mockRequests.find((r) => r.boatId === boatId && r.name === guestName);
   if (!req) {
     return {
       data: null,
@@ -255,28 +262,28 @@ export async function submitRequestOutcome(
   return { data: { ...req }, error: null };
 }
 
-export async function fetchCalendarBookings(boatName: string): Promise<ApiResponse<Record<string, DayBooking>>> {
+export async function fetchCalendarBookings(boatId: number): Promise<ApiResponse<Record<string, DayBooking>>> {
   await delay(500);
-  const bookings = mockCalendarBookings[boatName] || {};
+  const bookings = mockCalendarBookings[boatId] || {};
   return { data: { ...bookings }, error: null };
 }
 
 export async function updateCalendarBookings(
-  boatName: string,
+  boatId: number,
   dateKey: string,
   booking: DayBooking
 ): Promise<ApiResponse<DayBooking>> {
   await delay(500);
-  if (!mockCalendarBookings[boatName]) {
-    mockCalendarBookings[boatName] = {};
+  if (!mockCalendarBookings[boatId]) {
+    mockCalendarBookings[boatId] = {};
   }
   const normalized = normalizeBooking(booking);
-  mockCalendarBookings[boatName][dateKey] = normalized;
+  mockCalendarBookings[boatId][dateKey] = normalized;
   return { data: normalized, error: null };
 }
 
 export async function bulkUpdateCalendarPricing(
-  boatName: string,
+  boatId: number,
   dateKeys: string[],
   pricing: {
     dayCruisePrice?: number;
@@ -285,12 +292,12 @@ export async function bulkUpdateCalendarPricing(
   }
 ): Promise<ApiResponse<void>> {
   await delay(600);
-  if (!mockCalendarBookings[boatName]) {
-    mockCalendarBookings[boatName] = {};
+  if (!mockCalendarBookings[boatId]) {
+    mockCalendarBookings[boatId] = {};
   }
 
   dateKeys.forEach((key) => {
-    const existing = mockCalendarBookings[boatName][key] || {
+    const existing = mockCalendarBookings[boatId][key] || {
       dayCruise: false,
       overnightCruise: false,
       nightCruise: false,
@@ -304,16 +311,16 @@ export async function bulkUpdateCalendarPricing(
       nightCruisePrice: pricing.nightCruisePrice !== undefined ? pricing.nightCruisePrice : existing.nightCruisePrice,
     });
 
-    mockCalendarBookings[boatName][key] = updated;
+    mockCalendarBookings[boatId][key] = updated;
   });
 
   return { data: null, error: null };
 }
 
 export async function saveAllCalendarBookings(
-  boatName: string,
+  boatId: number,
   bookings: Record<string, DayBooking>
 ): Promise<ApiResponse<void>> {
-  mockCalendarBookings[boatName] = bookings;
+  mockCalendarBookings[boatId] = bookings;
   return { data: null, error: null };
 }

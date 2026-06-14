@@ -54,9 +54,9 @@ export default function UserProfileScreen() {
           <Card title="Boat list">
             <View style={styles.verticalGap8}>
               {boats.map((boat) => (
-                <View key={boat} style={styles.profileBoatRow}>
+                <View key={boat.id} style={styles.profileBoatRow}>
                   <Ship size={13} color="#0c5eac" strokeWidth={2.2} />
-                  <Text style={styles.profileBoatText}>{boat}</Text>
+                  <Text style={styles.profileBoatText}>{boat.name}</Text>
                 </View>
               ))}
             </View>

@@ -30,8 +30,9 @@ function BoatProfileDetailInStack({
   route,
   navigation,
 }: MoreStackScreenProps<"BoatProfileDetail">) {
-  const { selectedBoat } = useBoat();
-  const boatName = route.params.boatName ?? selectedBoat;
+  const { selectedBoat, boats } = useBoat();
+  const boatId = route.params.boatId ?? selectedBoat;
+  const boatName = boats.find((b) => b.id === boatId)?.name || "";
 
   const [isEditing, setIsEditing] = useState(false);
   const identity = {

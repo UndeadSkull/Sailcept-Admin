@@ -88,7 +88,7 @@ function getDateKey(year: number, month: number, day: number): string {
 type Props = MainTabScreenProps<"Bookings">;
 
 export default function BookingsScreen({ route }: Props) {
-  const { selectedBoat } = useBoat();
+  const { selectedBoat, boats } = useBoat();
   const focusGuest = route?.params?.focusGuest;
   const focusToken = route?.params?.focusToken;
 
@@ -291,7 +291,7 @@ export default function BookingsScreen({ route }: Props) {
         >
         <PageHeader
           title="Bookings"
-          sub={`Track accepted bookings with complete trip details and guest preferences. · Boat: ${selectedBoat}`}
+          sub={`Track accepted bookings with complete trip details and guest preferences. · Boat: ${boats.find((b) => b.id === selectedBoat)?.name || ""}`}
         />
 
         {isLoading ? (
@@ -480,7 +480,7 @@ export default function BookingsScreen({ route }: Props) {
           {bookingsForSelectedDate.length === 0 ? (
             <Card title="No bookings">
               <Text style={styles.detailMuted}>
-                No confirmed bookings found for this day on {selectedBoat}.
+                No confirmed bookings found for this day on {boats.find((b) => b.id === selectedBoat)?.name || ""}.
               </Text>
             </Card>
           ) : null}

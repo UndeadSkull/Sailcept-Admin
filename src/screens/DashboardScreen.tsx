@@ -1,219 +1,134 @@
+import React, { useEffect, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
-import { Pressable, ScrollView, Text, View } from "react-native";
-import { Card, PageHeader, type Request } from "../components";
+import { Pressable, ScrollView, Text, View, ActivityIndicator } from "react-native";
+import { Card, PageHeader } from "../components";
 import { useBoat } from "../context/BoatContext";
+import { fetchDashboardStats, fetchUpcomingCruises, DashboardStat, UpcomingCruise } from "../services/dashboard";
 import type { MainTabParamList } from "../navigation/types";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
 import styles from "../styles";
 
 type TabNav = BottomTabNavigationProp<MainTabParamList>;
 
-const statsByBoat: Record<
-  string,
-  Array<{
-    label: string;
-    value: string;
-    caption: string;
-    tab?: keyof MainTabParamList;
-    isPending?: boolean;
-  }>
-> = {
-  "Vembanad Crest": [
-    {
-      label: "Open dates this month",
-      value: "18",
-      caption: "of 31 days",
-      tab: "Availability",
-    },
-    {
-      label: "Pending requests",
-      value: "3",
-      caption: "Awaiting response",
-      tab: "Requests",
-      isPending: true,
-    },
-    {
-      label: "Confirmed bookings",
-      value: "11",
-      caption: "This month",
-      tab: "Bookings",
-    },
-    { label: "Revenue (month)", value: "INR 1.4L", caption: "Normal + peak" },
-  ],
-  "Backwater Pearl": [
-    {
-      label: "Open dates this month",
-      value: "22",
-      caption: "of 31 days",
-      tab: "Availability",
-    },
-    {
-      label: "Pending requests",
-      value: "1",
-      caption: "Awaiting response",
-      tab: "Requests",
-      isPending: true,
-    },
-    {
-      label: "Confirmed bookings",
-      value: "6",
-      caption: "This month",
-      tab: "Bookings",
-    },
-    { label: "Revenue (month)", value: "INR 82k", caption: "Normal + peak" },
-  ],
-  "Kerala Dream": [
-    {
-      label: "Open dates this month",
-      value: "14",
-      caption: "of 31 days",
-      tab: "Availability",
-    },
-    {
-      label: "Pending requests",
-      value: "4",
-      caption: "Awaiting response",
-      tab: "Requests",
-      isPending: true,
-    },
-    {
-      label: "Confirmed bookings",
-      value: "13",
-      caption: "This month",
-      tab: "Bookings",
-    },
-    { label: "Revenue (month)", value: "INR 1.9L", caption: "Normal + peak" },
-  ],
-};
-
-const now = new Date();
-const year = now.getFullYear();
-const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const currentMonthStr = monthNames[now.getMonth()];
-
-const cruisesByBoat: Record<string, Request[]> = {
-  "Vembanad Crest": [
-    {
-      name: "Ethan Walker",
-      dateLine: `Day cruise · 15 ${currentMonthStr} ${year}`,
-      status: "Confirmed",
-      config: "Premium · Private · 2 adults",
-    },
-    {
-      name: "Olivia Bennett",
-      dateLine: `Overnight stay · 18 ${currentMonthStr} ${year}`,
-      status: "Confirmed",
-      config: "Luxury · Private · 4 adults",
-    },
-    {
-      name: "Lucas Martin",
-      dateLine: `Night stay · 22 ${currentMonthStr} ${year}`,
-      status: "Confirmed",
-      config: "Premium · Shared · 6 guests",
-    },
-  ],
-  "Backwater Pearl": [
-    {
-      name: "Mason Reed",
-      dateLine: `Day cruise · 12 ${currentMonthStr} ${year}`,
-      status: "Confirmed",
-      config: "Standard · Private · 3 adults",
-    },
-    {
-      name: "Ava Stone",
-      dateLine: `Night stay · 20 ${currentMonthStr} ${year}`,
-      status: "Confirmed",
-      config: "Premium · Shared · 5 guests",
-    },
-  ],
-  "Kerala Dream": [
-    {
-      name: "Noah Patel",
-      dateLine: `Overnight stay · 16 ${currentMonthStr} ${year}`,
-      status: "Confirmed",
-      config: "Luxury · Private · 4 adults",
-    },
-    {
-      name: "Liam Carter",
-      dateLine: `Day cruise · 23 ${currentMonthStr} ${year}`,
-      status: "Confirmed",
-      config: "Premium · Private · 2 adults",
-    },
-  ],
-};
-
 export default function DashboardScreen() {
   const navigation = useNavigation<TabNav>();
-  const { selectedBoat } = useBoat();
+  const { selectedBoat, boats } = useBoat();
 
-  const stats = statsByBoat[selectedBoat] ?? statsByBoat["Vembanad Crest"];
-  const upcomingCruises =
-    cruisesByBoat[selectedBoat] ?? cruisesByBoat["Vembanad Crest"];
+  const [stats, setStats] = useState<DashboardStat[]>([]);
+  const [upcomingCruises, setUpcomingCruises] = useState<UpcomingCruise[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    if (!selectedBoat) return;
+    setIsLoading(true);
+
+    Promise.all([
+      fetchDashboardStats(selectedBoat),
+      fetchUpcomingCruises(selectedBoat),
+    ])
+      .then(([statsRes, cruisesRes]) => {
+        if (!active) return;
+        if (statsRes.data) {
+          setStats(statsRes.data);
+        }
+        if (cruisesRes.data) {
+          setUpcomingCruises(cruisesRes.data);
+        }
+      })
+      .catch((err) => {
+        console.error("Failed to load dashboard data:", err);
+      })
+      .finally(() => {
+        if (active) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedBoat]);
+
+  const selectedBoatName = boats.find((b) => b.id === selectedBoat)?.name || "";
 
   return (
     <View style={styles.flex1}>
       <ScrollView contentContainerStyle={styles.pageScrollContent}>
         <PageHeader
           title="Overview"
-          sub={`Your houseboat performance at a glance · Boat: ${selectedBoat}`}
+          sub={`Your houseboat performance at a glance · Boat: ${selectedBoatName}`}
         />
 
-        <View style={styles.statsGrid}>
-          {stats.map((stat) => (
-            <Pressable
-              key={stat.label}
-              onPress={
-                stat.tab
-                  ? () => {
-                      if (stat.tab === "Availability") {
-                        navigation.navigate("Availability", { selectBoat: selectedBoat });
-                      } else {
-                        navigation.navigate(stat.tab as Exclude<keyof MainTabParamList, "Availability">);
-                      }
-                    }
-                  : undefined
-              }
-              disabled={!stat.tab}
-              style={({ pressed }) => [
-                styles.statCard,
-                stat.isPending ? styles.statCardPending : null,
-                { opacity: pressed ? 0.6 : 1 },
-              ]}
-            >
-              <Text style={styles.statLabel}>{stat.label}</Text>
-              <Text style={styles.statValue}>{stat.value}</Text>
-              <Text style={styles.statCaption}>{stat.caption}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <Card title="Upcoming cruises">
-          <View style={styles.verticalGap12}>
-            {upcomingCruises.map((cruise) => (
-              <Pressable
-                key={cruise.name}
-                onPress={() =>
-                  navigation.navigate("Bookings", {
-                    focusGuest: cruise.name,
-                    focusToken: Date.now(),
-                  })
-                }
-                style={({ pressed }) => [
-                  styles.listCard,
-                  pressed ? styles.listCardPressed : null,
-                ]}
-              >
-                <View style={styles.rowBetweenTop}>
-                  <View style={styles.flex1}>
-                    <Text style={styles.listCardTitle}>{cruise.name}</Text>
-                    <Text style={styles.listCardSub}>{cruise.dateLine}</Text>
-                  </View>
-                </View>
-                <Text style={styles.listCardMeta}>{cruise.config}</Text>
-              </Pressable>
-            ))}
+        {isLoading ? (
+          <View style={{ paddingVertical: 100, justifyContent: "center", alignItems: "center" }}>
+            <ActivityIndicator size="large" color="#0c5eac" />
+            <Text style={{ marginTop: 10, color: "#4f6e8c", fontSize: 14 }}>Loading performance metrics...</Text>
           </View>
-        </Card>
+        ) : (
+          <>
+            <View style={styles.statsGrid}>
+              {stats.map((stat) => (
+                <Pressable
+                  key={stat.label}
+                  onPress={
+                    stat.tab
+                      ? () => {
+                          if (stat.tab === "Availability") {
+                            navigation.navigate("Availability", { selectBoatId: selectedBoat });
+                          } else {
+                            navigation.navigate(stat.tab as Exclude<keyof MainTabParamList, "Availability">);
+                          }
+                        }
+                      : undefined
+                  }
+                  disabled={!stat.tab}
+                  style={({ pressed }) => [
+                    styles.statCard,
+                    stat.isPending ? styles.statCardPending : null,
+                    { opacity: pressed ? 0.6 : 1 },
+                  ]}
+                >
+                  <Text style={styles.statLabel}>{stat.label}</Text>
+                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={styles.statCaption}>{stat.caption}</Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Card title="Upcoming cruises">
+              <View style={styles.verticalGap12}>
+                {upcomingCruises.length === 0 ? (
+                  <Text style={styles.detailMuted}>No upcoming cruises scheduled.</Text>
+                ) : (
+                  upcomingCruises.map((cruise) => (
+                    <Pressable
+                      key={cruise.name}
+                      onPress={() =>
+                        navigation.navigate("Bookings", {
+                          focusGuest: cruise.name,
+                          focusToken: Date.now(),
+                        })
+                      }
+                      style={({ pressed }) => [
+                        styles.listCard,
+                        pressed ? styles.listCardPressed : null,
+                      ]}
+                    >
+                      <View style={styles.rowBetweenTop}>
+                        <View style={styles.flex1}>
+                          <Text style={styles.listCardTitle}>{cruise.name}</Text>
+                          <Text style={styles.listCardSub}>{cruise.dateLine}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.listCardMeta}>{cruise.config}</Text>
+                    </Pressable>
+                  ))
+                )}
+              </View>
+            </Card>
+          </>
+        )}
       </ScrollView>
     </View>
   );

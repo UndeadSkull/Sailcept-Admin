@@ -7,7 +7,7 @@ import { BookingRequest } from "../data/bookings";
 import styles from "../styles";
 
 export default function RequestsScreen() {
-  const { selectedBoat } = useBoat();
+  const { selectedBoat, boats } = useBoat();
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
   const [cards, setCards] = useState<BookingRequest[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -59,19 +59,21 @@ export default function RequestsScreen() {
   };
 
   const pendingCards = cards.filter(
-    (c) => !c.outcome && c.boatName === selectedBoat
+    (c) => !c.outcome && c.boatId === selectedBoat
   );
   const historyCards = cards.filter(
-    (c) => c.outcome && c.boatName === selectedBoat
+    (c) => c.outcome && c.boatId === selectedBoat
   );
   const visibleCards = activeTab === "pending" ? pendingCards : historyCards;
+
+  const selectedBoatName = boats.find((b) => b.id === selectedBoat)?.name || "";
 
   return (
     <View style={styles.flex1}>
       <ScrollView contentContainerStyle={styles.pageScrollContent}>
         <PageHeader
           title="Requests"
-          sub={`Temporary date locks are active. Respond to avoid automatic expiry. · Boat: ${selectedBoat}`}
+          sub={`Temporary date locks are active. Respond to avoid automatic expiry. · Boat: ${selectedBoatName}`}
         />
 
         <View style={styles.requestTabRow}>

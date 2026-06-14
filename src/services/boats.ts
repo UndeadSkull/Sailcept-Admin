@@ -1,8 +1,9 @@
 import { ApiResponse } from "../data/auth";
-import { Boat } from "../data/boats";
+import { Boat, BoatListItem } from "../data/boats";
 
-const mockBoats: Record<string, Boat> = {
-  "Vembanad Crest": {
+const mockBoats: Record<number, Boat> = {
+  1: {
+    id: 1,
     name: "Vembanad Crest",
     experienceTier: "Premium",
     bookingType: "Private only",
@@ -17,7 +18,8 @@ const mockBoats: Record<string, Boat> = {
     ],
     roomSettings: { maxGuests: "2 guests", extraBed: "Allowed", children: "Allowed" },
   },
-  "Backwater Pearl": {
+  2: {
+    id: 2,
     name: "Backwater Pearl",
     experienceTier: "Standard",
     bookingType: "Shared",
@@ -32,7 +34,8 @@ const mockBoats: Record<string, Boat> = {
     ],
     roomSettings: { maxGuests: "2 guests", extraBed: "Not allowed", children: "Allowed" },
   },
-  "Kerala Dream": {
+  3: {
+    id: 3,
     name: "Kerala Dream",
     experienceTier: "Luxury",
     bookingType: "Private + shared",
@@ -52,45 +55,41 @@ const mockBoats: Record<string, Boat> = {
 const delay = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, process.env.NODE_ENV === "test" ? 0 : ms));
 
-export async function fetchBoats(): Promise<ApiResponse<string[]>> {
+export async function fetchBoats(): Promise<ApiResponse<BoatListItem[]>> {
   await delay(400);
-  return { data: Object.keys(mockBoats), error: null };
+  const list = Object.values(mockBoats).map((b) => ({ id: b.id, name: b.name }));
+  return { data: list, error: null };
 }
 
-export async function fetchBoatDetails(boatName: string): Promise<ApiResponse<Boat>> {
+export async function fetchBoatDetails(boatId: number): Promise<ApiResponse<Boat>> {
   await delay(500);
-  const boat = mockBoats[boatName];
+  const boat = mockBoats[boatId];
   if (!boat) {
     return {
       data: null,
-      error: { message: `Boat with name "${boatName}" not found.`, code: "NOT_FOUND" },
+      error: { message: `Boat with ID "${boatId}" not found.`, code: "NOT_FOUND" },
     };
   }
   return { data: { ...boat }, error: null };
 }
 
 export async function updateBoatDetails(
-  boatName: string,
+  boatId: number,
   updatedDetails: Partial<Boat>
 ): Promise<ApiResponse<Boat>> {
   await delay(600);
-  const boat = mockBoats[boatName];
+  const boat = mockBoats[boatId];
   if (!boat) {
     return {
       data: null,
-      error: { message: `Boat with name "${boatName}" not found.`, code: "NOT_FOUND" },
+      error: { message: `Boat with ID "${boatId}" not found.`, code: "NOT_FOUND" },
     };
   }
   const updated = {
     ...boat,
     ...updatedDetails,
-    name: updatedDetails.name ?? boat.name,
+    id: boat.id, // cannot change id
   };
-  if (updatedDetails.name && updatedDetails.name !== boatName) {
-    delete mockBoats[boatName];
-    mockBoats[updatedDetails.name] = updated;
-  } else {
-    mockBoats[boatName] = updated;
-  }
+  mockBoats[boatId] = updated;
   return { data: updated, error: null };
 }

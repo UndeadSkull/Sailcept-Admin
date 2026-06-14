@@ -1,7 +1,8 @@
 export type BookingRecord = {
   id: string;
   guestName: string;
-  boatName: string;
+  boatId: number;
+  boatName?: string;
   bookingId: string;
   details: Array<[string, string]>;
   notes: string;
@@ -9,7 +10,8 @@ export type BookingRecord = {
 
 export type BookingRequest = {
   name: string;
-  boatName: string;
+  boatId: number;
+  boatName?: string;
   dateLine: string;
   subtitle: string;
   status: string;

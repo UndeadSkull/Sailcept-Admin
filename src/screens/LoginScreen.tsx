@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,146 +8,42 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  LayoutAnimation,
-  Alert,
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
-import { ArrowLeft } from "lucide-react-native";
 import styles from "../styles";
 
 export default function LoginScreen() {
-  const { login, verifyOtp } = useAuth();
+  const { login } = useAuth();
   
-  const [phoneNumber, setPhoneNumber] = useState("");
-  const [countryCode, setCountryCode] = useState("+1");
-  const [step, setStep] = useState<"phone" | "otp">("phone");
-  const [otp, setOtp] = useState("");
-  const [timer, setTimer] = useState(0);
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const otpInputRef = useRef<TextInput>(null);
-
-  // Focus the OTP text input when transitioning to OTP step
-  useEffect(() => {
-    if (step === "otp") {
-      const timeout = setTimeout(() => {
-        otpInputRef.current?.focus();
-      }, 300);
-      return () => clearTimeout(timeout);
-    }
-  }, [step]);
-
-  // Countdown timer for OTP resend
-  useEffect(() => {
-    if (timer > 0) {
-      const interval = setInterval(() => {
-        setTimer((prev) => prev - 1);
-      }, 1000);
-      return () => clearInterval(interval);
-    }
-  }, [timer]);
-
-  const handleSendOTP = async () => {
+  const handleLogin = async () => {
     setError("");
-    const cleanedPhone = phoneNumber.replace(/[^0-9]/g, "");
-    if (cleanedPhone.length < 10) {
-      setError("Please enter a valid 10-digit phone number.");
+    const trimmedUser = username.trim();
+    if (!trimmedUser) {
+      setError("Please enter your username.");
+      return;
+    }
+    if (!password) {
+      setError("Please enter your password.");
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const fullPhone = `${countryCode}${cleanedPhone}`;
-      const response = await login(fullPhone);
-      
-      setIsSubmitting(false);
-      if (response.error) {
-        setError(response.error.message);
+      if (trimmedUser.toLowerCase() === "admin" && password === "password") {
+        await login(trimmedUser, password);
       } else {
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setStep("otp");
-        setTimer(30);
-      }
-    } catch {
-      setIsSubmitting(false);
-      Alert.alert("Network Error", "Unable to send verification code. Please check your connection.");
-    }
-  };
-
-  const handleVerifyOTP = async () => {
-    setError("");
-    if (otp.length < 6) {
-      setError("Please enter the 6-digit verification code.");
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const fullPhone = `${countryCode}${phoneNumber.replace(/[^0-9]/g, "")}`;
-      const response = await verifyOtp(fullPhone, otp);
-      
-      if (response.error) {
-        setError(response.error.message);
+        setError("Invalid username or password. Use 'admin' and 'password' for testing.");
         setIsSubmitting(false);
       }
-      // If successful, AuthContext will set isAuthenticated=true which triggers redirection automatically.
-    } catch {
+    } catch (err) {
+      setError("Authentication failed. Please try again.");
       setIsSubmitting(false);
-      Alert.alert("Verification Error", "Verification failed. Please check your network and try again.");
     }
-  };
-
-  const handleResendOTP = async () => {
-    setError("");
-    setOtp("");
-    setIsSubmitting(true);
-
-    try {
-      const fullPhone = `${countryCode}${phoneNumber.replace(/[^0-9]/g, "")}`;
-      const response = await login(fullPhone);
-      setIsSubmitting(false);
-      if (response.error) {
-        setError(response.error.message);
-      } else {
-        setTimer(30);
-        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        otpInputRef.current?.focus();
-      }
-    } catch {
-      setIsSubmitting(false);
-      Alert.alert("Error", "Failed to resend code. Please try again.");
-    }
-  };
-
-  const goBackToPhone = () => {
-    setError("");
-    setOtp("");
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setStep("phone");
-  };
-
-  const renderOtpBoxes = () => {
-    const boxes = [];
-    for (let i = 0; i < 6; i++) {
-      const char = otp[i] || "";
-      const isFocused = otp.length === i && step === "otp";
-      
-      boxes.push(
-        <View
-          key={i}
-          style={[
-            styles.loginOtpBox,
-            isFocused && styles.loginOtpBoxFocused,
-            error ? styles.loginOtpBoxError : null,
-          ]}
-        >
-          <Text style={styles.loginOtpBoxText}>{char}</Text>
-          {isFocused && <View style={styles.loginOtpCursor} />}
-        </View>
-      );
-    }
-    return boxes;
   };
 
   return (
@@ -171,176 +67,86 @@ export default function LoginScreen() {
 
           {/* Login Card Container */}
           <View style={styles.loginCard}>
-            {step === "phone" ? (
-              // Step 1: Enter Phone Number
-              <View style={styles.loginCardContent}>
-                <Text style={styles.loginTitle}>Welcome back</Text>
-                <Text style={styles.loginSub}>
-                  Enter your mobile number to receive a secure login code.
-                </Text>
+            <View style={styles.loginCardContent}>
+              <Text style={styles.loginTitle}>Welcome back</Text>
+              <Text style={styles.loginSub}>
+                Enter your credentials to access your operator dashboard.
+              </Text>
 
-                {error ? (
-                  <View style={styles.loginErrorBox}>
-                    <Text style={styles.loginErrorText}>{error}</Text>
-                  </View>
-                ) : null}
-
-                <View style={styles.loginInputLabelContainer}>
-                  <Text style={styles.loginInputLabel}>Phone Number</Text>
+              {error ? (
+                <View style={styles.loginErrorBox}>
+                  <Text style={styles.loginErrorText}>{error}</Text>
                 </View>
+              ) : null}
 
-                <View style={styles.loginPhoneRow}>
-                  {/* Country Code Selector Box */}
-                  <View style={styles.loginCountryBox}>
-                    <TextInput
-                      style={styles.loginCountryInput}
-                      value={countryCode}
-                      onChangeText={setCountryCode}
-                      keyboardType="phone-pad"
-                      maxLength={4}
-                      placeholder="+1"
-                      placeholderTextColor="#8ea0b6"
-                      accessibilityLabel="Country code input"
-                    />
-                  </View>
-
-                  {/* Phone Input */}
-                  <View style={styles.loginPhoneInputWrapper}>
-                    <TextInput
-                      style={styles.loginPhoneInput}
-                      value={phoneNumber}
-                      onChangeText={(val) => {
-                        setError("");
-                        setPhoneNumber(val.replace(/[^0-9]/g, ""));
-                      }}
-                      keyboardType="phone-pad"
-                      placeholder="000 000 0000"
-                      placeholderTextColor="#8ea0b6"
-                      maxLength={15}
-                      onSubmitEditing={handleSendOTP}
-                      accessibilityLabel="Phone number input"
-                    />
-                  </View>
-                </View>
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.loginPrimaryButton,
-                    (pressed || isSubmitting) && styles.loginPrimaryButtonPressed,
-                  ]}
-                  onPress={handleSendOTP}
-                  disabled={isSubmitting}
-                  accessibilityLabel="Send OTP verification code"
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator size="small" color="#faf6f1" />
-                  ) : (
-                    <Text style={styles.loginPrimaryButtonText}>
-                      Send Verification Code
-                    </Text>
-                  )}
-                </Pressable>
-
-                <Text style={styles.loginSecuredNotice}>
-                  By continuing, you agree to our terms of service.
-                </Text>
+              {/* Username Input */}
+              <View style={styles.loginInputLabelContainer}>
+                <Text style={styles.loginInputLabel}>Username</Text>
               </View>
-            ) : (
-              // Step 2: Enter OTP Code
-              <View style={styles.loginCardContent}>
-                <Pressable
-                  style={styles.loginBackButton}
-                  onPress={goBackToPhone}
-                  accessibilityLabel="Go back to phone input"
-                >
-                  <ArrowLeft size={16} color="#1a7f7f" />
-                  <Text style={styles.loginBackButtonText}>Edit Number</Text>
-                </Pressable>
-
-                <Text style={styles.loginTitle}>Enter code</Text>
-                <Text style={styles.loginSub}>
-                  We sent a 6-digit verification code to{" "}
-                  <Text style={{ fontWeight: "700", color: "#102949" }}>
-                    {countryCode} {phoneNumber}
-                  </Text>
-                </Text>
-
-                {error ? (
-                  <View style={styles.loginErrorBox}>
-                    <Text style={styles.loginErrorText}>{error}</Text>
-                  </View>
-                ) : null}
-
-                {/* OTP Digit Box Row */}
-                <Pressable
-                  style={styles.loginOtpRow}
-                  onPress={() => otpInputRef.current?.focus()}
-                  accessibilityLabel="Enter verification code"
-                >
-                  {renderOtpBoxes()}
-                </Pressable>
-
-                {/* Hidden Text Input that captures OTP input */}
+              <View style={[styles.loginPhoneInputWrapper, { marginBottom: 14, minHeight: 46 }]}>
                 <TextInput
-                  ref={otpInputRef}
-                  style={styles.loginHiddenOtpInput}
-                  value={otp}
+                  style={styles.loginPhoneInput}
+                  value={username}
                   onChangeText={(val) => {
                     setError("");
-                    const cleanVal = val.replace(/[^0-9]/g, "");
-                    setOtp(cleanVal);
+                    setUsername(val);
                   }}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  textContentType="oneTimeCode"
-                  autoComplete="one-time-code"
+                  placeholder="Enter your username"
+                  placeholderTextColor="#8ea0b6"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  accessibilityLabel="Username input"
                 />
-
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.loginPrimaryButton,
-                    (pressed || isSubmitting) && styles.loginPrimaryButtonPressed,
-                    otp.length < 6 && styles.loginPrimaryButtonDisabled,
-                  ]}
-                  onPress={handleVerifyOTP}
-                  disabled={isSubmitting || otp.length < 6}
-                  accessibilityLabel="Verify OTP code"
-                >
-                  {isSubmitting ? (
-                    <ActivityIndicator size="small" color="#faf6f1" />
-                  ) : (
-                    <Text style={styles.loginPrimaryButtonText}>
-                      Verify & Log In
-                    </Text>
-                  )}
-                </Pressable>
-
-                {/* Countdown & Resend Option */}
-                <View style={styles.loginTimerContainer}>
-                  {timer > 0 ? (
-                    <Text style={styles.loginTimerText}>
-                      Resend code in <Text style={{ fontWeight: "700" }}>{timer}s</Text>
-                    </Text>
-                  ) : (
-                    <Pressable
-                      onPress={handleResendOTP}
-                      style={styles.loginResendButton}
-                      accessibilityLabel="Resend verification code"
-                    >
-                      <Text style={styles.loginResendButtonText}>Resend Code</Text>
-                    </Pressable>
-                  )}
-                </View>
               </View>
-            )}
+
+              {/* Password Input */}
+              <View style={styles.loginInputLabelContainer}>
+                <Text style={styles.loginInputLabel}>Password</Text>
+              </View>
+              <View style={[styles.loginPhoneInputWrapper, { marginBottom: 20, minHeight: 46 }]}>
+                <TextInput
+                  style={styles.loginPhoneInput}
+                  value={password}
+                  onChangeText={(val) => {
+                    setError("");
+                    setPassword(val);
+                  }}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#8ea0b6"
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  onSubmitEditing={handleLogin}
+                  accessibilityLabel="Password input"
+                />
+              </View>
+
+              <Pressable
+                style={({ pressed }) => [
+                  styles.loginPrimaryButton,
+                  (pressed || isSubmitting) && styles.loginPrimaryButtonPressed,
+                ]}
+                onPress={handleLogin}
+                disabled={isSubmitting}
+                accessibilityLabel="Log In Button"
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator size="small" color="#faf6f1" />
+                ) : (
+                  <Text style={styles.loginPrimaryButtonText}>
+                    Log In
+                  </Text>
+                )}
+              </Pressable>
+            </View>
           </View>
 
           {/* Tester Helper Box */}
           <View style={styles.loginTesterHelper}>
             <Text style={styles.loginTesterHelperTitle}>Tester Note:</Text>
             <Text style={styles.loginTesterHelperText}>
-              • Enter any phone number.{"\n"}
-              • Enter code <Text style={{ fontWeight: "800" }}>123456</Text> to authenticate.
+              • Enter username <Text style={{ fontWeight: "800" }}>admin</Text>{"\n"}
+              • Enter password <Text style={{ fontWeight: "800" }}>password</Text> to authenticate.
             </Text>
           </View>
         </View>

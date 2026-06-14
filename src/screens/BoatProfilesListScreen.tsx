@@ -27,12 +27,12 @@ export default function BoatProfilesListScreen({ navigation }: Props) {
           <View style={styles.verticalGap8}>
             {boats.map((boat) => (
               <Pressable
-                key={boat}
-                onPress={() => navigation.navigate("BoatProfileDetail", { boatName: boat })}
+                key={boat.id}
+                onPress={() => navigation.navigate("BoatProfileDetail", { boatId: boat.id })}
                 style={({ pressed }) => [styles.profileBoatRow, pressed ? { opacity: 0.75 } : null]}
               >
                 <Ship size={13} color="#0c5eac" strokeWidth={2.2} />
-                <Text style={[styles.profileBoatText, styles.flex1]}>{boat}</Text>
+                <Text style={[styles.profileBoatText, styles.flex1]}>{boat.name}</Text>
                 <Text style={{ color: "#9aafbf", fontSize: 14 }}>›</Text>
               </Pressable>
             ))}
