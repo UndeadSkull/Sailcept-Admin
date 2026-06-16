@@ -11,7 +11,6 @@ import {
   TextInput,
   View,
   Modal,
-  ActivityIndicator,
 } from "react-native";
 import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
 import { Gesture, GestureDetector, GestureHandlerRootView, Directions } from "react-native-gesture-handler";
@@ -23,7 +22,18 @@ import {
   type NavigationProp,
 } from "@react-navigation/native";
 import type { MainTabParamList } from "../navigation/types";
-import Animated, { FadeOut, Keyframe, runOnJS, SlideInRight, SlideInLeft } from "react-native-reanimated";
+import Animated, {
+  FadeOut,
+  Keyframe,
+  runOnJS,
+  SlideInRight,
+  SlideInLeft,
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withTiming,
+  withSequence,
+} from "react-native-reanimated";
 import { CruiseTypeIcon, PageHeader } from "../components";
 import { useBoat } from "../context/BoatContext";
 import styles from "../styles";
@@ -111,6 +121,99 @@ function parsePriceString(val: string): number | undefined {
   const cleaned = val.replace(/,/g, "");
   const num = Number(cleaned);
   return isNaN(num) ? undefined : num;
+}
+
+function SkeletonCard({
+  miniWeekdayLabels,
+  miniCalendarWeeks,
+}: {
+  miniWeekdayLabels: string[];
+  miniCalendarWeeks: Array<Array<number | null>>;
+}) {
+  const opacity = useSharedValue(0.3);
+
+  useEffect(() => {
+    opacity.value = withRepeat(
+      withSequence(
+        withTiming(0.8, { duration: 1000 }),
+        withTiming(0.3, { duration: 1000 })
+      ),
+      -1,
+      true
+    );
+  }, [opacity]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    return {
+      opacity: opacity.value,
+    };
+  });
+
+  return (
+    <View style={styles.boatCard} testID="skeleton-boat-card">
+      <Animated.View
+        style={[
+          {
+            width: 80,
+            height: 14,
+            borderRadius: 4,
+            backgroundColor: "#e2e8f0",
+            marginBottom: 10,
+          },
+          animatedStyle,
+        ]}
+      />
+
+      <View style={styles.miniCalendarContainer}>
+        <View style={styles.miniCalendarHeader}>
+          {miniWeekdayLabels.map((l, idx) => (
+            <Text key={idx} style={[styles.miniCalendarHeaderLabel, { opacity: 0.5 }]}>
+              {l}
+            </Text>
+          ))}
+        </View>
+        <View style={styles.miniCalendarGrid}>
+          {miniCalendarWeeks.map((week, weekIdx) => (
+            <View key={weekIdx} style={styles.miniCalendarWeekRow}>
+              {week.map((day, dayIdx) => {
+                if (day === null) {
+                  return (
+                    <View
+                      key={`empty-${dayIdx}`}
+                      style={styles.miniCalendarCellBlank}
+                    />
+                  );
+                }
+
+                return (
+                  <Animated.View
+                    key={day}
+                    style={[
+                      styles.miniCalendarCell,
+                      {
+                        backgroundColor: "#eceff1",
+                        borderColor: "#cfd8dc",
+                      },
+                      animatedStyle,
+                    ]}
+                  />
+                );
+              })}
+              {week.length < 7 &&
+                Array.from({ length: 7 - week.length }).map(
+                  (_, padIdx) => (
+                    <View
+                      key={`pad-${padIdx}`}
+                      style={styles.miniCalendarCellBlank}
+                    />
+                  ),
+                )}
+            </View>
+          ))}
+        </View>
+      </View>
+    </View>
+  );
 }
 
 export default function AvailabilityScreen() {
@@ -849,9 +952,14 @@ export default function AvailabilityScreen() {
             />
 
             {isLoadingCalendar ? (
-              <View style={{ paddingVertical: 100, justifyContent: "center", alignItems: "center" }}>
-                <ActivityIndicator size="large" color="#0c5eac" />
-                <Text style={{ marginTop: 10, color: "#4f6e8c", fontSize: 14 }}>Loading calendar...</Text>
+              <View style={styles.boatGrid} testID="skeleton-loading-grid">
+                {(boats.length > 0 ? boats : Array.from({ length: 4 })).map((item, idx) => (
+                  <SkeletonCard
+                    key={item && typeof item === "object" && "id" in item ? (item as any).id : idx}
+                    miniWeekdayLabels={miniWeekdayLabels}
+                    miniCalendarWeeks={miniCalendarWeeks}
+                  />
+                ))}
               </View>
             ) : (
               <View style={styles.boatGrid}>

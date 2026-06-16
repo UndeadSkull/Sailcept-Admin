@@ -226,4 +226,28 @@ describe("App", () => {
     expect(await findByTestId("add-booking-button-day")).toBeTruthy();
   });
 
+  it("shows skeleton loading cards on availability screen when calendar data is loading", async () => {
+    const { findAllByText, findByTestId, queryAllByTestId } = render(<App />);
+    
+    // Switch to Availability tab
+    await pressByText(findAllByText, "Availability");
+    
+    // We expect the skeleton loader container and skeleton boat cards to be displayed
+    // since boats might be loading or the calendar is loading
+    const skeletonGrid = await findByTestId("skeleton-loading-grid");
+    expect(skeletonGrid).toBeTruthy();
+    
+    const skeletonCards = queryAllByTestId("skeleton-boat-card");
+    expect(skeletonCards.length).toBeGreaterThan(0);
+    
+    // Wait for the skeleton loader to be replaced by the actual boat cards once loading finishes
+    await waitFor(() => {
+      expect(queryAllByTestId("skeleton-boat-card").length).toBe(0);
+    });
+    
+    // Now we should see the real boat cards (e.g. Vembanad Crest)
+    expect(await findByTestId("boat-card-vembanad-crest")).toBeTruthy();
+  });
+
 });
+

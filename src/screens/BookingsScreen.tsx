@@ -110,6 +110,7 @@ export default function BookingsScreen({ route, navigation }: Props) {
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [bookings, setBookings] = useState<BookingRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -196,7 +197,7 @@ export default function BookingsScreen({ route, navigation }: Props) {
   useEffect(() => {
     if (
       Platform.OS === "android" &&
-      !global?.nativeFabricUIManager &&
+      !(globalThis as any)?.nativeFabricUIManager &&
       UIManager.setLayoutAnimationEnabledExperimental
     ) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
