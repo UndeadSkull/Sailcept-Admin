@@ -16,6 +16,8 @@ import UserProfileScreen from "../screens/UserProfileScreen";
 import LoginScreen from "../screens/LoginScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import MoreStack from "./MoreStack";
+import BookingDetailScreen from "../screens/BookingDetailScreen";
+import RequestDetailScreen from "../screens/RequestDetailScreen";
 import { useAuth } from "../context/AuthContext";
 import type { MainTabParamList, RootStackParamList } from "./types";
 
@@ -135,6 +137,24 @@ export default function AppNavigator() {
               headerStyle: { backgroundColor: "#faf6f1" },
               headerTintColor: "#0f284e",
               headerTitleStyle: { fontWeight: "700" },
+              contentStyle: { backgroundColor: "#f5f1ed" },
+            }}
+          />
+          <Root.Screen
+            name="BookingDetail"
+            component={BookingDetailScreen}
+            options={{
+              title: "Booking details",
+              headerShown: false,
+              contentStyle: { backgroundColor: "#f5f1ed" },
+            }}
+          />
+          <Root.Screen
+            name="RequestDetail"
+            component={RequestDetailScreen}
+            options={{
+              title: "Request details",
+              headerShown: false,
               contentStyle: { backgroundColor: "#f5f1ed" },
             }}
           />

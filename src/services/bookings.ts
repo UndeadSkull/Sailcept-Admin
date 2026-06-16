@@ -58,6 +58,81 @@ const mockBookings: BookingRecord[] = [
     ],
     notes: "Local experience focus. Wants traditional Kerala style lunch.",
   },
+  {
+    id: "booking-lucas-martin",
+    guestName: "Lucas Martin",
+    boatId: 1,
+    boatName: "Vembanad Crest",
+    bookingId: "#SC-2025-0043",
+    details: [
+      ["Cruise type", "Night stay"],
+      ["Date & time", `22 ${currentMonthStr} ${currentYear} · 5:00 PM - 10:00 PM`],
+      ["Configuration", "Premium · Shared · 6 guests"],
+      ["Total agreed price", "INR 14,500"],
+      ["Inclusions", "Dinner buffet, music entertainment, soft drinks"],
+    ],
+    notes: "Shared cruise booking. Check with lead operator for compliance.",
+  },
+  {
+    id: "booking-mason-reed",
+    guestName: "Mason Reed",
+    boatId: 2,
+    boatName: "Backwater Pearl",
+    bookingId: "#SC-2025-0051",
+    details: [
+      ["Cruise type", "Day cruise"],
+      ["Date & time", `12 ${currentMonthStr} ${currentYear} · 11:00 AM - 5:00 PM`],
+      ["Configuration", "Standard · Private · 3 adults"],
+      ["Total agreed price", "INR 10,800"],
+      ["Inclusions", "Basic meals, sound system access"],
+    ],
+    notes: "Standard package booking.",
+  },
+  {
+    id: "booking-ava-stone",
+    guestName: "Ava Stone",
+    boatId: 2,
+    boatName: "Backwater Pearl",
+    bookingId: "#SC-2025-0052",
+    details: [
+      ["Cruise type", "Night stay"],
+      ["Date & time", `20 ${currentMonthStr} ${currentYear} · 5:00 PM - 10:00 PM`],
+      ["Configuration", "Premium · Shared · 5 guests"],
+      ["Total agreed price", "INR 12,000"],
+      ["Inclusions", "Dinner, deck lights setup"],
+    ],
+    notes: "Shared night stay.",
+  },
+  {
+    id: "booking-noah-patel",
+    guestName: "Noah Patel",
+    boatId: 3,
+    boatName: "Kerala Dream",
+    bookingId: "#SC-2025-0060",
+    details: [
+      ["Cruise type", "Overnight stay"],
+      ["Date & time", `16 ${currentMonthStr} ${currentYear} · 3:00 PM - Next day 11:00 AM`],
+      ["Configuration", "Luxury · Private · 4 adults"],
+      ["Total agreed price", "INR 28,000"],
+      ["Inclusions", "Premium meals, premium rooms, sundeck access"],
+    ],
+    notes: "Luxury private stay.",
+  },
+  {
+    id: "booking-liam-carter",
+    guestName: "Liam Carter",
+    boatId: 3,
+    boatName: "Kerala Dream",
+    bookingId: "#SC-2025-0061",
+    details: [
+      ["Cruise type", "Day cruise"],
+      ["Date & time", `23 ${currentMonthStr} ${currentYear} · 11:00 AM - 5:00 PM`],
+      ["Configuration", "Premium · Private · 2 adults"],
+      ["Total agreed price", "INR 12,500"],
+      ["Inclusions", "Meals, welcome drinks, soft drinks"],
+    ],
+    notes: "Premium day outing.",
+  },
 ];
 
 const mockRequests: BookingRequest[] = [
@@ -324,3 +399,28 @@ export async function saveAllCalendarBookings(
   mockCalendarBookings[boatId] = bookings;
   return { data: null, error: null };
 }
+
+export async function fetchBookingDetail(bookingId: string): Promise<ApiResponse<BookingRecord>> {
+  await delay(400);
+  const found = mockBookings.find((b) => b.id === bookingId);
+  if (found) {
+    return { data: found, error: null };
+  }
+  return {
+    data: null,
+    error: { message: `Booking not found for ID: ${bookingId}`, code: "NOT_FOUND" },
+  };
+}
+
+export async function fetchRequestDetail(requestName: string, boatId: number): Promise<ApiResponse<BookingRequest>> {
+  await delay(400);
+  const found = mockRequests.find((r) => r.name === requestName && r.boatId === boatId);
+  if (found) {
+    return { data: found, error: null };
+  }
+  return {
+    data: null,
+    error: { message: `Request not found for ${requestName}`, code: "NOT_FOUND" },
+  };
+}
+

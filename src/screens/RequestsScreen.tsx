@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert } from "react-native";
-import { Card, PageHeader, StatusPill } from "../components";
+import { Card, PageHeader, StatusPill, CruiseCard } from "../components";
 import { useBoat } from "../context/BoatContext";
 import { fetchRequests, submitRequestOutcome } from "../services/bookings";
 import { BookingRequest } from "../data/bookings";
+import type { MainTabScreenProps } from "../navigation/types";
 import styles from "../styles";
 
-export default function RequestsScreen() {
+type Props = MainTabScreenProps<"Requests">;
+
+export default function RequestsScreen({ navigation }: Props) {
   const { selectedBoat, boats } = useBoat();
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
   const [cards, setCards] = useState<BookingRequest[]>([]);
@@ -120,37 +123,51 @@ export default function RequestsScreen() {
           </View>
         ) : (
           <>
-            {visibleCards.map((card) => (
-              <Card key={card.name} title={card.name} sub={card.dateLine}>
-                <View style={styles.inlineWrapRow}>
-                  <StatusPill status={card.status as "Date locked" | "Confirmed" | "Pending" | "Rejected"} />
-                  <Text style={styles.inlineMuted}>{card.subtitle}</Text>
-                </View>
-                <Text style={styles.detailText}>{card.details}</Text>
-                <Text style={styles.detailStrong}>{card.config}</Text>
-                {card.request ? (
-                  <Text style={styles.detailMuted}>{card.request}</Text>
-                ) : null}
-                {activeTab === "pending" ? (
-                  <View style={styles.buttonRowBetween}>
-                    <Pressable
-                      style={styles.declineButton}
-                      onPress={() => handleRespond(card.name, "rejected")}
-                    >
-                      <Text style={styles.actionButtonText}>Decline</Text>
-                    </Pressable>
-                    <Pressable
-                      style={styles.acceptButton}
-                      onPress={() => handleRespond(card.name, "accepted")}
-                    >
-                      <Text style={styles.actionButtonText}>Accept booking</Text>
-                    </Pressable>
-                  </View>
-                ) : (
-                  <Text style={styles.detailMuted}>{card.actedOn}</Text>
-                )}
-              </Card>
-            ))}
+            {visibleCards.map((card) => {
+              let cruiseType: "day" | "overnight" | "night" | null = null;
+              const val = card.subtitle.toLowerCase();
+              if (val.includes("overnight")) cruiseType = "overnight";
+              else if (val.includes("day")) cruiseType = "day";
+              else if (val.includes("night")) cruiseType = "night";
+
+              return (
+                <CruiseCard
+                  key={card.name}
+                  title={card.name}
+                  subtitle={card.subtitle}
+                  cruiseType={cruiseType}
+                  status={card.status}
+                  config={card.details}
+                  priceLine={card.config}
+                  onPress={() =>
+                    navigation.navigate("RequestDetail", {
+                      requestName: card.name,
+                      boatId: selectedBoat,
+                    })
+                  }
+                  actions={
+                    activeTab === "pending" ? (
+                      <View style={styles.buttonRowBetween}>
+                        <Pressable
+                          style={[styles.declineButton, { flex: 1, marginRight: 8 }]}
+                          onPress={() => handleRespond(card.name, "rejected")}
+                        >
+                          <Text style={styles.actionButtonText}>Decline</Text>
+                        </Pressable>
+                        <Pressable
+                          style={[styles.acceptButton, { flex: 1, marginLeft: 8 }]}
+                          onPress={() => handleRespond(card.name, "accepted")}
+                        >
+                          <Text style={styles.actionButtonText}>Accept booking</Text>
+                        </Pressable>
+                      </View>
+                    ) : card.actedOn ? (
+                      <Text style={styles.detailMuted}>{card.actedOn}</Text>
+                    ) : null
+                  }
+                />
+              );
+            })}
 
             {visibleCards.length === 0 ? (
               <Card title="No requests">

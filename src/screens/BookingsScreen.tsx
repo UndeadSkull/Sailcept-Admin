@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView, Directions } from "react-native-gesture-handler";
 import Animated, { SlideInRight, SlideInLeft, runOnJS } from "react-native-reanimated";
-import { Card, PageHeader, CruiseTypeIcon } from "../components";
+import { Card, PageHeader, CruiseTypeIcon, CruiseCard } from "../components";
 import { useBoat } from "../context/BoatContext";
 import type { MainTabScreenProps } from "../navigation/types";
 import styles from "../styles";
@@ -87,14 +87,10 @@ function getDateKey(year: number, month: number, day: number): string {
 
 type Props = MainTabScreenProps<"Bookings">;
 
-export default function BookingsScreen({ route }: Props) {
+export default function BookingsScreen({ route, navigation }: Props) {
   const { selectedBoat, boats } = useBoat();
   const focusGuest = route?.params?.focusGuest;
   const focusToken = route?.params?.focusToken;
-
-  const [expandedBookings, setExpandedBookings] = useState<Set<string>>(
-    new Set(),
-  );
   const scrollRef = useRef<ScrollView>(null);
   const bookingYById = useRef<Record<string, number>>({});
 
@@ -200,6 +196,7 @@ export default function BookingsScreen({ route }: Props) {
   useEffect(() => {
     if (
       Platform.OS === "android" &&
+      !global?.nativeFabricUIManager &&
       UIManager.setLayoutAnimationEnabledExperimental
     ) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -218,7 +215,7 @@ export default function BookingsScreen({ route }: Props) {
       const timer = setTimeout(() => {
         setSelectedDate({ year, month, day });
         setVisibleMonth(new Date(year, month, 1));
-        setExpandedBookings(new Set([bId]));
+        navigation.navigate("BookingDetail", { bookingId: bId });
       }, 0);
       return () => clearTimeout(timer);
     }
@@ -436,45 +433,23 @@ export default function BookingsScreen({ route }: Props) {
             {selectedDate.year}
           </Text>
           {bookingsForSelectedDate.map((booking) => {
-            const isExpanded =
-              expandedBookings.has(booking.id) ||
-              booking.id === focusedBookingId;
+            const dateLine = booking.details.find(([key]) => key === "Date & time")?.[1] || "";
+            const config = booking.details.find(([key]) => key === "Configuration")?.[1] || "";
+            const priceLine = booking.details.find(([key]) => key === "Total agreed price")?.[1] || "";
+
             return (
-              <Pressable
+              <CruiseCard
                 key={booking.id}
-                onPress={() => toggleBooking(booking.id)}
-                onLayout={(e) => {
-                  bookingYById.current[booking.id] = e.nativeEvent.layout.y;
-                }}
-                style={[styles.card, styles.expandableBookingCard]}
-              >
-                <View style={styles.bookingSummaryRow}>
-                  <View style={styles.flex1}>
-                    <Text style={styles.cardTitle}>
-                      {booking.guestName} · {booking.boatName}
-                    </Text>
-                    <Text style={styles.cardSub}>{booking.bookingId}</Text>
-                  </View>
-                  <Text style={styles.expandIcon}>
-                    {isExpanded ? "▼" : "▶"}
-                  </Text>
-                </View>
-                {isExpanded && (
-                  <View style={styles.bookingDetailsContainer}>
-                    <View style={styles.verticalGap8}>
-                      {booking.details.map(([key, value]) => (
-                        <View key={key} style={styles.bookingRow}>
-                          <Text style={styles.bookingRowKey}>{key}</Text>
-                          <Text style={styles.bookingRowValue}>{value}</Text>
-                        </View>
-                      ))}
-                    </View>
-                    <View style={styles.noteBox}>
-                      <Text style={styles.noteText}>{booking.notes}</Text>
-                    </View>
-                  </View>
-                )}
-              </Pressable>
+                title={`${booking.guestName} · ${booking.boatName || ""}`}
+                subtitle={dateLine}
+                cruiseType={booking.parsedType}
+                status="Confirmed"
+                config={config}
+                priceLine={priceLine}
+                onPress={() =>
+                  navigation.navigate("BookingDetail", { bookingId: booking.id })
+                }
+              />
             );
           })}
           {bookingsForSelectedDate.length === 0 ? (

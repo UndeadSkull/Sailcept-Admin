@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, CompositeNavigationProp } from "@react-navigation/native";
 import { Pressable, ScrollView, Text, View, ActivityIndicator } from "react-native";
-import { Card, PageHeader } from "../components";
+import { Card, PageHeader, CruiseCard } from "../components";
 import { useBoat } from "../context/BoatContext";
 import { fetchDashboardStats, fetchUpcomingCruises, DashboardStat, UpcomingCruise } from "../services/dashboard";
-import type { MainTabParamList } from "../navigation/types";
+import type { MainTabParamList, RootStackParamList } from "../navigation/types";
 import type { BottomTabNavigationProp } from "@react-navigation/bottom-tabs";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import styles from "../styles";
 
-type TabNav = BottomTabNavigationProp<MainTabParamList>;
+type DashboardNavProp = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, "Overview">,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 
 export default function DashboardScreen() {
-  const navigation = useNavigation<TabNav>();
+  const navigation = useNavigation<DashboardNavProp>();
   const { selectedBoat, boats } = useBoat();
 
   const [stats, setStats] = useState<DashboardStat[]>([]);
@@ -101,29 +105,29 @@ export default function DashboardScreen() {
                 {upcomingCruises.length === 0 ? (
                   <Text style={styles.detailMuted}>No upcoming cruises scheduled.</Text>
                 ) : (
-                  upcomingCruises.map((cruise) => (
-                    <Pressable
-                      key={cruise.name}
-                      onPress={() =>
-                        navigation.navigate("Bookings", {
-                          focusGuest: cruise.name,
-                          focusToken: Date.now(),
-                        })
-                      }
-                      style={({ pressed }) => [
-                        styles.listCard,
-                        pressed ? styles.listCardPressed : null,
-                      ]}
-                    >
-                      <View style={styles.rowBetweenTop}>
-                        <View style={styles.flex1}>
-                          <Text style={styles.listCardTitle}>{cruise.name}</Text>
-                          <Text style={styles.listCardSub}>{cruise.dateLine}</Text>
-                        </View>
-                      </View>
-                      <Text style={styles.listCardMeta}>{cruise.config}</Text>
-                    </Pressable>
-                  ))
+                  upcomingCruises.map((cruise) => {
+                    let cruiseType: "day" | "overnight" | "night" | null = null;
+                    const val = cruise.dateLine.toLowerCase();
+                    if (val.includes("overnight")) cruiseType = "overnight";
+                    else if (val.includes("day")) cruiseType = "day";
+                    else if (val.includes("night")) cruiseType = "night";
+
+                    return (
+                      <CruiseCard
+                        key={cruise.name}
+                        title={cruise.name}
+                        subtitle={cruise.dateLine}
+                        cruiseType={cruiseType}
+                        status={cruise.status}
+                        config={cruise.config}
+                        onPress={() =>
+                          navigation.navigate("BookingDetail", {
+                            bookingId: cruise.bookingId,
+                          })
+                        }
+                      />
+                    );
+                  })
                 )}
               </View>
             </Card>

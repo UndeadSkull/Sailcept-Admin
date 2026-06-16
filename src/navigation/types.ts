@@ -8,6 +8,8 @@ export type RootStackParamList = {
   BoatAssetModal: { boatId: number };
   UserProfileModal: undefined;
   Notifications: undefined;
+  BookingDetail: { bookingId: string };
+  RequestDetail: { requestName: string; boatId: number };
 };
 
 export type MainTabParamList = {
