@@ -19,7 +19,8 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#faf6f1"
-      }
+      },
+      "package": "com.favasme08.sailceptadmin"
     },
     "web": {
       "bundler": "metro"

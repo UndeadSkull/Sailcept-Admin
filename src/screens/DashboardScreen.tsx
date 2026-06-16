@@ -101,7 +101,7 @@ export default function DashboardScreen() {
             </View>
 
             <Card title="Upcoming cruises">
-              <View style={styles.verticalGap12}>
+              <View style={styles.verticalGap8}>
                 {upcomingCruises.length === 0 ? (
                   <Text style={styles.detailMuted}>No upcoming cruises scheduled.</Text>
                 ) : (
@@ -118,7 +118,6 @@ export default function DashboardScreen() {
                         title={cruise.name}
                         subtitle={cruise.dateLine}
                         cruiseType={cruiseType}
-                        status={cruise.status}
                         config={cruise.config}
                         onPress={() =>
                           navigation.navigate("BookingDetail", {
