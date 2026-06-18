@@ -12,7 +12,7 @@ import {
   View,
   Modal,
 } from "react-native";
-import BottomSheet, { BottomSheetScrollView } from "@gorhom/bottom-sheet";
+import BottomSheet, { BottomSheetScrollView, BottomSheetRef } from "../components/BottomSheet";
 import { Gesture, GestureDetector, GestureHandlerRootView, Directions } from "react-native-gesture-handler";
 import {
   useFocusEffect,
@@ -22,18 +22,7 @@ import {
   type NavigationProp,
 } from "@react-navigation/native";
 import type { MainTabParamList } from "../navigation/types";
-import Animated, {
-  FadeOut,
-  Keyframe,
-  runOnJS,
-  SlideInRight,
-  SlideInLeft,
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  withSequence,
-} from "react-native-reanimated";
+
 import { CruiseTypeIcon, PageHeader } from "../components";
 import { useBoat } from "../context/BoatContext";
 import { DISABLE_ANIMATIONS } from "../config/animations";
@@ -131,32 +120,9 @@ function SkeletonCard({
   miniWeekdayLabels: string[];
   miniCalendarWeeks: Array<Array<number | null>>;
 }) {
-  const opacity = useSharedValue(0.3);
-
-  useEffect(() => {
-    if (DISABLE_ANIMATIONS) {
-      opacity.value = 0.5;
-      return;
-    }
-    opacity.value = withRepeat(
-      withSequence(
-        withTiming(0.8, { duration: 1000 }),
-        withTiming(0.3, { duration: 1000 })
-      ),
-      -1,
-      true
-    );
-  }, [opacity]);
-
-  const animatedStyle = useAnimatedStyle(() => {
-    return {
-      opacity: opacity.value,
-    };
-  });
-
   return (
     <View style={styles.boatCard} testID="skeleton-boat-card">
-      <Animated.View
+      <View
         style={[
           {
             width: 80,
@@ -164,8 +130,8 @@ function SkeletonCard({
             borderRadius: 4,
             backgroundColor: "#e2e8f0",
             marginBottom: 10,
+            opacity: 0.5,
           },
-          animatedStyle,
         ]}
       />
 
@@ -191,15 +157,15 @@ function SkeletonCard({
                 }
 
                 return (
-                  <Animated.View
+                  <View
                     key={day}
                     style={[
                       styles.miniCalendarCell,
                       {
                         backgroundColor: "#eceff1",
                         borderColor: "#cfd8dc",
+                        opacity: 0.5,
                       },
-                      animatedStyle,
                     ]}
                   />
                 );
@@ -381,7 +347,7 @@ export default function AvailabilityScreen() {
     }
   }, [bookingBasePrice, bookingExtra1, bookingExtra2, bookingExtra1Qty, bookingExtra2Qty, isBookedAmountManuallyEdited]);
 
-  const bottomSheetRef = useRef<BottomSheet>(null);
+  const bottomSheetRef = useRef<BottomSheetRef>(null);
   const sheetSnapPoints = useMemo(() => ["75%", "95%"], []);
 
   const [bookingsByBoat, setBookingsByBoat] = useState<
@@ -727,14 +693,16 @@ export default function AvailabilityScreen() {
 
   const swipeLeft = Gesture.Fling()
     .direction(Directions.LEFT)
+    .runOnJS(true)
     .onEnd(() => {
-      runOnJS(moveMonth)(1);
+      moveMonth(1);
     });
 
   const swipeRight = Gesture.Fling()
     .direction(Directions.RIGHT)
+    .runOnJS(true)
     .onEnd(() => {
-      runOnJS(moveMonth)(-1);
+      moveMonth(-1);
     });
 
   const calendarSwipeGesture = Gesture.Simultaneous(swipeLeft, swipeRight);
@@ -763,65 +731,7 @@ export default function AvailabilityScreen() {
   const miniWeekdayLabels = ["S", "M", "T", "W", "T", "F", "S"];
 
   // Custom keyframes to scale from/to the exact page coordinate tapped by the user
-  const enteringAnimation = new Keyframe({
-    from: {
-      transform: [
-        { translateX: zoomOrigin.x - screenWidth / 2 },
-        { translateY: zoomOrigin.y - screenHeight / 2 },
-        { scale: 0.5 },
-      ],
-      opacity: 0,
-    },
-    to: {
-      transform: [{ translateX: 0 }, { translateY: 0 }, { scale: 1 }],
-      opacity: 1,
-    },
-  }).duration(200);
 
-  const exitingAnimation = new Keyframe({
-    from: {
-      transform: [{ translateX: 0 }, { translateY: 0 }, { scale: 1 }],
-      opacity: 1,
-    },
-    to: {
-      transform: [
-        { translateX: zoomOrigin.x - screenWidth / 2 },
-        { translateY: zoomOrigin.y - screenHeight / 2 },
-        { scale: 0.05 },
-      ],
-      opacity: 0,
-    },
-  }).duration(150);
-
-  const homeEnteringAnimation = new Keyframe({
-    from: {
-      transform: [
-        { translateX: screenWidth / 2 - zoomOrigin.x },
-        { translateY: screenHeight / 2 - zoomOrigin.y },
-        { scale: 1.5 },
-      ],
-      opacity: 0,
-    },
-    to: {
-      transform: [{ translateX: 0 }, { translateY: 0 }, { scale: 1.0 }],
-      opacity: 1,
-    },
-  }).duration(200);
-
-  const homeExitingAnimation = new Keyframe({
-    from: {
-      transform: [{ translateX: 0 }, { translateY: 0 }, { scale: 1.0 }],
-      opacity: 1,
-    },
-    to: {
-      transform: [
-        { translateX: screenWidth / 2 - zoomOrigin.x },
-        { translateY: screenHeight / 2 - zoomOrigin.y },
-        { scale: 1.5 },
-      ],
-      opacity: 0,
-    },
-  }).duration(150);
 
   function handleSheetChange(index: number) {
     sheetOpenRef.current = index >= 0;
@@ -944,10 +854,8 @@ export default function AvailabilityScreen() {
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       {activeBoatForCalendar === null ? (
-        <Animated.View
+        <View
           key="home"
-          entering={DISABLE_ANIMATIONS ? undefined : homeEnteringAnimation}
-          exiting={DISABLE_ANIMATIONS ? undefined : homeExitingAnimation}
           style={styles.flex1}
         >
           <ScrollView contentContainerStyle={styles.pageScrollContent}>
@@ -1106,12 +1014,10 @@ export default function AvailabilityScreen() {
               </View>
             </View>
           </ScrollView>
-        </Animated.View>
+        </View>
       ) : (
-        <Animated.View
+        <View
           key="detail"
-          entering={DISABLE_ANIMATIONS ? undefined : enteringAnimation}
-          exiting={DISABLE_ANIMATIONS ? undefined : exitingAnimation}
           style={styles.flex1}
         >
           <ScrollView contentContainerStyle={styles.pageScrollContent}>
@@ -1161,10 +1067,8 @@ export default function AvailabilityScreen() {
 
               <GestureDetector gesture={calendarSwipeGesture}>
               <View style={{ overflow: 'hidden', flex: 1 }}>
-              <Animated.View
+              <View
                 key={`${visibleYear}-${visibleMonthIndex}`}
-                entering={DISABLE_ANIMATIONS ? undefined : (isCalendarFirstMount ? undefined : (slideDirection === 'left' ? SlideInRight.duration(200) : SlideInLeft.duration(200)))}
-                exiting={DISABLE_ANIMATIONS ? undefined : FadeOut.duration(100)}
                 style={styles.calendarGrid}
               >
                 {Array.from(
@@ -1285,7 +1189,7 @@ export default function AvailabilityScreen() {
                     </View>
                   ),
                 )}
-              </Animated.View>
+              </View>
               </View>
               </GestureDetector>
 
@@ -1364,7 +1268,7 @@ export default function AvailabilityScreen() {
             </View>
           ) : null}
 
-        </Animated.View>
+        </View>
       )}
 
       {/* Native Draggable Bottom Sheet */}

@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
 } from "react-native";
 import { Gesture, GestureDetector, GestureHandlerRootView, Directions } from "react-native-gesture-handler";
-import Animated, { SlideInRight, SlideInLeft, runOnJS } from "react-native-reanimated";
 import { Card, PageHeader, CruiseTypeIcon, CruiseCard } from "../components";
 import { DISABLE_ANIMATIONS } from "../config/animations";
 import { useBoat } from "../context/BoatContext";
@@ -247,14 +246,16 @@ export default function BookingsScreen({ route, navigation }: Props) {
 
   const swipeLeft = Gesture.Fling()
     .direction(Directions.LEFT)
+    .runOnJS(true)
     .onEnd(() => {
-      runOnJS(moveMonth)(1);
+      moveMonth(1);
     });
 
   const swipeRight = Gesture.Fling()
     .direction(Directions.RIGHT)
+    .runOnJS(true)
     .onEnd(() => {
-      runOnJS(moveMonth)(-1);
+      moveMonth(-1);
     });
 
   const calendarSwipeGesture = Gesture.Simultaneous(swipeLeft, swipeRight);
@@ -335,10 +336,9 @@ export default function BookingsScreen({ route, navigation }: Props) {
           </View>
 
           <GestureDetector gesture={calendarSwipeGesture}>
-            <Animated.View
+            <View
               key={`${visibleYear}-${visibleMonthIndex}`}
               style={styles.calendarGrid}
-              entering={DISABLE_ANIMATIONS ? undefined : (isInitialLoad ? undefined : (slideDirection === 'left' ? SlideInRight.duration(200) : SlideInLeft.duration(200)))}
               testID="calendar-grid-view"
             >
               {Array.from(
@@ -426,7 +426,7 @@ export default function BookingsScreen({ route, navigation }: Props) {
                   </View>
                 ),
               )}
-            </Animated.View>
+            </View>
           </GestureDetector>
         </View>
 
