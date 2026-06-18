@@ -707,20 +707,12 @@ export default function AvailabilityScreen() {
 
   const calendarSwipeGesture = Gesture.Simultaneous(swipeLeft, swipeRight);
 
-  const currentMonthTitle = today.toLocaleString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
-
-  const daysInCurrentMonth = new Date(todayYear, todayMonth + 1, 0).getDate();
-  const firstDayWeekIndexCurrent = new Date(todayYear, todayMonth, 1).getDay();
-
   const miniCalendarDays = [
     ...Array.from(
-      { length: firstDayWeekIndexCurrent },
+      { length: firstDayWeekIndex },
       () => null as number | null,
     ),
-    ...Array.from({ length: daysInCurrentMonth }, (_, i) => i + 1),
+    ...Array.from({ length: daysInVisibleMonth }, (_, i) => i + 1),
   ];
 
   const miniCalendarWeeks: Array<Array<number | null>> = [];
@@ -861,8 +853,33 @@ export default function AvailabilityScreen() {
           <ScrollView contentContainerStyle={styles.pageScrollContent}>
             <PageHeader
               title="Availability"
-              sub={`Select a boat to manage detailed availability · ${currentMonthTitle}`}
+              sub={`Select a boat to manage detailed availability · ${visibleMonthTitle}`}
             />
+
+            <View style={[styles.card, { marginBottom: 16 }]}>
+              <View style={[styles.calendarMonthRow, { marginBottom: 0 }]}>
+                <Pressable
+                  onPress={() => moveMonth(-1)}
+                  style={styles.monthChevronButton}
+                  testID="home-month-prev"
+                >
+                  <Text style={styles.monthChevronText}>‹</Text>
+                </Pressable>
+                <Text
+                  style={styles.calendarMonthTitle}
+                  testID="home-calendar-month-title"
+                >
+                  {visibleMonthTitle}
+                </Text>
+                <Pressable
+                  onPress={() => moveMonth(1)}
+                  style={styles.monthChevronButton}
+                  testID="home-month-next"
+                >
+                  <Text style={styles.monthChevronText}>›</Text>
+                </Pressable>
+              </View>
+            </View>
 
             {isLoadingCalendar ? (
               <View style={styles.boatGrid} testID="skeleton-loading-grid">
@@ -888,13 +905,11 @@ export default function AvailabilityScreen() {
                       });
                       if (process.env.NODE_ENV === "test") {
                         setActiveBoatForCalendar(boat.id);
-                        setVisibleMonth(new Date(todayYear, todayMonth, 1));
                       } else {
                         // Defer view toggle state updates to the next frame to ensure the
                         // home view re-renders with the correct zoomOrigin before unmounting.
                         requestAnimationFrame(() => {
                           setActiveBoatForCalendar(boat.id);
-                          setVisibleMonth(new Date(todayYear, todayMonth, 1));
                         });
                       }
                     }}
@@ -929,8 +944,8 @@ export default function AvailabilityScreen() {
                                 );
                               }
                               const dateKey = getDateKey(
-                                todayYear,
-                                todayMonth,
+                                visibleYear,
+                                visibleMonthIndex,
                                 day,
                               );
                               const booking = bookingsByBoat[boat.id]?.[dateKey];
@@ -943,14 +958,14 @@ export default function AvailabilityScreen() {
                                 booking?.overnightCruise ||
                                 booking?.nightCruise;
 
-                              let cellColor = "#dbf8ea";
-                              let borderColor = "#9dd8bc";
+                              let cellColor = styles.dayCellEmpty.backgroundColor;
+                              let borderColor = styles.dayCellEmpty.borderColor;
                               if (allCruisesBooked) {
-                                cellColor = "#ffe5e5";
-                                borderColor = "#ffcccc";
+                                cellColor = styles.dayCellFull.backgroundColor;
+                                borderColor = styles.dayCellFull.borderColor;
                               } else if (anyCruiseBooked) {
-                                cellColor = "#fff1d6";
-                                borderColor = "#f5d392";
+                                cellColor = styles.dayCellPartial.backgroundColor;
+                                borderColor = styles.dayCellPartial.borderColor;
                               }
 
                               return (
@@ -989,7 +1004,10 @@ export default function AvailabilityScreen() {
                 <View
                   style={[
                     styles.legendDot,
-                    { backgroundColor: "#dbf8ea", borderColor: "#9dd8bc" },
+                    {
+                      backgroundColor: styles.dayCellEmpty.backgroundColor,
+                      borderColor: styles.dayCellEmpty.borderColor,
+                    },
                   ]}
                 />
                 <Text style={styles.legendText}>Available</Text>
@@ -998,7 +1016,10 @@ export default function AvailabilityScreen() {
                 <View
                   style={[
                     styles.legendDot,
-                    { backgroundColor: "#fff1d6", borderColor: "#f5d392" },
+                    {
+                      backgroundColor: styles.dayCellPartial.backgroundColor,
+                      borderColor: styles.dayCellPartial.borderColor,
+                    },
                   ]}
                 />
                 <Text style={styles.legendText}>Partially Booked</Text>
@@ -1007,7 +1028,10 @@ export default function AvailabilityScreen() {
                 <View
                   style={[
                     styles.legendDot,
-                    { backgroundColor: "#ffe5e5", borderColor: "#ffcccc" },
+                    {
+                      backgroundColor: styles.dayCellFull.backgroundColor,
+                      borderColor: styles.dayCellFull.borderColor,
+                    },
                   ]}
                 />
                 <Text style={styles.legendText}>Fully Booked</Text>
@@ -1023,7 +1047,7 @@ export default function AvailabilityScreen() {
           <ScrollView contentContainerStyle={styles.pageScrollContent}>
             <PageHeader
               title={boats.find((b) => b.id === activeBoatForCalendar)?.name || ""}
-              sub={`Manage detailed availability, override prices, and view bookings. · Date: ${currentMonthTitle}`}
+              sub={`Manage detailed availability, override prices, and view bookings. · Date: ${visibleMonthTitle}`}
               onBack={() => setActiveBoatForCalendar(null)}
             />
 

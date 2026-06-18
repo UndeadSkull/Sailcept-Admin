@@ -249,5 +249,39 @@ describe("App", () => {
     expect(await findByTestId("boat-card-vembanad-crest")).toBeTruthy();
   });
 
+  it("allows changing the month on the outside overview screen and preserves it on detail screen", async () => {
+    const { findAllByText, findByTestId, queryAllByTestId } = render(<App />);
+    
+    // Switch to Availability tab
+    await pressByText(findAllByText, "Availability");
+
+    // Wait for the skeleton loader to be replaced by the actual boat cards once loading finishes
+    await waitFor(() => {
+      expect(queryAllByTestId("skeleton-boat-card").length).toBe(0);
+    });
+    
+    // Find the home month title and verify it shows the current month
+    const now = new Date();
+    const expectedMonth = now.toLocaleString("en-US", { month: "long", year: "numeric" });
+    const homeMonthTitle = await findByTestId("home-calendar-month-title");
+    expect(homeMonthTitle.props.children).toBe(expectedMonth);
+    
+    // Press the next month button
+    const nextBtn = await findByTestId("home-month-next");
+    fireEvent.press(nextBtn);
+    
+    // Check that it changes to the next month
+    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const expectedNextMonth = nextMonth.toLocaleString("en-US", { month: "long", year: "numeric" });
+    expect(homeMonthTitle.props.children).toBe(expectedNextMonth);
+    
+    // Open the detailed calendar of a boat
+    fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
+    
+    // The detailed calendar should preserve and open in the next month
+    const calendarMonthTitle = await findByTestId("calendar-month-title");
+    expect(calendarMonthTitle.props.children).toBe(expectedNextMonth);
+  });
+
 });
 
