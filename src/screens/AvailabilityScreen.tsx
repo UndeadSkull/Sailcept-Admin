@@ -36,6 +36,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { CruiseTypeIcon, PageHeader } from "../components";
 import { useBoat } from "../context/BoatContext";
+import { DISABLE_ANIMATIONS } from "../config/animations";
 import styles from "../styles";
 import { fetchCalendarBookings, saveAllCalendarBookings } from "../services/bookings";
 import { DayBooking } from "../data/bookings";
@@ -133,6 +134,10 @@ function SkeletonCard({
   const opacity = useSharedValue(0.3);
 
   useEffect(() => {
+    if (DISABLE_ANIMATIONS) {
+      opacity.value = 0.5;
+      return;
+    }
     opacity.value = withRepeat(
       withSequence(
         withTiming(0.8, { duration: 1000 }),
@@ -941,8 +946,8 @@ export default function AvailabilityScreen() {
       {activeBoatForCalendar === null ? (
         <Animated.View
           key="home"
-          entering={homeEnteringAnimation}
-          exiting={homeExitingAnimation}
+          entering={DISABLE_ANIMATIONS ? undefined : homeEnteringAnimation}
+          exiting={DISABLE_ANIMATIONS ? undefined : homeExitingAnimation}
           style={styles.flex1}
         >
           <ScrollView contentContainerStyle={styles.pageScrollContent}>
@@ -1105,8 +1110,8 @@ export default function AvailabilityScreen() {
       ) : (
         <Animated.View
           key="detail"
-          entering={enteringAnimation}
-          exiting={exitingAnimation}
+          entering={DISABLE_ANIMATIONS ? undefined : enteringAnimation}
+          exiting={DISABLE_ANIMATIONS ? undefined : exitingAnimation}
           style={styles.flex1}
         >
           <ScrollView contentContainerStyle={styles.pageScrollContent}>
@@ -1158,8 +1163,8 @@ export default function AvailabilityScreen() {
               <View style={{ overflow: 'hidden', flex: 1 }}>
               <Animated.View
                 key={`${visibleYear}-${visibleMonthIndex}`}
-                entering={isCalendarFirstMount ? undefined : (slideDirection === 'left' ? SlideInRight.duration(200) : SlideInLeft.duration(200))}
-                exiting={FadeOut.duration(100)}
+                entering={DISABLE_ANIMATIONS ? undefined : (isCalendarFirstMount ? undefined : (slideDirection === 'left' ? SlideInRight.duration(200) : SlideInLeft.duration(200)))}
+                exiting={DISABLE_ANIMATIONS ? undefined : FadeOut.duration(100)}
                 style={styles.calendarGrid}
               >
                 {Array.from(

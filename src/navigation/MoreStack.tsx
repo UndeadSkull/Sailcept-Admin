@@ -11,6 +11,7 @@ import SettingsScreen from "../screens/SettingsScreen";
 import UserProfileScreen from "../screens/UserProfileScreen";
 import styles from "../styles";
 import type { MoreStackParamList, MoreStackScreenProps } from "./types";
+import { DISABLE_ANIMATIONS } from "../config/animations";
 
 const Stack = createNativeStackNavigator<MoreStackParamList>();
 
@@ -203,6 +204,7 @@ export default function MoreStack() {
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: "#f5f1ed" },
+        animation: DISABLE_ANIMATIONS ? "none" : undefined,
       }}
     >
       <Stack.Screen

@@ -12,6 +12,7 @@ import {
 import { Gesture, GestureDetector, GestureHandlerRootView, Directions } from "react-native-gesture-handler";
 import Animated, { SlideInRight, SlideInLeft, runOnJS } from "react-native-reanimated";
 import { Card, PageHeader, CruiseTypeIcon, CruiseCard } from "../components";
+import { DISABLE_ANIMATIONS } from "../config/animations";
 import { useBoat } from "../context/BoatContext";
 import type { MainTabScreenProps } from "../navigation/types";
 import styles from "../styles";
@@ -187,7 +188,9 @@ export default function BookingsScreen({ route, navigation }: Props) {
   }, [focusGuest, visibleBookings]);
 
   const toggleBooking = (bookingId: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    if (!DISABLE_ANIMATIONS) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    }
     const next = new Set(expandedBookings);
     if (next.has(bookingId)) next.delete(bookingId);
     else next.add(bookingId);
@@ -335,7 +338,7 @@ export default function BookingsScreen({ route, navigation }: Props) {
             <Animated.View
               key={`${visibleYear}-${visibleMonthIndex}`}
               style={styles.calendarGrid}
-              entering={isInitialLoad ? undefined : (slideDirection === 'left' ? SlideInRight.duration(200) : SlideInLeft.duration(200))}
+              entering={DISABLE_ANIMATIONS ? undefined : (isInitialLoad ? undefined : (slideDirection === 'left' ? SlideInRight.duration(200) : SlideInLeft.duration(200)))}
               testID="calendar-grid-view"
             >
               {Array.from(

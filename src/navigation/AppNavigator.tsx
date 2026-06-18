@@ -20,6 +20,7 @@ import BookingDetailScreen from "../screens/BookingDetailScreen";
 import RequestDetailScreen from "../screens/RequestDetailScreen";
 import { useAuth } from "../context/AuthContext";
 import type { MainTabParamList, RootStackParamList } from "./types";
+import { DISABLE_ANIMATIONS } from "../config/animations";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Root = createNativeStackNavigator<RootStackParamList>();
@@ -32,7 +33,7 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        animation: "shift",
+        animation: DISABLE_ANIMATIONS ? "none" : "shift",
         headerShown: false,
         tabBarStyle: {
           backgroundColor: "#faf6f1",
@@ -99,7 +100,7 @@ export default function AppNavigator() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <Root.Navigator screenOptions={{ headerShown: false }}>
+    <Root.Navigator screenOptions={{ headerShown: false, animation: DISABLE_ANIMATIONS ? "none" : undefined }}>
       {!isAuthenticated ? (
         <Root.Screen name="Login" component={LoginScreen} />
       ) : (
