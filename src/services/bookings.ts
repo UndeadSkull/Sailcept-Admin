@@ -224,11 +224,23 @@ function normalizeBooking(booking: DayBooking): DayBooking {
   if (normalized.overnightExtraCot !== undefined && normalized.overnightExtraCotQty === undefined) {
     normalized.overnightExtraCotQty = 1;
   }
+  if (normalized.overnightExtraGuest !== undefined && normalized.overnightExtraGuestQty === undefined) {
+    normalized.overnightExtraGuestQty = 1;
+  }
+  if (normalized.overnightExtraRoom !== undefined && normalized.overnightExtraRoomQty === undefined) {
+    normalized.overnightExtraRoomQty = 1;
+  }
   if (normalized.nightCruiseExtraGuest !== undefined && normalized.nightCruiseExtraGuestQty === undefined) {
     normalized.nightCruiseExtraGuestQty = 1;
   }
   if (normalized.nightCruiseExtraRoom !== undefined && normalized.nightCruiseExtraRoomQty === undefined) {
     normalized.nightCruiseExtraRoomQty = 1;
+  }
+  if (normalized.nightExtraBed !== undefined && normalized.nightExtraBedQty === undefined) {
+    normalized.nightExtraBedQty = 1;
+  }
+  if (normalized.nightExtraCot !== undefined && normalized.nightExtraCotQty === undefined) {
+    normalized.nightExtraCotQty = 1;
   }
   return normalized;
 }

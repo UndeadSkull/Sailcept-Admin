@@ -5,7 +5,7 @@ import styles from "../styles";
 type Request = {
   name: string;
   dateLine: string;
-  status: "Date locked" | "Confirmed" | "Pending" | "Rejected";
+  status: "Date locked" | "Confirmed" | "Pending" | "Rejected" | "Booked";
   config: string;
 };
 
@@ -17,6 +17,7 @@ export const requestStatusStyle: Record<
   Confirmed: { bg: "#dcfce8", text: "#0f7a4f", border: "#9dd8bc" },
   Pending: { bg: "#e6f5f4", text: "#1a7f7f", border: "#9dd8bc" },
   Rejected: { bg: "#ffe5e8", text: "#9f1836", border: "#f3b2c0" },
+  Booked: { bg: "#dcfce8", text: "#0f7a4f", border: "#9dd8bc" },
 };
 
 export type { Request };
