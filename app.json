@@ -1,6 +1,5 @@
 {
   "expo": {
-    "newArchEnabled": true,
     "name": "Sailcept Admin",
     "slug": "sailcept-admin",
     "version": "1.0.0",
@@ -27,6 +26,12 @@
     },
     "plugins": [
       "expo-font"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "17235c82-c1b9-4770-97b3-7426b7e0e213"
+      }
+    },
+    "owner": "favasme08"
   }
 }

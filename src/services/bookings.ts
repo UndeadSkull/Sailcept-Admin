@@ -189,6 +189,85 @@ function getDateKey(year: number, month: number, day: number): string {
 
 function normalizeBooking(booking: DayBooking): DayBooking {
   const normalized = { ...booking };
+  normalized.isClosed = normalized.isClosed || false;
+  normalized.dayCruiseClosed = normalized.dayCruiseClosed || false;
+  normalized.overnightCruiseClosed = normalized.overnightCruiseClosed || false;
+  normalized.nightCruiseClosed = normalized.nightCruiseClosed || false;
+  
+  if (!normalized.configs) {
+    normalized.configs = {};
+  }
+  
+  const configNames = ["1BH", "2BH", "3BH", "4BH"];
+  configNames.forEach((configName, index) => {
+    if (!normalized.configs![configName]) {
+      const factor = 1 + index * 0.2; // 1BH = 1.0x, 2BH = 1.2x, 3BH = 1.4x, 4BH = 1.6x
+      
+      const dayBase = normalized.dayCruisePrice || 12000;
+      const overnightBase = normalized.overnightCruisePrice || 22000;
+      const nightBase = normalized.nightCruisePrice || 14000;
+      
+      normalized.configs![configName] = {
+        dayCruisePrice: Math.round(dayBase * factor),
+        dayCruiseExtraGuest: normalized.dayCruiseExtraGuest ?? 1500,
+        dayCruiseExtraRoom: normalized.dayCruiseExtraRoom ?? 2500,
+        dayCruiseClosed: normalized.dayCruiseClosed || false,
+        
+        overnightCruisePrice: Math.round(overnightBase * factor),
+        overnightExtraBed: normalized.overnightExtraBed ?? 2000,
+        overnightExtraCot: normalized.overnightExtraCot ?? 1500,
+        overnightExtraGuest: normalized.overnightExtraGuest ?? 1800,
+        overnightExtraRoom: normalized.overnightExtraRoom ?? 3000,
+        overnightCruiseClosed: normalized.overnightCruiseClosed || false,
+        
+        nightCruisePrice: Math.round(nightBase * factor),
+        nightCruiseExtraGuest: normalized.nightCruiseExtraGuest ?? 1500,
+        nightCruiseExtraRoom: normalized.nightCruiseExtraRoom ?? 2500,
+        nightExtraBed: normalized.nightExtraBed ?? 2000,
+        nightExtraCot: normalized.nightExtraCot ?? 1500,
+        nightCruiseClosed: normalized.nightCruiseClosed || false,
+      };
+    } else {
+      // Ensure closed fields are initialized if config exists but they are missing
+      const c = normalized.configs![configName];
+      c.dayCruiseClosed = c.dayCruiseClosed || false;
+      c.overnightCruiseClosed = c.overnightCruiseClosed || false;
+      c.nightCruiseClosed = c.nightCruiseClosed || false;
+    }
+  });
+
+  // Default booked configs to 1BH if not set but booked is true
+  if (normalized.dayCruise && !normalized.dayCruiseBookedConfig) {
+    normalized.dayCruiseBookedConfig = "1BH";
+  }
+  if (normalized.overnightCruise && !normalized.overnightCruiseBookedConfig) {
+    normalized.overnightCruiseBookedConfig = "1BH";
+  }
+  if (normalized.nightCruise && !normalized.nightCruiseBookedConfig) {
+    normalized.nightCruiseBookedConfig = "1BH";
+  }
+
+  // Sync 1BH config values to top-level fields for backward compatibility
+  const c1 = normalized.configs!["1BH"];
+  if (c1) {
+    normalized.dayCruisePrice = c1.dayCruisePrice;
+    normalized.dayCruiseExtraGuest = c1.dayCruiseExtraGuest;
+    normalized.dayCruiseExtraRoom = c1.dayCruiseExtraRoom;
+    normalized.dayCruiseClosed = c1.dayCruiseClosed;
+    normalized.overnightCruisePrice = c1.overnightCruisePrice;
+    normalized.overnightExtraBed = c1.overnightExtraBed;
+    normalized.overnightExtraCot = c1.overnightExtraCot;
+    normalized.overnightExtraGuest = c1.overnightExtraGuest;
+    normalized.overnightExtraRoom = c1.overnightExtraRoom;
+    normalized.overnightCruiseClosed = c1.overnightCruiseClosed;
+    normalized.nightCruisePrice = c1.nightCruisePrice;
+    normalized.nightCruiseExtraGuest = c1.nightCruiseExtraGuest;
+    normalized.nightCruiseExtraRoom = c1.nightCruiseExtraRoom;
+    normalized.nightExtraBed = c1.nightExtraBed;
+    normalized.nightExtraCot = c1.nightExtraCot;
+    normalized.nightCruiseClosed = c1.nightCruiseClosed;
+  }
+
   if (normalized.overnightCruise && normalized.nightCruise) {
     normalized.nightCruise = false;
   }

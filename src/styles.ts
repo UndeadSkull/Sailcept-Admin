@@ -837,7 +837,7 @@ const styles = StyleSheet.create({
   },
   cruiseCardLabel: {
     color: "#0f284e",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "700",
     flex: 1,
   },
@@ -878,8 +878,8 @@ const styles = StyleSheet.create({
   },
   priceFieldLabel: {
     color: "#6a7f97",
-    fontSize: 11,
-    marginBottom: 6,
+    fontSize: 13,
+    fontWeight: "500",
   },
   priceFieldInput: {
     flexDirection: "row",
@@ -891,6 +891,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
     gap: 4,
+    width: 150,
+  },
+  priceFieldContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   priceFieldRupee: {
     color: "#5a7090",

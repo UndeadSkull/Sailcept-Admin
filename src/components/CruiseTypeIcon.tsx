@@ -6,9 +6,9 @@ export default function CruiseTypeIcon({
   size = "compact",
 }: {
   type: "day" | "overnight" | "night";
-  size?: "compact" | "regular";
+  size?: "compact" | "regular" | "large";
 }) {
-  const iconSize = size === "regular" ? 12 : 7;
+  const iconSize = size === "large" ? 18 : size === "regular" ? 12 : 7;
 
   if (type === "day") {
     return <FontAwesome5 name="sun" size={iconSize} color={"#1a7f7f"} solid />;
@@ -18,3 +18,4 @@ export default function CruiseTypeIcon({
   }
   return <FontAwesome5 name="moon" size={iconSize} color={"#1a7f7f"} solid />;
 }
+

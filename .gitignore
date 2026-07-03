@@ -26,3 +26,4 @@ dist-ssr
 # Expo
 .expo/
 
+android/build/

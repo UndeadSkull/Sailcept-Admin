@@ -22,11 +22,34 @@ export type BookingRequest = {
   actedOn?: string;
 };
 
+export type ConfigPricing = {
+  dayCruisePrice?: number;
+  dayCruiseExtraGuest?: number;
+  dayCruiseExtraRoom?: number;
+  dayCruiseClosed?: boolean;
+  overnightCruisePrice?: number;
+  overnightExtraBed?: number;
+  overnightExtraCot?: number;
+  overnightExtraGuest?: number;
+  overnightExtraRoom?: number;
+  overnightCruiseClosed?: boolean;
+  nightCruisePrice?: number;
+  nightCruiseExtraGuest?: number;
+  nightCruiseExtraRoom?: number;
+  nightExtraBed?: number;
+  nightExtraCot?: number;
+  nightCruiseClosed?: boolean;
+};
+
 export type DayBooking = {
   dayCruise: boolean;
   overnightCruise: boolean;
   nightCruise: boolean;
   details: string;
+  isClosed?: boolean;
+  dayCruiseClosed?: boolean;
+  overnightCruiseClosed?: boolean;
+  nightCruiseClosed?: boolean;
   dayCruiseDetails?: string;
   overnightCruiseDetails?: string;
   nightCruiseDetails?: string;
@@ -68,4 +91,8 @@ export type DayBooking = {
   dayCruiseBookedAmount?: number;
   overnightCruiseBookedAmount?: number;
   nightCruiseBookedAmount?: number;
+  dayCruiseBookedConfig?: string;
+  overnightCruiseBookedConfig?: string;
+  nightCruiseBookedConfig?: string;
+  configs?: Record<string, ConfigPricing>;
 };
