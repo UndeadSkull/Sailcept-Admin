@@ -1,473 +1,629 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  LayoutAnimation,
-  Pressable,
-  ScrollView,
-  Text,
-  UIManager,
-  View,
-  Platform,
-  ActivityIndicator,
-} from "react-native";
-import { Gesture, GestureDetector, GestureHandlerRootView, Directions } from "react-native-gesture-handler";
-import { Card, PageHeader, CruiseTypeIcon, CruiseCard } from "../components";
-import { DISABLE_ANIMATIONS } from "../config/animations";
+import React, { useEffect, useState } from "react";
+import { Pressable, ScrollView, Text, View, ActivityIndicator, Modal, StyleSheet } from "react-native";
+import { Calendar, ChevronDown, ChevronUp, ArrowLeft, ArrowRight, ClipboardList } from "lucide-react-native";
+import { BookingCard } from "../components";
 import { useBoat } from "../context/BoatContext";
-import type { MainTabScreenProps } from "../navigation/types";
-import styles from "../styles";
-import { fetchBookings } from "../services/bookings";
-import { BookingRecord } from "../data/bookings";
+import { fetchBookings, Booking, MONTHS } from "../services/bookings";
+import { COLORS } from "../styles";
 
+// Freeze reference point to June 18, 2026
+const now = new Date("2026-06-18T10:00:00");
 
-const now = new Date();
-const currentYear = now.getFullYear();
-const currentMonthIndex = now.getMonth();
-const months = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-];
+export default function BookingsScreen() {
+  const { selectedBoat, boats, searchQuery } = useBoat();
 
-function getCruiseType(
-  details: Array<[string, string]>,
-): "day" | "overnight" | "night" | null {
-  const cruiseTypeDetail = details.find(([key]) => key === "Cruise type");
-  if (!cruiseTypeDetail) return null;
-  const val = cruiseTypeDetail[1].toLowerCase();
-  if (val.includes("overnight")) return "overnight";
-  if (val.includes("day")) return "day";
-  if (val.includes("night")) return "night";
-  return null;
-}
-
-function getBookingDate(
-  details: Array<[string, string]>,
-): { year: number; month: number; day: number } | null {
-  const dateTimeDetail = details.find(([key]) => key === "Date & time");
-  if (!dateTimeDetail) return null;
-  const dateStr = dateTimeDetail[1].split(" · ")[0];
-  const parts = dateStr.trim().split(" ");
-  if (parts.length < 3) return null;
-  const day = parseInt(parts[0], 10);
-  const monthStr = parts[1];
-  const year = parseInt(parts[2], 10);
-
-  const monthsAbbr = [
-    "Jan",
-    "Feb",
-    "Mar",
-    "Apr",
-    "May",
-    "Jun",
-    "Jul",
-    "Aug",
-    "Sep",
-    "Oct",
-    "Nov",
-    "Dec",
-  ];
-  const month = monthsAbbr.findIndex((m) => monthStr.startsWith(m));
-  if (month === -1) return null;
-
-  return { year, month, day };
-}
-
-function getDateKey(year: number, month: number, day: number): string {
-  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-type Props = MainTabScreenProps<"Bookings">;
-
-export default function BookingsScreen({ route, navigation }: Props) {
-  const { selectedBoat, boats } = useBoat();
-  const focusGuest = route?.params?.focusGuest;
-  const focusToken = route?.params?.focusToken;
-  const scrollRef = useRef<ScrollView>(null);
-  const bookingYById = useRef<Record<string, number>>({});
-
-  const [visibleMonth, setVisibleMonth] = useState(
-    () => new Date(currentYear, currentMonthIndex, 1),
-  );
-  const [selectedDate, setSelectedDate] = useState<{
-    year: number;
-    month: number;
-    day: number;
-  }>(() => ({
-    year: currentYear,
-    month: currentMonthIndex,
-    day: now.getDate(),
-  }));
-  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [bookings, setBookings] = useState<BookingRecord[]>([]);
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [expandedBookings, setExpandedBookings] = useState<Set<string>>(new Set());
+  const [expandedBooking, setExpandedBooking] = useState<number | null>(null);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsInitialLoad(false);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, []);
+  // Calendar states
+  const [calendarMonth, setCalendarMonth] = useState({ month: 5, year: 2026 }); // June 2026
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<{ day: number; month: number; year: number } | null>(null);
+  const [bookingsFilter, setBookingsFilter] = useState<"all" | "today" | "date">("all");
 
-  useEffect(() => {
-    let active = true;
-    const loadBookings = async () => {
-      setIsLoading(true);
-      try {
-        const response = await fetchBookings(selectedBoat);
-        if (active && response.data) {
-          setBookings(response.data);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        if (active) setIsLoading(false);
+  // Dropdowns and filters
+  const [bookingsStatusFilter, setBookingsStatusFilter] = useState<string | null>(null);
+  const [bookingsStatusDropdownOpen, setBookingsStatusDropdownOpen] = useState(false);
+  const [calendarMonthPickerOpen, setCalendarMonthPickerOpen] = useState(false);
+  const [calendarYearPickerOpen, setCalendarYearPickerOpen] = useState(false);
+
+  const loadBookings = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetchBookings(0); // Fetch all to filter locally
+      if (response.data) {
+        setAllBookings(response.data);
       }
-    };
-    loadBookings();
-    return () => {
-      active = false;
-    };
-  }, [selectedBoat]);
-
-  const visibleBookings = bookings;
-
-  const parsedBookings = useMemo(() => {
-    return visibleBookings.map((b) => {
-      const parsedDate = getBookingDate(b.details);
-      const parsedType = getCruiseType(b.details);
-      return {
-        ...b,
-        parsedDate,
-        parsedType,
-      };
-    });
-  }, [visibleBookings]);
-
-  const bookingsByDateKey = useMemo(() => {
-    const map: Record<string, typeof parsedBookings> = {};
-    parsedBookings.forEach((b) => {
-      if (b.parsedDate) {
-        const key = getDateKey(
-          b.parsedDate.year,
-          b.parsedDate.month,
-          b.parsedDate.day,
-        );
-        if (!map[key]) map[key] = [];
-        map[key].push(b);
-      }
-    });
-    return map;
-  }, [parsedBookings]);
-
-  const bookingsForSelectedDate = useMemo(() => {
-    const key = getDateKey(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-    );
-    return bookingsByDateKey[key] ?? [];
-  }, [selectedDate, bookingsByDateKey]);
-
-  const focusedBookingId = useMemo(() => {
-    if (!focusGuest) return undefined;
-    return visibleBookings.find(
-      (b) => b.guestName.toLowerCase() === focusGuest.toLowerCase(),
-    )?.id;
-  }, [focusGuest, visibleBookings]);
-
-  const toggleBooking = (bookingId: string) => {
-    if (!DISABLE_ANIMATIONS) {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    } catch (err) {
+      console.error("Failed to fetch bookings:", err);
+    } finally {
+      setIsLoading(false);
     }
-    const next = new Set(expandedBookings);
-    if (next.has(bookingId)) next.delete(bookingId);
-    else next.add(bookingId);
-    setExpandedBookings(next);
   };
 
   useEffect(() => {
-    if (
-      Platform.OS === "android" &&
-      !(globalThis as any)?.nativeFabricUIManager &&
-      UIManager.setLayoutAnimationEnabledExperimental
-    ) {
-      UIManager.setLayoutAnimationEnabledExperimental(true);
-    }
-  }, []);
+    loadBookings();
+  }, [selectedBoat]); // Reload when boat selection changes
 
-  // Synchronize calendar and selection if navigated with a focusGuest
-  useEffect(() => {
-    if (!focusGuest) return;
-    const booking = parsedBookings.find(
-      (b) => b.guestName.toLowerCase() === focusGuest.toLowerCase(),
-    );
-    if (booking && booking.parsedDate) {
-      const { year, month, day } = booking.parsedDate;
-      const bId = booking.id;
-      const timer = setTimeout(() => {
-        setSelectedDate({ year, month, day });
-        setVisibleMonth(new Date(year, month, 1));
-        navigation.navigate("BookingDetail", { bookingId: bId });
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [focusGuest, focusToken, parsedBookings]);
+  // Resolve boat name
+  const selectedBoatName = selectedBoat === 0 ? "All" : boats.find((b) => b.id === selectedBoat)?.name || "";
 
-  // Scroll to focused booking after layout
-  useEffect(() => {
-    if (!focusedBookingId) return;
-    const timer = setTimeout(() => {
-      const y = bookingYById.current[focusedBookingId];
-      if (typeof y === "number") {
-        scrollRef.current?.scrollTo({ y: Math.max(0, y - 90), animated: true });
-      }
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [focusedBookingId, focusToken]);
-
-  function moveMonth(delta: number) {
-    setSlideDirection(delta > 0 ? 'left' : 'right');
-    setVisibleMonth(
-      (current) =>
-        new Date(current.getFullYear(), current.getMonth() + delta, 1),
-    );
-  }
-
-  const swipeLeft = Gesture.Fling()
-    .direction(Directions.LEFT)
-    .runOnJS(true)
-    .onEnd(() => {
-      moveMonth(1);
-    });
-
-  const swipeRight = Gesture.Fling()
-    .direction(Directions.RIGHT)
-    .runOnJS(true)
-    .onEnd(() => {
-      moveMonth(-1);
-    });
-
-  const calendarSwipeGesture = Gesture.Simultaneous(swipeLeft, swipeRight);
-
-  const visibleYear = visibleMonth.getFullYear();
-  const visibleMonthIndex = visibleMonth.getMonth();
-  const daysInVisibleMonth = new Date(
-    visibleYear,
-    visibleMonthIndex + 1,
-    0,
-  ).getDate();
-  const firstDayWeekIndex = new Date(
-    visibleYear,
-    visibleMonthIndex,
-    1,
-  ).getDay();
-
-  const calendarDays = [
-    ...Array.from({ length: firstDayWeekIndex }, () => null as number | null),
-    ...Array.from({ length: daysInVisibleMonth }, (_, i) => i + 1),
-  ];
-
-  const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const visibleMonthTitle = visibleMonth.toLocaleString("en-US", {
-    month: "long",
-    year: "numeric",
+  // Filter by boat name
+  const boatFilteredBookings = allBookings.filter((b) => {
+    return selectedBoat === 0 || b.boat === selectedBoatName;
   });
 
+  // Filter by search query
+  const searchFilteredBookings = boatFilteredBookings.filter((b) => {
+    if (!searchQuery) return true;
+    const query = searchQuery.toLowerCase();
+    const guestMatch = b.guest ? b.guest.toLowerCase().includes(query) : false;
+    const idMatch = b.bookingId ? b.bookingId.toLowerCase().includes(query) : false;
+    const boatMatch = b.boat ? b.boat.toLowerCase().includes(query) : false;
+    return guestMatch || idMatch || boatMatch;
+  });
+
+  // Today's trips (June 18, 2026)
+  const todayStr = "18 Jun 2026";
+  const todaysTrips = searchFilteredBookings.filter(
+    (b) => b.date === todayStr && b.status !== "cancelled" && b.status !== "deleted"
+  );
+
+  // Month filtered bookings
+  const monthFilteredBookings = searchFilteredBookings.filter((b) => {
+    const d = new Date(b.date);
+    return d.getMonth() === calendarMonth.month && d.getFullYear() === calendarMonth.year;
+  });
+
+  // Date filtered bookings
+  const dateFilteredBookings = searchFilteredBookings.filter((b) => {
+    if (!selectedCalendarDate) return false;
+    const d = new Date(b.date);
+    return (
+      d.getDate() === selectedCalendarDate.day &&
+      d.getMonth() === selectedCalendarDate.month &&
+      d.getFullYear() === selectedCalendarDate.year
+    );
+  });
+
+  // Apply status filter
+  const applyBookingsStatusFilter = (list: Booking[]) => {
+    if (!bookingsStatusFilter) return list;
+    if (bookingsStatusFilter === "confirmed") {
+      return list.filter((b) => b.status !== "cancelled" && b.status !== "deleted" && !b.isUpdated && !b.isDirect);
+    }
+    if (bookingsStatusFilter === "cancelled") {
+      return list.filter((b) => b.status === "cancelled");
+    }
+    if (bookingsStatusFilter === "updated") {
+      return list.filter((b) => b.isUpdated);
+    }
+    if (bookingsStatusFilter === "added") {
+      return list.filter((b) => b.isDirect && b.status !== "deleted" && b.status !== "cancelled");
+    }
+    return list;
+  };
+
+  // Resolve current active list
+  const getActiveList = () => {
+    let list: Booking[] = [];
+    if (bookingsFilter === "today") {
+      list = todaysTrips;
+    } else if (bookingsFilter === "date") {
+      list = dateFilteredBookings;
+    } else {
+      list = monthFilteredBookings;
+    }
+    return applyBookingsStatusFilter(list);
+  };
+
+  const activeList = getActiveList();
+
+  // Calendar logic
+  const bookedDatesInMonth = new Set(
+    monthFilteredBookings
+      .filter((b) => b.status !== "cancelled" && b.status !== "deleted")
+      .map((b) => {
+        const d = new Date(b.date);
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      })
+  );
+
+  const firstOfMonth = new Date(calendarMonth.year, calendarMonth.month, 1);
+  const daysInMonth = new Date(calendarMonth.year, calendarMonth.month + 1, 0).getDate();
+  const firstWeekday = (firstOfMonth.getDay() + 6) % 7; // Monday start
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day++) cells.push(day);
+
+  // Group cells into rows of 7
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) {
+    rows.push(cells.slice(i, i + 7));
+  }
+
+  const isTodayDay = (day: number) => {
+    return (
+      day === now.getDate() &&
+      calendarMonth.month === now.getMonth() &&
+      calendarMonth.year === now.getFullYear()
+    );
+  };
+
+  const hasBooking = (day: number) => {
+    return bookedDatesInMonth.has(`${calendarMonth.year}-${calendarMonth.month}-${day}`);
+  };
+
+  const MIN_MONTH = 5; // June
+  const MIN_YEAR = 2026;
+  const isAtFloor = calendarMonth.year === MIN_YEAR && calendarMonth.month === MIN_MONTH;
+
+  const goToMonth = (delta: number) => {
+    let month = calendarMonth.month + delta;
+    let year = calendarMonth.year;
+    if (month < 0) {
+      month = 11;
+      year -= 1;
+    } else if (month > 11) {
+      month = 0;
+      year += 1;
+    }
+    if (year < MIN_YEAR || (year === MIN_YEAR && month < MIN_MONTH)) {
+      setCalendarMonth({ month: MIN_MONTH, year: MIN_YEAR });
+    } else {
+      setCalendarMonth({ month, year });
+    }
+  };
+
   return (
-    <GestureHandlerRootView style={styles.calendarPageRoot}>
-      <View style={styles.flex1}>
-        <ScrollView
-          ref={scrollRef}
-          contentContainerStyle={styles.pageScrollContent}
-        >
-        <PageHeader
-          title="Bookings"
-          sub={`Track accepted bookings with complete trip details and guest preferences. · Boat: ${boats.find((b) => b.id === selectedBoat)?.name || ""}`}
-        />
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
+        {/* Page Header */}
+        <View style={{ marginBottom: 18 }}>
+          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Bookings</Text>
+          <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>
+            Track confirmed guest check-ins and history.
+          </Text>
+        </View>
 
         {isLoading ? (
-          <View style={{ paddingVertical: 80, justifyContent: "center", alignItems: "center" }}>
-            <ActivityIndicator size="large" color="#0c5eac" />
-            <Text style={{ marginTop: 10, color: "#4f6e8c", fontSize: 14 }}>Loading bookings...</Text>
+          <View style={{ paddingVertical: 100, justifyContent: "center", alignItems: "center" }}>
+            <ActivityIndicator size="large" color={COLORS.teal} />
+            <Text style={{ marginTop: 10, color: COLORS.muted, fontSize: 14 }}>Loading bookings...</Text>
           </View>
         ) : (
           <>
-        <View style={styles.card}>
-          <View style={styles.calendarMonthRow}>
-            <Pressable
-              onPress={() => moveMonth(-1)}
-              style={styles.monthChevronButton}
-              testID="month-prev"
-            >
-              <Text style={styles.monthChevronText}>‹</Text>
-            </Pressable>
-            <Text
-              style={styles.calendarMonthTitle}
-              testID="calendar-month-title"
-            >
-              {visibleMonthTitle}
-            </Text>
-            <Pressable
-              onPress={() => moveMonth(1)}
-              style={styles.monthChevronButton}
-              testID="month-next"
-            >
-              <Text style={styles.monthChevronText}>›</Text>
-            </Pressable>
-          </View>
+            {/* Filter Bar */}
+            <View style={{ marginBottom: 14, zIndex: 10 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.navy, textTransform: "uppercase" }}>
+                  {bookingsFilter === "today"
+                    ? `${applyBookingsStatusFilter(todaysTrips).length} check-in${applyBookingsStatusFilter(todaysTrips).length !== 1 ? "s" : ""} today`
+                    : bookingsFilter === "date" && selectedCalendarDate
+                    ? `${applyBookingsStatusFilter(dateFilteredBookings).length} booking${applyBookingsStatusFilter(dateFilteredBookings).length !== 1 ? "s" : ""} on ${selectedCalendarDate.day} ${MONTHS[selectedCalendarDate.month]} ${selectedCalendarDate.year}`
+                    : `${applyBookingsStatusFilter(monthFilteredBookings).length} booking${applyBookingsStatusFilter(monthFilteredBookings).length !== 1 ? "s" : ""} in ${MONTHS[calendarMonth.month]} ${calendarMonth.year}`}
+                </Text>
 
-          <View style={styles.calendarWeekRow}>
-            {weekdayLabels.map((label) => (
-              <Text key={label} style={styles.weekdayHeaderText}>
-                {label}
-              </Text>
-            ))}
-          </View>
+                <View>
+                  <Pressable
+                    onPress={() => setBookingsStatusDropdownOpen(!bookingsStatusDropdownOpen)}
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      backgroundColor: bookingsStatusFilter ? COLORS.tealLight : COLORS.bg,
+                      borderWidth: 1,
+                      borderColor: bookingsStatusFilter ? COLORS.teal : COLORS.border,
+                      borderRadius: 999,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 12,
+                        fontWeight: "700",
+                        color: bookingsStatusFilter ? COLORS.teal : COLORS.muted,
+                      }}
+                    >
+                      {bookingsStatusFilter
+                        ? { confirmed: "Confirmed", cancelled: "Cancelled", updated: "Updated", added: "Added" }[bookingsStatusFilter]
+                        : "Filter"}
+                    </Text>
+                    {bookingsStatusDropdownOpen ? (
+                      <ChevronUp size={12} color={bookingsStatusFilter ? COLORS.teal : COLORS.muted} />
+                    ) : (
+                      <ChevronDown size={12} color={bookingsStatusFilter ? COLORS.teal : COLORS.muted} />
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            </View>
 
-          <GestureDetector gesture={calendarSwipeGesture}>
+            {/* Calendar Card */}
             <View
-              key={`${visibleYear}-${visibleMonthIndex}`}
-              style={styles.calendarGrid}
-              testID="calendar-grid-view"
+              style={{
+                backgroundColor: COLORS.white,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+                borderRadius: 24,
+                padding: 16,
+                marginBottom: 20,
+              }}
             >
-              {Array.from(
-                { length: Math.ceil(calendarDays.length / 7) },
-                (_, weekIndex) => (
-                  <View key={weekIndex} style={styles.calendarWeekRow}>
-                    {[
-                      ...calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7),
-                      ...Array.from(
-                        {
-                          length: Math.max(
-                            0,
-                            7 -
-                              calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7)
-                                .length,
-                          ),
-                        },
-                        () => null as number | null,
-                      ),
-                    ].map((day, cellIndex) => {
+              {/* Month/Year selector header */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <Pressable
+                  onPress={() => {
+                    if (!isAtFloor) goToMonth(-1);
+                  }}
+                  style={{ opacity: isAtFloor ? 0.3 : 1, padding: 6 }}
+                >
+                  <ArrowLeft size={16} color={COLORS.navy} />
+                </Pressable>
+
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Calendar size={15} color={COLORS.teal} />
+
+                  {/* Month selection */}
+                  <View>
+                    <Pressable
+                      onPress={() => {
+                        setCalendarMonthPickerOpen(!calendarMonthPickerOpen);
+                        setCalendarYearPickerOpen(false);
+                      }}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 3 }}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.navy }}>
+                        {MONTHS[calendarMonth.month]}
+                      </Text>
+                      <ChevronDown size={12} color={COLORS.muted} />
+                    </Pressable>
+                  </View>
+
+                  {/* Year selection */}
+                  <View>
+                    <Pressable
+                      onPress={() => {
+                        setCalendarYearPickerOpen(!calendarYearPickerOpen);
+                        setCalendarMonthPickerOpen(false);
+                      }}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 3 }}
+                    >
+                      <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.navy }}>
+                        {calendarMonth.year}
+                      </Text>
+                      <ChevronDown size={12} color={COLORS.muted} />
+                    </Pressable>
+                  </View>
+                </View>
+
+                <Pressable onPress={() => goToMonth(1)} style={{ padding: 6 }}>
+                  <ArrowRight size={16} color={COLORS.navy} />
+                </Pressable>
+              </View>
+
+              {/* Weekday headers */}
+              <View style={{ flexDirection: "row", marginBottom: 8 }}>
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                  <Text
+                    key={d}
+                    style={{
+                      flex: 1,
+                      textAlign: "center",
+                      fontSize: 11,
+                      fontWeight: "700",
+                      color: COLORS.muted,
+                    }}
+                  >
+                    {d}
+                  </Text>
+                ))}
+              </View>
+
+              {/* Calendar Grid cells */}
+              <View style={{ flexDirection: "column", gap: 6 }}>
+                {rows.map((row, rowIdx) => (
+                  <View key={rowIdx} style={{ flexDirection: "row", gap: 6 }}>
+                    {row.map((day, cellIdx) => {
                       if (!day) {
-                        return (
-                          <View
-                            key={`blank-${weekIndex}-${cellIndex}`}
-                            style={styles.dayCellBlank}
-                          />
-                        );
+                        return <View key={`blank-${rowIdx}-${cellIdx}`} style={{ flex: 1, aspectRatio: 1 }} />;
                       }
+
                       const isSelected =
-                        selectedDate.year === visibleYear &&
-                        selectedDate.month === visibleMonthIndex &&
-                        selectedDate.day === day;
-                      const dateKey = getDateKey(
-                        visibleYear,
-                        visibleMonthIndex,
-                        day,
-                      );
-                      const dayBookings = bookingsByDateKey[dateKey] ?? [];
+                        selectedCalendarDate &&
+                        selectedCalendarDate.day === day &&
+                        selectedCalendarDate.month === calendarMonth.month &&
+                        selectedCalendarDate.year === calendarMonth.year;
 
                       return (
                         <Pressable
                           key={day}
-                          onPress={() =>
-                            setSelectedDate({
-                              year: visibleYear,
-                              month: visibleMonthIndex,
+                          onPress={() => {
+                            setSelectedCalendarDate({
                               day,
-                            })
-                          }
-                          style={[
-                            styles.dayCell,
-                            {
-                              backgroundColor: "#faf6f1ee",
-                              borderColor: "#cde3db",
-                              borderWidth: 1,
-                            },
-                            isSelected ? styles.dayCellSelected : null,
-                          ]}
-                          testID={`calendar-day-${dateKey}`}
+                              month: calendarMonth.month,
+                              year: calendarMonth.year,
+                            });
+                            setBookingsFilter("date");
+                          }}
+                          style={{
+                            flex: 1,
+                            aspectRatio: 1,
+                            backgroundColor: isSelected ? COLORS.tealMedium : COLORS.bg,
+                            borderRadius: 10,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderWidth: day && isTodayDay(day) && !isSelected ? 2.5 : 0,
+                            borderColor: COLORS.navy,
+                          }}
                         >
-                          <Text style={styles.dayCellNumber}>{day}</Text>
-                          {dayBookings.length > 0 && (
-                            <View
-                              style={{
-                                flexDirection: "row",
-                                gap: 3,
-                                marginTop: 4,
-                                flexWrap: "wrap",
-                                justifyContent: "center",
-                                alignItems: "center",
-                              }}
-                            >
-                              {dayBookings.map((b) => (
-                                <CruiseTypeIcon
-                                  key={b.id}
-                                  type={b.parsedType || "day"}
-                                  size="compact"
-                                />
-                              ))}
-                            </View>
-                          )}
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: isTodayDay(day) || isSelected ? "700" : "500",
+                              color: isSelected ? COLORS.white : COLORS.navy,
+                            }}
+                          >
+                            {day}
+                          </Text>
+                          <View
+                            style={{
+                              width: 6,
+                              height: 6,
+                              borderRadius: 3,
+                              backgroundColor: hasBooking(day) ? (isSelected ? COLORS.white : COLORS.teal) : "transparent",
+                              marginTop: 3,
+                            }}
+                          />
                         </Pressable>
                       );
                     })}
                   </View>
-                ),
+                ))}
+              </View>
+            </View>
+
+            {/* Bookings List below Calendar */}
+            <View>
+              {activeList.length === 0 ? (
+                <View
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: 8,
+                    paddingVertical: 18,
+                    paddingHorizontal: 12,
+                    borderWidth: 1,
+                    borderColor: COLORS.border,
+                    borderRadius: 16,
+                    backgroundColor: COLORS.white,
+                  }}
+                >
+                  <ClipboardList size={16} color={COLORS.muted} />
+                  <Text style={{ fontSize: 13, color: COLORS.muted }}>
+                    {bookingsStatusFilter
+                      ? `No ${{ confirmed: "confirmed", cancelled: "cancelled", updated: "updated", added: "added" }[bookingsStatusFilter]} bookings`
+                      : "No bookings"}{" "}
+                    {bookingsFilter === "today"
+                      ? "today"
+                      : bookingsFilter === "date" && selectedCalendarDate
+                      ? `on ${selectedCalendarDate.day} ${MONTHS[selectedCalendarDate.month]} ${selectedCalendarDate.year}`
+                      : `in ${MONTHS[calendarMonth.month]} ${calendarMonth.year}`}
+                    {selectedBoat !== 0 ? ` for ${selectedBoatName}` : ""}
+                  </Text>
+                </View>
+              ) : (
+                activeList.map((b) => (
+                  <BookingCard
+                    key={b.id}
+                    b={b}
+                    expanded={expandedBooking === b.id}
+                    onToggle={() => {
+                      setExpandedBooking(expandedBooking === b.id ? null : b.id);
+                    }}
+                  />
+                ))
               )}
             </View>
-          </GestureDetector>
-        </View>
-
-        {/* Bookings List below selected date */}
-        <View style={styles.verticalGap12}>
-          <Text style={[styles.cardTitle, { marginTop: 4, marginBottom: -4 }]}>
-            Bookings for {selectedDate.day} {months[selectedDate.month]}{" "}
-            {selectedDate.year}
-          </Text>
-          {bookingsForSelectedDate.map((booking) => {
-            const dateLine = booking.details.find(([key]) => key === "Date & time")?.[1] || "";
-            const config = booking.details.find(([key]) => key === "Configuration")?.[1] || "";
-            const priceLine = booking.details.find(([key]) => key === "Total agreed price")?.[1] || "";
-
-            return (
-              <CruiseCard
-                key={booking.id}
-                title={`${booking.guestName} · ${booking.boatName || ""}`}
-                subtitle={dateLine}
-                cruiseType={booking.parsedType}
-                status="Confirmed"
-                config={config}
-                priceLine={priceLine}
-                onPress={() =>
-                  navigation.navigate("BookingDetail", { bookingId: booking.id })
-                }
-              />
-            );
-          })}
-          {bookingsForSelectedDate.length === 0 ? (
-            <Card title="No bookings">
-              <Text style={styles.detailMuted}>
-                No confirmed bookings found for this day on {boats.find((b) => b.id === selectedBoat)?.name || ""}.
-              </Text>
-            </Card>
-          ) : null}
-        </View>
-        </>
+          </>
         )}
       </ScrollView>
-      </View>
-    </GestureHandlerRootView>
+
+      {/* Bookings Status filter options dropdown */}
+      {bookingsStatusDropdownOpen && (
+        <Modal
+          transparent
+          visible={bookingsStatusDropdownOpen}
+          animationType="none"
+          onRequestClose={() => setBookingsStatusDropdownOpen(false)}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setBookingsStatusDropdownOpen(false)} />
+          <View
+            style={{
+              position: "absolute",
+              top: 154, // position below the filter button
+              right: 18,
+              backgroundColor: COLORS.white,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              borderRadius: 14,
+              minWidth: 170,
+              shadowColor: COLORS.navy,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.12,
+              shadowRadius: 16,
+              elevation: 5,
+              paddingVertical: 6,
+            }}
+          >
+            {[
+              { key: null, label: "Show all bookings" },
+              { key: "confirmed", label: "Confirmed bookings" },
+              { key: "cancelled", label: "Cancelled bookings" },
+              { key: "updated", label: "Updated bookings" },
+              { key: "added", label: "Added bookings" },
+            ].map((opt) => (
+              <Pressable
+                key={opt.key ?? "all"}
+                onPress={() => {
+                  setBookingsStatusFilter(opt.key);
+                  setBookingsStatusDropdownOpen(false);
+                  if (opt.key === null) {
+                    setBookingsFilter("all");
+                    setSelectedCalendarDate(null);
+                  }
+                }}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  backgroundColor: bookingsStatusFilter === opt.key ? COLORS.tealLight : "transparent",
+                  borderBottomWidth: opt.key === null ? 1 : 0,
+                  borderBottomColor: COLORS.border,
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 13,
+                    fontWeight: bookingsStatusFilter === opt.key ? "700" : "500",
+                    color: bookingsStatusFilter === opt.key ? COLORS.teal : COLORS.navy,
+                    textAlign: "center",
+                  }}
+                >
+                  {opt.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        </Modal>
+      )}
+
+      {/* Month Selection Modal Dropdown */}
+      {calendarMonthPickerOpen && (
+        <Modal
+          transparent
+          visible={calendarMonthPickerOpen}
+          animationType="none"
+          onRequestClose={() => setCalendarMonthPickerOpen(false)}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setCalendarMonthPickerOpen(false)} />
+          <View
+            style={{
+              position: "absolute",
+              top: 250, // position around the header year/month text
+              left: 60,
+              backgroundColor: COLORS.white,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              borderRadius: 16,
+              minWidth: 150,
+              maxHeight: 260,
+              shadowColor: COLORS.navy,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.12,
+              shadowRadius: 16,
+              elevation: 5,
+              paddingVertical: 6,
+            }}
+          >
+            <ScrollView>
+              {MONTHS.map((m, i) => {
+                const isBeforeFloor = calendarMonth.year === MIN_YEAR && i < MIN_MONTH;
+                if (isBeforeFloor) return null;
+                const isCurrent = calendarMonth.month === i;
+                return (
+                  <Pressable
+                    key={m}
+                    onPress={() => {
+                      setCalendarMonth((prev) => ({ ...prev, month: i }));
+                      setCalendarMonthPickerOpen(false);
+                    }}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 9,
+                      backgroundColor: isCurrent ? COLORS.tealLight : "transparent",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: isCurrent ? "700" : "500",
+                        color: isCurrent ? COLORS.teal : COLORS.navy,
+                      }}
+                    >
+                      {m}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Modal>
+      )}
+
+      {/* Year Selection Modal Dropdown */}
+      {calendarYearPickerOpen && (
+        <Modal
+          transparent
+          visible={calendarYearPickerOpen}
+          animationType="none"
+          onRequestClose={() => setCalendarYearPickerOpen(false)}
+        >
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setCalendarYearPickerOpen(false)} />
+          <View
+            style={{
+              position: "absolute",
+              top: 250,
+              left: 200,
+              backgroundColor: COLORS.white,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              borderRadius: 16,
+              minWidth: 100,
+              maxHeight: 220,
+              shadowColor: COLORS.navy,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.12,
+              shadowRadius: 16,
+              elevation: 5,
+              paddingVertical: 6,
+            }}
+          >
+            <ScrollView>
+              {Array.from({ length: 8 }, (_, idx) => MIN_YEAR + idx).map((year) => {
+                const isCurrent = calendarMonth.year === year;
+                return (
+                  <Pressable
+                    key={year}
+                    onPress={() => {
+                      setCalendarMonth((prev) => {
+                        const month = year === MIN_YEAR && prev.month < MIN_MONTH ? MIN_MONTH : prev.month;
+                        return { month, year };
+                      });
+                      setCalendarYearPickerOpen(false);
+                    }}
+                    style={{
+                      paddingHorizontal: 16,
+                      paddingVertical: 9,
+                      backgroundColor: isCurrent ? COLORS.tealLight : "transparent",
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 13,
+                        fontWeight: isCurrent ? "700" : "500",
+                        color: isCurrent ? COLORS.teal : COLORS.navy,
+                      }}
+                    >
+                      {year}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </Modal>
+      )}
+    </View>
   );
 }

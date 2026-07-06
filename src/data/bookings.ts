@@ -96,3 +96,45 @@ export type DayBooking = {
   nightCruiseBookedConfig?: string;
   configs?: Record<string, ConfigPricing>;
 };
+
+export type DietEntry = {
+  type: string;
+  count: number;
+};
+
+export type Booking = {
+  id: number;
+  bookingId: string;
+  guest: string;
+  phone: string;
+  boat: string;
+  type: string; // Day cruise, Overnight stay, Night stay
+  date: string;
+  dateEnd: string;
+  comfort?: string;
+  mode?: string;
+  adults: number;
+  children: number;
+  kids?: number;
+  rooms: number;
+  cots?: number;
+  dietBreakdown?: DietEntry[];
+  accessibility?: string;
+  specialRequests?: string[];
+  updatedSpecialRequests?: string[];
+  price: number;
+  ghat?: string;
+  checkIn?: string;
+  checkOut?: string;
+  meal?: string;
+  paymentStatus?: string;
+  status?: string; // cancelled, deleted, confirmed
+  isDirect?: boolean;
+  bookingSource?: string;
+  isUpdated?: boolean;
+  cancelledAt?: Date;
+  requestedAt?: Date;
+  decidedAt?: Date;
+  outcome?: "accepted" | "declined";
+};
+

@@ -6,6 +6,7 @@ import styles from "../styles";
 export { default as StatusPill } from "./StatusPill";
 export { default as CruiseTypeIcon } from "./CruiseTypeIcon";
 export { default as CruiseCard } from "./CruiseCard";
+export { default as BookingCard } from "./BookingCard";
 export type { Request } from "./StatusPill";
 export { requestStatusStyle } from "./StatusPill";
 

@@ -4,32 +4,28 @@ import {
   Calendar,
   DollarSign,
   Compass,
-  AlertCircle,
   Clock,
   CheckCircle,
+  XCircle,
 } from "lucide-react-native";
-import { PageHeader, StatusPill } from "../components";
-import { fetchRequestDetail, submitRequestOutcome } from "../services/bookings";
-import { BookingRequest } from "../data/bookings";
+import { PageHeader } from "../components";
+import { fetchRequestDetail, submitRequestOutcome, Booking, formatDateRange, getWaitingHours, getWaitingColor } from "../services/bookings";
 import type { RootStackScreenProps } from "../navigation/types";
-import styles from "../styles";
+import { COLORS } from "../styles";
 
 type Props = RootStackScreenProps<"RequestDetail">;
 
 export default function RequestDetailScreen({ route, navigation }: Props) {
   const { requestName, boatId } = route.params;
-  const [request, setRequest] = useState<BookingRequest | null>(null);
+  const [request, setRequest] = useState<Booking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  useEffect(() => {
-    let active = true;
+  const loadRequest = () => {
     setIsLoading(true);
-
     fetchRequestDetail(requestName, boatId)
       .then((res) => {
-        if (!active) return;
         if (res.error) {
           setErrorMsg(res.error.message);
         } else if (res.data) {
@@ -37,29 +33,29 @@ export default function RequestDetailScreen({ route, navigation }: Props) {
         }
       })
       .catch((err) => {
-        if (active) {
-          setErrorMsg("An unexpected error occurred.");
-          console.error(err);
-        }
+        setErrorMsg("An unexpected error occurred.");
+        console.error(err);
       })
       .finally(() => {
-        if (active) setIsLoading(false);
+        setIsLoading(false);
       });
+  };
 
-    return () => {
-      active = false;
-    };
+  useEffect(() => {
+    loadRequest();
   }, [requestName, boatId]);
 
-  const handleRespond = async (outcome: "accepted" | "rejected") => {
+  const handleRespond = async (outcome: "accepted" | "declined") => {
+    if (!request) return;
     setIsActionLoading(true);
     try {
-      const response = await submitRequestOutcome(boatId, requestName, outcome);
+      const response = await submitRequestOutcome(request.id, outcome);
       if (response.error) {
         Alert.alert("Error", response.error.message);
       } else if (response.data) {
         setRequest(response.data);
         Alert.alert("Success", `Request has been ${outcome === "accepted" ? "accepted" : "declined"}.`);
+        navigation.goBack();
       }
     } catch {
       Alert.alert("Error", "Failed to process booking request response.");
@@ -68,104 +64,131 @@ export default function RequestDetailScreen({ route, navigation }: Props) {
     }
   };
 
-  const isPending = request && !request.outcome;
+  const isPending = request && request.status === "pending";
 
   return (
-    <View style={styles.detailPageRoot}>
-      <ScrollView contentContainerStyle={styles.detailScrollContent}>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
         <PageHeader
           title="Request Details"
-          sub={request ? `Boat: ${request.boatName || "Houseboat"}` : "Fetching request..."}
+          sub={request ? `Boat: ${request.boat || "Houseboat"}` : "Fetching request..."}
           onBack={() => navigation.goBack()}
         />
 
         {isLoading || isActionLoading ? (
           <View style={{ paddingVertical: 100, justifyContent: "center", alignItems: "center" }}>
-            <ActivityIndicator size="large" color="#1a7f7f" />
-            <Text style={{ marginTop: 10, color: "#6d8299", fontSize: 14 }}>
+            <ActivityIndicator size="large" color={COLORS.teal} />
+            <Text style={{ marginTop: 10, color: COLORS.muted, fontSize: 14 }}>
               {isActionLoading ? "Updating request status..." : "Loading request details..."}
             </Text>
           </View>
         ) : errorMsg ? (
-          <View style={[styles.detailCard, { alignItems: "center", paddingVertical: 40 }]}>
-            <Text style={{ color: "#cf3850", fontSize: 16, fontWeight: "600" }}>Error</Text>
-            <Text style={{ color: "#6d8299", marginTop: 8, textAlign: "center" }}>{errorMsg}</Text>
+          <View style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, padding: 24, alignItems: "center" }}>
+            <Text style={{ color: COLORS.red, fontSize: 16, fontWeight: "600" }}>Error</Text>
+            <Text style={{ color: COLORS.muted, marginTop: 8, textAlign: "center" }}>{errorMsg}</Text>
           </View>
         ) : request ? (
           <>
-            <View style={styles.detailCard}>
-              <View style={styles.detailHeaderRow}>
-                <View style={styles.flex1}>
-                  <Text style={styles.detailTitle}>{request.name}</Text>
-                  <Text style={styles.detailSub}>{request.subtitle}</Text>
+            <View style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, padding: 18, marginBottom: 16 }}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={{ fontWeight: "800", fontSize: 18, color: COLORS.navy }}>{request.guest}</Text>
+                  <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>{request.boat}</Text>
                 </View>
-                <StatusPill status={request.status as any} />
+                <View style={{ backgroundColor: request.status === "pending" ? COLORS.tealLight : COLORS.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: request.status === "pending" ? COLORS.teal : COLORS.muted, textTransform: "capitalize" }}>
+                    {request.status}
+                  </Text>
+                </View>
               </View>
 
-              <View style={styles.detailDivider} />
+              <View style={{ height: 1, backgroundColor: COLORS.border, marginVertical: 12 }} />
 
-              <View style={styles.verticalGap12}>
-                <View style={styles.detailRow}>
-                  <View style={styles.detailRowIconContainer}>
-                    <Clock size={13} color="#6d8299" />
+              <View style={{ gap: 12 }}>
+                {/* Status hold */}
+                {request.requestedAt && (
+                  <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+                    <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.tealLight, alignItems: "center", justifyContent: "center", marginTop: 2 }}>
+                      <Clock size={13} color={COLORS.muted} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Status Timeline / hold</Text>
+                      {(() => {
+                        const hours = getWaitingHours(request.requestedAt);
+                        const deadlineColor = getWaitingColor(hours);
+                        const deadlineDate = new Date(new Date(request.requestedAt).getTime() + 12 * 60 * 60 * 1000);
+                        const deadlineStr = deadlineDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+                        return (
+                          <Text style={{ fontSize: 13, fontWeight: "600", color: deadlineColor, marginTop: 2 }}>
+                            Requested on {request.requestedAt instanceof Date ? request.requestedAt.toLocaleDateString("en-GB") : String(request.requestedAt)} · Respond by {deadlineStr}
+                          </Text>
+                        );
+                      })()}
+                    </View>
                   </View>
-                  <View style={styles.detailRowContent}>
-                    <Text style={styles.detailRowLabel}>Status Timeline / hold</Text>
-                    <Text style={styles.detailRowValue}>{request.dateLine}</Text>
+                )}
+
+                {/* Configuration */}
+                <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+                  <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.tealLight, alignItems: "center", justifyContent: "center", marginTop: 2 }}>
+                    <Compass size={13} color={COLORS.muted} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Configuration & Guests</Text>
+                    <Text style={{ fontSize: 13, fontWeight: "500", color: COLORS.navy, marginTop: 2, lineHeight: 18 }}>
+                      {request.rooms}BH · {request.type} · {formatDateRange(request.date, request.dateEnd)} · {request.adults} Adults · {request.children ?? 0} Children
+                    </Text>
                   </View>
                 </View>
 
-                <View style={styles.detailRow}>
-                  <View style={styles.detailRowIconContainer}>
-                    <Compass size={13} color="#6d8299" />
+                {/* Price */}
+                <View style={{ flexDirection: "row", gap: 12, alignItems: "flex-start" }}>
+                  <View style={{ width: 28, height: 28, borderRadius: 14, backgroundColor: COLORS.tealLight, alignItems: "center", justifyContent: "center", marginTop: 2 }}>
+                    <DollarSign size={13} color={COLORS.teal} />
                   </View>
-                  <View style={styles.detailRowContent}>
-                    <Text style={styles.detailRowLabel}>Configuration & Guests</Text>
-                    <Text style={styles.detailRowValue}>{request.details}</Text>
-                  </View>
-                </View>
-
-                <View style={styles.detailRow}>
-                  <View style={styles.detailRowIconContainer}>
-                    <DollarSign size={13} color="#1a7f7f" />
-                  </View>
-                  <View style={styles.detailRowContent}>
-                    <Text style={styles.detailRowLabel}>Price / Value</Text>
-                    <Text style={[styles.detailRowValue, { color: "#1a7f7f", fontWeight: "700" }]}>
-                      {request.config}
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Price / Value</Text>
+                    <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.teal, marginTop: 2 }}>
+                      ₹{request.price?.toLocaleString("en-IN")}
                     </Text>
                   </View>
                 </View>
               </View>
             </View>
 
-            {request.request ? (
-              <View style={[styles.detailNotesBox, { borderColor: "#cde3db", backgroundColor: "#faf6f1ee" }]}>
-                <Text style={[styles.detailNotesTitle, { color: "#1a7f7f" }]}>Special Requests</Text>
-                <Text style={[styles.detailNotesText, { color: "#3a504a" }]}>{request.request}</Text>
+            {request.specialRequests && request.specialRequests.length > 0 && (
+              <View style={{ backgroundColor: COLORS.tealLight, borderLeftWidth: 3, borderLeftColor: COLORS.teal, borderRadius: 10, padding: 14, marginBottom: 16 }}>
+                <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.teal, textTransform: "uppercase" }}>Special Requests</Text>
+                <Text style={{ fontSize: 13, color: COLORS.navy, marginTop: 4 }}>{request.specialRequests.join(", ")}</Text>
               </View>
-            ) : null}
-
-            {request.actedOn ? (
-              <View style={[styles.detailNotesBox, { marginTop: 16 }]}>
-                <Text style={styles.detailNotesTitle}>Action History</Text>
-                <Text style={styles.detailNotesText}>{request.actedOn}</Text>
-              </View>
-            ) : null}
+            )}
 
             {isPending && (
-              <View style={[styles.buttonRowBetween, { marginTop: 24 }]}>
+              <View style={{ flexDirection: "row", gap: 12, marginTop: 10 }}>
                 <Pressable
-                  style={[styles.declineButton, { flex: 1, marginRight: 8 }]}
-                  onPress={() => handleRespond("rejected")}
+                  style={{
+                    flex: 1,
+                    borderWidth: 1,
+                    borderColor: COLORS.red,
+                    borderRadius: 12,
+                    paddingVertical: 14,
+                    alignItems: "center",
+                  }}
+                  onPress={() => handleRespond("declined")}
                 >
-                  <Text style={styles.actionButtonText}>Decline</Text>
+                  <Text style={{ color: COLORS.red, fontSize: 14, fontWeight: "700" }}>Decline</Text>
                 </Pressable>
                 <Pressable
-                  style={[styles.acceptButton, { flex: 1, marginLeft: 8 }]}
+                  style={{
+                    flex: 1,
+                    backgroundColor: COLORS.teal,
+                    borderRadius: 12,
+                    paddingVertical: 14,
+                    alignItems: "center",
+                  }}
                   onPress={() => handleRespond("accepted")}
                 >
-                  <Text style={styles.actionButtonText}>Accept Booking</Text>
+                  <Text style={{ color: COLORS.white, fontSize: 14, fontWeight: "700" }}>Accept Booking</Text>
                 </Pressable>
               </View>
             )}

@@ -8,6 +8,10 @@ type BoatContextValue = {
   setSelectedBoat: (boatId: number) => void;
   isLoading: boolean;
   refreshBoats: () => Promise<void>;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  searchOpen: boolean;
+  setSearchOpen: (open: boolean) => void;
 };
 
 const BoatContext = createContext<BoatContextValue>({
@@ -16,12 +20,18 @@ const BoatContext = createContext<BoatContextValue>({
   setSelectedBoat: () => {},
   isLoading: true,
   refreshBoats: async () => {},
+  searchQuery: "",
+  setSearchQuery: () => {},
+  searchOpen: false,
+  setSearchOpen: () => {},
 });
 
 export function BoatProvider({ children }: { children: ReactNode }) {
   const [boats, setBoats] = useState<BoatListItem[]>([]);
   const [selectedBoat, setSelectedBoat] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [searchOpen, setSearchOpen] = useState<boolean>(false);
 
   const loadBoats = useCallback(async () => {
     setIsLoading(true);
@@ -57,6 +67,10 @@ export function BoatProvider({ children }: { children: ReactNode }) {
         setSelectedBoat,
         isLoading,
         refreshBoats: loadBoats,
+        searchQuery,
+        setSearchQuery,
+        searchOpen,
+        setSearchOpen,
       }}
     >
       {children}

@@ -1,3379 +1,1221 @@
-import { Check, CalendarDays, X, Info, AlertCircle } from "lucide-react-native";
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import { Boat } from "../data/boats";
-import {
-  BackHandler,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-  Modal,
-  Switch,
-} from "react-native";
-import BottomSheet, { BottomSheetScrollView, BottomSheetRef } from "../components/BottomSheet";
-import { Gesture, GestureDetector, GestureHandlerRootView, Directions } from "react-native-gesture-handler";
-import {
-  useFocusEffect,
-  useRoute,
-  useNavigation,
-  type RouteProp,
-  type NavigationProp,
-} from "@react-navigation/native";
-import type { MainTabParamList } from "../navigation/types";
-
-import { CruiseTypeIcon, PageHeader, CruiseCard } from "../components";
+import React, { useState, useEffect } from "react";
+import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, TextInput, Switch, StyleSheet } from "react-native";
+import { ArrowLeft, Calendar, ChevronDown, ChevronUp, ArrowRight, Sun, Moon, Sunrise, Pencil, Trash, X, CheckCircle, Info } from "lucide-react-native";
 import { useBoat } from "../context/BoatContext";
-import { DISABLE_ANIMATIONS } from "../config/animations";
-import styles from "../styles";
-import { fetchCalendarBookings, saveAllCalendarBookings } from "../services/bookings";
-import { DayBooking } from "../data/bookings";
-import { mockBoats } from "../services/boats";
+import { fetchBookings, saveDirectBooking, deleteBooking, Booking, DietEntry, MONTHS, BOAT_BH_CONFIGS, BOAT_TOTAL_BH, SHARED_BOATS, SHARED_BOAT_TOTAL_UNITS, TRIP_TYPES, AVAILABILITY_TYPE_ICONS, getAvailabilityStatus, toISODate, fromISODate, formatDateRange, getMinimumRooms, getCotsMattresses, isContactUnlocked, dateOpenState as initialDateOpenState, blockedDates as initialBlockedDates } from "../services/bookings";
+import { COLORS } from "../styles";
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get("window");
-
-
-
-type SelectedDate = { year: number; month: number; day: number };
-
-function normalizeBooking(booking: DayBooking): DayBooking {
-  const normalized = { ...booking };
-  normalized.isClosed = normalized.isClosed || false;
-  normalized.dayCruiseClosed = normalized.dayCruiseClosed || false;
-  normalized.overnightCruiseClosed = normalized.overnightCruiseClosed || false;
-  normalized.nightCruiseClosed = normalized.nightCruiseClosed || false;
-  
-  if (!normalized.configs) {
-    normalized.configs = {};
-  }
-  
-  const configNames = ["1BH", "2BH", "3BH", "4BH"];
-  configNames.forEach((configName, index) => {
-    if (!normalized.configs![configName]) {
-      const factor = 1 + index * 0.2; // 1BH = 1.0x, 2BH = 1.2x, 3BH = 1.4x, 4BH = 1.6x
-      
-      const dayBase = normalized.dayCruisePrice || 12000;
-      const overnightBase = normalized.overnightCruisePrice || 22000;
-      const nightBase = normalized.nightCruisePrice || 14000;
-      
-      normalized.configs![configName] = {
-        dayCruisePrice: Math.round(dayBase * factor),
-        dayCruiseExtraGuest: normalized.dayCruiseExtraGuest ?? 1500,
-        dayCruiseExtraRoom: normalized.dayCruiseExtraRoom ?? 2500,
-        dayCruiseClosed: normalized.dayCruiseClosed || false,
-        
-        overnightCruisePrice: Math.round(overnightBase * factor),
-        overnightExtraBed: normalized.overnightExtraBed ?? 2000,
-        overnightExtraCot: normalized.overnightExtraCot ?? 1500,
-        overnightExtraGuest: normalized.overnightExtraGuest ?? 1800,
-        overnightExtraRoom: normalized.overnightExtraRoom ?? 3000,
-        overnightCruiseClosed: normalized.overnightCruiseClosed || false,
-        
-        nightCruisePrice: Math.round(nightBase * factor),
-        nightCruiseExtraGuest: normalized.nightCruiseExtraGuest ?? 1500,
-        nightCruiseExtraRoom: normalized.nightCruiseExtraRoom ?? 2500,
-        nightExtraBed: normalized.nightExtraBed ?? 2000,
-        nightExtraCot: normalized.nightExtraCot ?? 1500,
-        nightCruiseClosed: normalized.nightCruiseClosed || false,
-      };
-    } else {
-      // Ensure closed fields are initialized if config exists but they are missing
-      const c = normalized.configs![configName];
-      c.dayCruiseClosed = c.dayCruiseClosed || false;
-      c.overnightCruiseClosed = c.overnightCruiseClosed || false;
-      c.nightCruiseClosed = c.nightCruiseClosed || false;
-    }
-  });
-
-  // Default booked configs to 1BH if not set but booked is true
-  if (normalized.dayCruise && !normalized.dayCruiseBookedConfig) {
-    normalized.dayCruiseBookedConfig = "1BH";
-  }
-  if (normalized.overnightCruise && !normalized.overnightCruiseBookedConfig) {
-    normalized.overnightCruiseBookedConfig = "1BH";
-  }
-  if (normalized.nightCruise && !normalized.nightCruiseBookedConfig) {
-    normalized.nightCruiseBookedConfig = "1BH";
-  }
-
-  // Sync 1BH config values to top-level fields for backward compatibility
-  const c1 = normalized.configs!["1BH"];
-  if (c1) {
-    normalized.dayCruisePrice = c1.dayCruisePrice;
-    normalized.dayCruiseExtraGuest = c1.dayCruiseExtraGuest;
-    normalized.dayCruiseExtraRoom = c1.dayCruiseExtraRoom;
-    normalized.dayCruiseClosed = c1.dayCruiseClosed;
-    normalized.overnightCruisePrice = c1.overnightCruisePrice;
-    normalized.overnightExtraBed = c1.overnightExtraBed;
-    normalized.overnightExtraCot = c1.overnightExtraCot;
-    normalized.overnightExtraGuest = c1.overnightExtraGuest;
-    normalized.overnightExtraRoom = c1.overnightExtraRoom;
-    normalized.overnightCruiseClosed = c1.overnightCruiseClosed;
-    normalized.nightCruisePrice = c1.nightCruisePrice;
-    normalized.nightCruiseExtraGuest = c1.nightCruiseExtraGuest;
-    normalized.nightCruiseExtraRoom = c1.nightCruiseExtraRoom;
-    normalized.nightExtraBed = c1.nightExtraBed;
-    normalized.nightExtraCot = c1.nightExtraCot;
-    normalized.nightCruiseClosed = c1.nightCruiseClosed;
-  }
-
-  if (normalized.overnightCruise && normalized.nightCruise) {
-    normalized.nightCruise = false;
-  }
-  if (normalized.details) {
-    if (normalized.dayCruise && !normalized.dayCruiseDetails) {
-      normalized.dayCruiseDetails = normalized.details;
-    }
-    if (normalized.overnightCruise && !normalized.overnightCruiseDetails) {
-      normalized.overnightCruiseDetails = normalized.details;
-    }
-    if (normalized.nightCruise && !normalized.nightCruiseDetails) {
-      normalized.nightCruiseDetails = normalized.details;
-    }
-  }
-  // Initialize booked amounts from rates if not present
-  if (normalized.dayCruise && normalized.dayCruiseBookedAmount === undefined) {
-    normalized.dayCruiseBookedAmount = normalized.dayCruisePrice;
-  }
-  if (normalized.overnightCruise && normalized.overnightCruiseBookedAmount === undefined) {
-    normalized.overnightCruiseBookedAmount = normalized.overnightCruisePrice;
-  }
-  if (normalized.nightCruise && normalized.nightCruiseBookedAmount === undefined) {
-    normalized.nightCruiseBookedAmount = normalized.nightCruisePrice;
-  }
-
-  // Initialize extra quantities to 1 if not present but rate is present
-  if (normalized.dayCruiseExtraGuest !== undefined && normalized.dayCruiseExtraGuestQty === undefined) {
-    normalized.dayCruiseExtraGuestQty = 1;
-  }
-  if (normalized.dayCruiseExtraRoom !== undefined && normalized.dayCruiseExtraRoomQty === undefined) {
-    normalized.dayCruiseExtraRoomQty = 1;
-  }
-  if (normalized.overnightExtraBed !== undefined && normalized.overnightExtraBedQty === undefined) {
-    normalized.overnightExtraBedQty = 1;
-  }
-  if (normalized.overnightExtraCot !== undefined && normalized.overnightExtraCotQty === undefined) {
-    normalized.overnightExtraCotQty = 1;
-  }
-  if (normalized.overnightExtraGuest !== undefined && normalized.overnightExtraGuestQty === undefined) {
-    normalized.overnightExtraGuestQty = 1;
-  }
-  if (normalized.overnightExtraRoom !== undefined && normalized.overnightExtraRoomQty === undefined) {
-    normalized.overnightExtraRoomQty = 1;
-  }
-  if (normalized.nightCruiseExtraGuest !== undefined && normalized.nightCruiseExtraGuestQty === undefined) {
-    normalized.nightCruiseExtraGuestQty = 1;
-  }
-  if (normalized.nightCruiseExtraRoom !== undefined && normalized.nightCruiseExtraRoomQty === undefined) {
-    normalized.nightCruiseExtraRoomQty = 1;
-  }
-  if (normalized.nightExtraBed !== undefined && normalized.nightExtraBedQty === undefined) {
-    normalized.nightExtraBedQty = 1;
-  }
-  if (normalized.nightExtraCot !== undefined && normalized.nightExtraCotQty === undefined) {
-    normalized.nightExtraCotQty = 1;
-  }
-  return normalized;
-}
-
-function getDateKey(year: number, month: number, day: number): string {
-  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-function formatLocalPrice(price?: number): string {
-  if (price === undefined || price === null) return "—";
-  return price.toLocaleString("en-IN");
-}
-
-function formatLocalNumber(val?: number): string {
-  if (val === undefined || val === null) return "";
-  return val.toLocaleString("en-IN");
-}
-
-function formatInputWithCommas(v: string): string {
-  const digits = v.replace(/[^0-9]/g, "");
-  if (!digits) return "";
-  const num = parseInt(digits, 10);
-  return isNaN(num) ? "" : num.toLocaleString("en-IN");
-}
-
-function parsePriceString(val: string): number | undefined {
-  if (!val) return undefined;
-  const cleaned = val.replace(/,/g, "");
-  const num = Number(cleaned);
-  return isNaN(num) ? undefined : num;
-}
-
-function isPricingSet(booking: DayBooking | undefined, boat: Boat): boolean {
-  if (!booking || !booking.configs) return false;
-  const activeCruiseTypes = boat.cruiseTypes.filter(c => c.on).map(c => {
-    if (c.label === "Day cruise") return "day";
-    if (c.label === "Overnight stay") return "overnight";
-    return "night";
-  });
-  const boatConfigs = Array.from({ length: boat.bedrooms }, (_, i) => `${i + 1}BH`);
-  for (const config of boatConfigs) {
-    const pricing = booking.configs[config];
-    if (!pricing) return false;
-    let hasPriceForConfig = false;
-    if (activeCruiseTypes.includes("day") && pricing.dayCruisePrice !== undefined) hasPriceForConfig = true;
-    if (activeCruiseTypes.includes("overnight") && pricing.overnightCruisePrice !== undefined) hasPriceForConfig = true;
-    if (activeCruiseTypes.includes("night") && pricing.nightCruisePrice !== undefined) hasPriceForConfig = true;
-    if (!hasPriceForConfig) return false;
-  }
-  return true;
-}
-
-function SkeletonCard({
-  miniWeekdayLabels,
-  miniCalendarWeeks,
-}: {
-  miniWeekdayLabels: string[];
-  miniCalendarWeeks: Array<Array<number | null>>;
-}) {
-  return (
-    <View style={styles.boatCard} testID="skeleton-boat-card">
-      <View
-        style={[
-          {
-            width: 80,
-            height: 14,
-            borderRadius: 4,
-            backgroundColor: "#e2e8f0",
-            marginBottom: 10,
-            opacity: 0.5,
-          },
-        ]}
-      />
-
-      <View style={styles.miniCalendarContainer}>
-        <View style={styles.miniCalendarHeader}>
-          {miniWeekdayLabels.map((l, idx) => (
-            <Text key={idx} style={[styles.miniCalendarHeaderLabel, { opacity: 0.5 }]}>
-              {l}
-            </Text>
-          ))}
-        </View>
-        <View style={styles.miniCalendarGrid}>
-          {miniCalendarWeeks.map((week, weekIdx) => (
-            <View key={weekIdx} style={styles.miniCalendarWeekRow}>
-              {week.map((day, dayIdx) => {
-                if (day === null) {
-                  return (
-                    <View
-                      key={`empty-${dayIdx}`}
-                      style={styles.miniCalendarCellBlank}
-                    />
-                  );
-                }
-
-                return (
-                  <View
-                    key={day}
-                    style={[
-                      styles.miniCalendarCell,
-                      {
-                        backgroundColor: "#eceff1",
-                        borderColor: "#cfd8dc",
-                        opacity: 0.5,
-                      },
-                    ]}
-                  />
-                );
-              })}
-              {week.length < 7 &&
-                Array.from({ length: 7 - week.length }).map(
-                  (_, padIdx) => (
-                    <View
-                      key={`pad-${padIdx}`}
-                      style={styles.miniCalendarCellBlank}
-                    />
-                  ),
-                )}
-            </View>
-          ))}
-        </View>
-      </View>
-    </View>
-  );
-}
+// Freeze reference date to June 18, 2026
+const now = new Date("2026-06-18T10:00:00");
 
 export default function AvailabilityScreen() {
-  const { boats } = useBoat();
-  const [activeBoatForCalendar, setActiveBoatForCalendar] = useState<
-    number | null
-  >(null);
-  const activeBoatDetails = useMemo(() => {
-    return activeBoatForCalendar ? mockBoats[activeBoatForCalendar] : null;
-  }, [activeBoatForCalendar]);
-  const [zoomOrigin, setZoomOrigin] = useState({
-    x: screenWidth / 2,
-    y: screenHeight / 2,
+  const { selectedBoat, boats } = useBoat();
+  const [localBoatName, setLocalBoatName] = useState<string | null>(null);
+
+  // Sync with global boat context
+  useEffect(() => {
+    if (selectedBoat !== 0) {
+      const name = boats.find((b) => b.id === selectedBoat)?.name || null;
+      setLocalBoatName(name);
+    } else {
+      setLocalBoatName(null);
+    }
+  }, [selectedBoat, boats]);
+
+  // Screen state
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
+  const [allBlockedDates, setAllBlockedDates] = useState<any[]>(initialBlockedDates);
+  const [localDateOpenState, setLocalDateOpenState] = useState<Record<string, boolean>>(initialDateOpenState);
+  const [localTripPricing, setLocalTripPricing] = useState<Record<string, any>>({});
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Calendar Selection State
+  const [availabilityMonth, setAvailabilityMonth] = useState({ month: 5, year: 2026 }); // June 2026
+  const [availabilitySelection, setAvailabilitySelection] = useState<number[]>([]);
+  const [expandedTripType, setExpandedTripType] = useState<string | null>(null);
+  
+  // Rate Editing drafts
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, any>>({});
+  const [confirmRatesError, setConfirmRatesError] = useState<string | null>(null);
+  const [confirmRatesSuccess, setConfirmRatesSuccess] = useState<string | null>(null);
+
+  // Shared units edit state
+  const [unitsEditingKey, setUnitsEditingKey] = useState<string | null>(null);
+  const [unitsDraft, setUnitsDraft] = useState("");
+
+  // Modals state
+  const [addBookingFormOpen, setAddBookingFormOpen] = useState(false);
+  const [modifyBookingListOpen, setModifyBookingListOpen] = useState(false);
+  const [modifySelectedBookingId, setModifySelectedBookingId] = useState<number | null>(null);
+  const [modifyDeleteConfirmOpen, setModifyDeleteConfirmOpen] = useState(false);
+
+  // Dropdowns
+  const [availabilityMonthPickerOpen, setAvailabilityMonthPickerOpen] = useState(false);
+  const [availabilityYearPickerOpen, setAvailabilityYearPickerOpen] = useState(false);
+
+  // Form fields state
+  const [addBookingForm, setAddBookingForm] = useState<{
+    editingBookingId?: number;
+    originalBoat?: string;
+    originalDbDates?: string[];
+    source: string;
+    guest: string;
+    boat: string;
+    rooms: number;
+    type: string;
+    checkIn: string;
+    checkOut: string;
+    adults: number;
+    children: number;
+    kids: number;
+    cots: number;
+    dietBreakdown: DietEntry[];
+    phone: string;
+    specialRequests: string;
+    price: string;
+  }>({
+    source: "Direct Booking",
+    guest: "",
+    boat: "",
+    rooms: 1,
+    type: "Day Cruise",
+    checkIn: "",
+    checkOut: "",
+    adults: 2,
+    children: 0,
+    kids: 0,
+    cots: 0,
+    dietBreakdown: [{ type: "Veg", count: 2 }],
+    phone: "",
+    specialRequests: "",
+    price: "",
   });
-  const route = useRoute<RouteProp<{ Availability: { selectBoatId?: number } }, 'Availability'>>();
-  const navigation = useNavigation<NavigationProp<MainTabParamList, 'Availability'>>();
 
-  const today = new Date();
-  const todayYear = today.getFullYear();
-  const todayMonth = today.getMonth();
-
-  const [visibleMonth, setVisibleMonth] = useState(
-    () => new Date(todayYear, todayMonth, 1),
-  );  const [isBulkPricingMode, setIsBulkPricingMode] = useState(false);
-  const [selectedDates, setSelectedDates] = useState<number[]>([]);
-  const [isDetailTransitioning, setIsDetailTransitioning] = useState(false);
-  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('left');
-  const [isCalendarFirstMount, setIsCalendarFirstMount] = useState(true);
-  const [isSheetForBulk, setIsSheetForBulk] = useState(false);
-  const [selectedDate, setSelectedDate] = useState<SelectedDate | null>(null);
-  const [lastLoadedKey, setLastLoadedKey] = useState<string | null>(null);
-
-  const [bookingsByBoat, setBookingsByBoat] = useState<
-    Record<number, Record<string, DayBooking>>
-  >({});
-  const [isLoadingCalendar, setIsLoadingCalendar] = useState(true);
-
-  const bookingsByDate = activeBoatForCalendar
-    ? (bookingsByBoat[activeBoatForCalendar] ?? {})
-    : {};
-
-  const visibleYear = visibleMonth.getFullYear();
-  const visibleMonthIndex = visibleMonth.getMonth();
-
-  const currentSelectedDateKey = selectedDates.length === 1 
-    ? getDateKey(visibleYear, visibleMonthIndex, selectedDates[0])
-    : null;
-
-  const [modalDayCruisePrice, setModalDayCruisePrice] = useState("");
-  const [modalOvernightPrice, setModalOvernightPrice] = useState("");
-  const [modalNightPrice, setModalNightPrice] = useState("");
-  const [modalDayExtraGuest, setModalDayExtraGuest] = useState("");
-  const [modalDayExtraRoom, setModalDayExtraRoom] = useState("");
-  const [modalOvernightExtraBed, setModalOvernightExtraBed] = useState("");
-  const [modalOvernightExtraCot, setModalOvernightExtraCot] = useState("");
-  const [modalOvernightExtraGuest, setModalOvernightExtraGuest] = useState("");
-  const [modalOvernightExtraRoom, setModalOvernightExtraRoom] = useState("");
-  const [modalNightExtraGuest, setModalNightExtraGuest] = useState("");
-  const [modalNightExtraRoom, setModalNightExtraRoom] = useState("");
-  const [modalNightExtraBed, setModalNightExtraBed] = useState("");
-  const [modalNightExtraCot, setModalNightExtraCot] = useState("");
-
-  const [activeAddBookingType, setActiveAddBookingType] = useState<"day" | "overnight" | "night" | null>(null);
-  const [bookingGuestName, setBookingGuestName] = useState("");
-  const [bookingGuestCount, setBookingGuestCount] = useState("");
-  const [bookingSpecialNotes, setBookingSpecialNotes] = useState("");
-  const [bookingBasePrice, setBookingBasePrice] = useState("");
-  const [bookingExtra1, setBookingExtra1] = useState("");
-  const [bookingExtra2, setBookingExtra2] = useState("");
-  const [bookingExtra3, setBookingExtra3] = useState("");
-  const [bookingExtra4, setBookingExtra4] = useState("");
-  const [bookingExtra1Qty, setBookingExtra1Qty] = useState("0");
-  const [bookingExtra2Qty, setBookingExtra2Qty] = useState("0");
-  const [bookingExtra3Qty, setBookingExtra3Qty] = useState("0");
-  const [bookingExtra4Qty, setBookingExtra4Qty] = useState("0");
-  const [isBookingModalVisible, setIsBookingModalVisible] = useState(false);
-  const [bookingBookedAmount, setBookingBookedAmount] = useState("");
-  const [isBookedAmountManuallyEdited, setIsBookedAmountManuallyEdited] = useState(false);
-  const [selectedBookingConfig, setSelectedBookingConfig] = useState("1BH");
-  
-  const [isDateClosedVal, setIsDateClosedVal] = useState(false);
-  const [dayCruiseClosedVal, setDayCruiseClosedVal] = useState(false);
-  const [overnightClosedVal, setOvernightClosedVal] = useState(false);
-  const [nightClosedVal, setNightClosedVal] = useState(false);
-  const [modalDay1BHClosed, setModalDay1BHClosed] = useState(false);
-  const [modalOvernight1BHClosed, setModalOvernight1BHClosed] = useState(false);
-  const [modalNight1BHClosed, setModalNight1BHClosed] = useState(false);
-  
-  const [isSelectTypeModalVisible, setIsSelectTypeModalVisible] = useState(false);
-  
-  const [configPricingState, setConfigPricingState] = useState<Record<string, {
-    dayCruisePrice: string;
-    dayExtraGuest: string;
-    dayExtraRoom: string;
-    dayCruiseClosed?: boolean;
-    
-    overnightPrice: string;
-    overnightExtraBed: string;
-    overnightExtraCot: string;
-    overnightExtraGuest: string;
-    overnightExtraRoom: string;
-    overnightCruiseClosed?: boolean;
-    
-    nightPrice: string;
-    nightExtraGuest: string;
-    nightExtraRoom: string;
-    nightExtraBed: string;
-    nightExtraCot: string;
-    nightCruiseClosed?: boolean;
-  }>>({});
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetchBookings(0);
+      if (response.data) {
+        setAllBookings(response.data);
+      }
+    } catch (err) {
+      console.error("Failed to load availability bookings:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (route.params?.selectBoatId) {
-      const boatId = route.params.selectBoatId;
-      navigation.setParams({ selectBoatId: undefined });
-      const timer = setTimeout(() => {
-        setZoomOrigin({ x: screenWidth / 2, y: screenHeight / 2 });
-        setActiveBoatForCalendar(boatId);
-      }, 0);
-      return () => clearTimeout(timer);
+    loadData();
+  }, [localBoatName]);
+
+  if (!localBoatName) {
+    // Show Houseboats list to choose from (if global is "All")
+    return (
+      <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18 }}>
+          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy, marginBottom: 6 }}>
+            Availability
+          </Text>
+          <Text style={{ fontSize: 13, color: COLORS.muted, marginBottom: 20 }}>
+            Select a houseboat to manage open dates, pricing, and direct bookings.
+          </Text>
+
+          <View style={{ gap: 12 }}>
+            {boats.map((b) => (
+              <Pressable
+                key={b.id}
+                onPress={() => setLocalBoatName(b.name)}
+                style={{
+                  backgroundColor: COLORS.white,
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
+                  borderRadius: 16,
+                  padding: 16,
+                  flexDirection: "row",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <View>
+                  <Text style={{ fontSize: 16, fontWeight: "700", color: COLORS.navy }}>{b.name}</Text>
+                  <Text style={{ fontSize: 12, color: COLORS.muted, marginTop: 4 }}>
+                    {BOAT_TOTAL_BH[b.name] || 1} Bedroom Houseboat
+                  </Text>
+                </View>
+                <ArrowRight size={16} color={COLORS.teal} />
+              </Pressable>
+            ))}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // Active Boat Details
+  const boat = localBoatName;
+  const isShared = SHARED_BOATS.has(boat);
+  const totalUnits = isShared ? SHARED_BOAT_TOTAL_UNITS[boat] : null;
+
+  // Calendar calculations
+  const firstOfMonth = new Date(availabilityMonth.year, availabilityMonth.month, 1);
+  const daysInMonth = new Date(availabilityMonth.year, availabilityMonth.month + 1, 0).getDate();
+  const firstWeekday = (firstOfMonth.getDay() + 6) % 7; // Monday start
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstWeekday; i++) cells.push(null);
+  for (let day = 1; day <= daysInMonth; day++) cells.push(day);
+
+  // Group cells into rows of 7
+  const rows: (number | null)[][] = [];
+  for (let i = 0; i < cells.length; i += 7) {
+    rows.push(cells.slice(i, i + 7));
+  }
+
+  const isTodayDay = (day: number) => {
+    return (
+      day === now.getDate() &&
+      availabilityMonth.month === now.getMonth() &&
+      availabilityMonth.year === now.getFullYear()
+    );
+  };
+
+  const isInSelection = (day: number) => {
+    if (availabilitySelection.length === 0) return false;
+    if (availabilitySelection.length === 1) return availabilitySelection[0] === day;
+    const min = Math.min(...availabilitySelection);
+    const max = Math.max(...availabilitySelection);
+    return day >= min && day <= max;
+  };
+
+  const dateStrFor = (day: number) => {
+    const d = new Date(availabilityMonth.year, availabilityMonth.month, day);
+    return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }).replace(/,/g, "");
+  };
+
+  const handleDayTap = (day: number) => {
+    setConfirmRatesError(null);
+    setConfirmRatesSuccess(null);
+    setPriceDrafts({});
+    setAvailabilitySelection((prev) => {
+      if (prev.length === 0) return [day];
+      if (prev.length === 1) {
+        if (prev[0] === day) return [];
+        return [prev[0], day];
+      }
+      return [day];
+    });
+    setExpandedTripType(null);
+  };
+
+  const MIN_MONTH = 5; // June
+  const MIN_YEAR = 2026;
+  const isAtFloor = availabilityMonth.year === MIN_YEAR && availabilityMonth.month === MIN_MONTH;
+
+  const goToMonth = (delta: number) => {
+    setAvailabilitySelection([]);
+    setExpandedTripType(null);
+    setPriceDrafts({});
+    setConfirmRatesError(null);
+    setConfirmRatesSuccess(null);
+
+    let month = availabilityMonth.month + delta;
+    let year = availabilityMonth.year;
+    if (month < 0) {
+      month = 11;
+      year -= 1;
+    } else if (month > 11) {
+      month = 0;
+      year += 1;
     }
-  }, [route.params?.selectBoatId, navigation]);
+    if (year < MIN_YEAR || (year === MIN_YEAR && month < MIN_MONTH)) {
+      setAvailabilityMonth({ month: MIN_MONTH, year: MIN_YEAR });
+    } else {
+      setAvailabilityMonth({ month, year });
+    }
+  };
 
-  const bulkModeRef = useRef(false);
+  const STATUS_COLORS: Record<string, string> = { green: COLORS.green, amber: COLORS.amber, red: COLORS.red };
+  const STATUS_TINTS: Record<string, string> = { green: COLORS.white, amber: "#FEF3C7", red: "#FEE2E2", empty: COLORS.bg };
 
-  useFocusEffect(
-    useCallback(() => {
-      if (activeBoatForCalendar === null) return;
+  const selectedDateLabel = (() => {
+    if (availabilitySelection.length === 0) return null;
+    if (availabilitySelection.length === 1) return dateStrFor(availabilitySelection[0]);
+    const min = Math.min(...availabilitySelection);
+    const max = Math.max(...availabilitySelection);
+    return `${dateStrFor(min)} to ${dateStrFor(max)}`;
+  })();
 
-      const onBackPress = () => {
-        if (selectedDates.length > 0) {
-          setSelectedDates([]);
-          setIsBulkPricingMode(false);
-          bulkModeRef.current = false;
-          return true;
-        }
-        setActiveBoatForCalendar(null);
-        return true;
-      };
+  const isCruiseTypeBooked = (boatName: string, dateStr: string, type: string) => {
+    const bookingTypeMap: Record<string, string> = {
+      "Day Cruise": "Day cruise",
+      "Overnight Stay": "Overnight stay",
+      "Night Stay": "Night stay",
+    };
+    const realBooked = allBookings.some(
+      (b) => b.boat === boatName && b.date === dateStr && b.type === bookingTypeMap[type] && b.status !== "cancelled" && b.status !== "deleted"
+    );
+    const directBlocked = allBlockedDates.some(
+      (b) => b.boat === boatName && b.date === dateStr && b.reason === "direct" && b.tripType === type
+    );
+    return realBooked || directBlocked;
+  };
 
-      const subscription = BackHandler.addEventListener(
-        "hardwareBackPress",
-        onBackPress,
-      );
+  // Resolve selection dates array
+  const getSelectedDates = () => {
+    if (availabilitySelection.length === 0) return [];
+    if (availabilitySelection.length === 1) return [dateStrFor(availabilitySelection[0])];
+    const min = Math.min(...availabilitySelection);
+    const max = Math.max(...availabilitySelection);
+    const arr = [];
+    for (let d = min; d <= max; d++) {
+      arr.push(dateStrFor(d));
+    }
+    return arr;
+  };
 
-      return () => {
-        subscription.remove();
-      };
-    }, [activeBoatForCalendar, selectedDates.length]),
+  const selectedDates = getSelectedDates();
+  const firstDateStr = selectedDates[0] || "";
+  const isDateOpen = firstDateStr ? localDateOpenState[`${boat}|${firstDateStr}`] === true : false;
+  const hasRealBookingOnSelection = selectedDates.some((dateStr) =>
+    allBookings.some((b) => b.boat === boat && b.date === dateStr && b.status !== "cancelled" && b.status !== "deleted")
   );
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener("beforeRemove", (e: { preventDefault: () => void }) => {
-      if (selectedDates.length > 0) {
-        e.preventDefault();
-        setSelectedDates([]);
-        setIsBulkPricingMode(false);
-        bulkModeRef.current = false;
-        return;
-      }
-      if (activeBoatForCalendar !== null) {
-        e.preventDefault();
-        setActiveBoatForCalendar(null);
-        return;
-      }
-    });
-
-    return unsubscribe;
-  }, [navigation, activeBoatForCalendar, selectedDates.length]);
-
-  useEffect(() => {
-    if (activeBoatForCalendar === null) {
-      const timer = setTimeout(() => {
-        setIsCalendarFirstMount(true);
-      }, 0);
-      return () => clearTimeout(timer);
-    } else {
-      const timer = setTimeout(() => {
-        setIsCalendarFirstMount(false);
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [activeBoatForCalendar]);
-
-  useEffect(() => {
-    if (!isBookedAmountManuallyEdited) {
-      const base = parsePriceString(bookingBasePrice) || 0;
-      const extra1 = parsePriceString(bookingExtra1) || 0;
-      const qty1 = parseInt(bookingExtra1Qty, 10) || 0;
-      const extra2 = parsePriceString(bookingExtra2) || 0;
-      const qty2 = parseInt(bookingExtra2Qty, 10) || 0;
-      const extra3 = parsePriceString(bookingExtra3) || 0;
-      const qty3 = parseInt(bookingExtra3Qty, 10) || 0;
-      const extra4 = parsePriceString(bookingExtra4) || 0;
-      const qty4 = parseInt(bookingExtra4Qty, 10) || 0;
-
-      let total = base + (extra1 * qty1) + (extra2 * qty2);
-      if (activeAddBookingType === "overnight" || activeAddBookingType === "night") {
-        total += (extra3 * qty3) + (extra4 * qty4);
-      }
-
-      const timer = setTimeout(() => {
-        setBookingBookedAmount(total > 0 ? formatLocalNumber(total) : "");
-      }, 0);
-      return () => clearTimeout(timer);
-    }
-  }, [
-    bookingBasePrice,
-    bookingExtra1,
-    bookingExtra2,
-    bookingExtra3,
-    bookingExtra4,
-    bookingExtra1Qty,
-    bookingExtra2Qty,
-    bookingExtra3Qty,
-    bookingExtra4Qty,
-    activeAddBookingType,
-    isBookedAmountManuallyEdited
-  ]);
-
-  const loadPricingForConfig = useCallback((configName: string, cruiseType: "day" | "overnight" | "night") => {
-    if (!currentSelectedDateKey) return;
-    const existing = bookingsByDate[currentSelectedDateKey];
-    const configPricing = existing?.configs?.[configName];
-    
-    if (cruiseType === "day") {
-      setBookingBasePrice(formatLocalNumber(configPricing?.dayCruisePrice));
-      setBookingExtra1(formatLocalNumber(configPricing?.dayCruiseExtraGuest));
-      setBookingExtra2(formatLocalNumber(configPricing?.dayCruiseExtraRoom));
-      setBookingExtra3("");
-      setBookingExtra4("");
-    } else if (cruiseType === "overnight") {
-      setBookingBasePrice(formatLocalNumber(configPricing?.overnightCruisePrice));
-      setBookingExtra1(formatLocalNumber(configPricing?.overnightExtraBed));
-      setBookingExtra2(formatLocalNumber(configPricing?.overnightExtraCot));
-      setBookingExtra3(formatLocalNumber(configPricing?.overnightExtraGuest));
-      setBookingExtra4(formatLocalNumber(configPricing?.overnightExtraRoom));
-    } else if (cruiseType === "night") {
-      setBookingBasePrice(formatLocalNumber(configPricing?.nightCruisePrice));
-      setBookingExtra1(formatLocalNumber(configPricing?.nightExtraBed));
-      setBookingExtra2(formatLocalNumber(configPricing?.nightExtraCot));
-      setBookingExtra3(formatLocalNumber(configPricing?.nightCruiseExtraGuest));
-      setBookingExtra4(formatLocalNumber(configPricing?.nightCruiseExtraRoom));
-    }
-  }, [currentSelectedDateKey, bookingsByDate]);
-
-  useEffect(() => {
-    if (activeAddBookingType) {
-      const count = parseInt(bookingGuestCount, 10) || 0;
-      const extraGuestQty = Math.max(0, count - 2);
+  // Handle Form changes
+  const updateField = (key: string, value: any) => {
+    setAddBookingForm((prev) => {
+      const next = { ...prev, [key]: value };
       
-      if (activeAddBookingType === "day") {
-        setBookingExtra1Qty(String(extraGuestQty));
-      } else if (activeAddBookingType === "overnight" || activeAddBookingType === "night") {
-        setBookingExtra3Qty(String(extraGuestQty));
+      // Auto adjustments
+      if (key === "adults" || key === "children") {
+        const adultsVal = key === "adults" ? Number(value) : prev.adults;
+        const kidsVal = key === "children" ? Number(value) : prev.children;
+        const totalGuests = adultsVal + kidsVal;
+        
+        const minRooms = Math.max(1, Math.ceil(totalGuests / 3));
+        if (next.rooms < minRooms) {
+          next.rooms = minRooms;
+        }
+        next.cots = Math.max(0, totalGuests - next.rooms * 2);
       }
-    }
-  }, [bookingGuestCount, activeAddBookingType]);
+      return next;
+    });
+  };
 
-  const handleConfigPricingChange = (configName: string, field: string, value: string | boolean) => {
-    const formatted = typeof value === "string" ? formatInputWithCommas(value) : value;
-    setConfigPricingState((prev) => ({
+  const addDietRow = () => {
+    setAddBookingForm(prev => ({
       ...prev,
-      [configName]: {
-        ...(prev[configName] || {
-          dayCruisePrice: "",
-          dayExtraGuest: "",
-          dayExtraRoom: "",
-          overnightPrice: "",
-          overnightExtraBed: "",
-          overnightExtraCot: "",
-          overnightExtraGuest: "",
-          overnightExtraRoom: "",
-          nightPrice: "",
-          nightExtraGuest: "",
-          nightExtraRoom: "",
-          nightExtraBed: "",
-          nightExtraCot: "",
-        }),
-        [field]: formatted,
-      },
+      dietBreakdown: [...prev.dietBreakdown, { type: "Veg", count: 1 }]
     }));
   };
 
-  const bottomSheetRef = useRef<any>({
-    close: () => {},
-    snapToIndex: () => {},
-  });
-  const sheetSnapPoints = useMemo(() => ["75%", "95%"], []);
+  const removeDietRow = (index: number) => {
+    setAddBookingForm(prev => ({
+      ...prev,
+      dietBreakdown: prev.dietBreakdown.filter((_, idx) => idx !== index)
+    }));
+  };
 
-  useEffect(() => {
-    let active = true;
-    const loadCalendar = async () => {
-      if (boats.length === 0) return;
-      setIsLoadingCalendar(true);
-      try {
-        const allBookings: Record<number, Record<string, DayBooking>> = {};
-        for (const boat of boats) {
-          const res = await fetchCalendarBookings(boat.id);
-          if (res.data) {
-            allBookings[boat.id] = res.data;
-          }
-        }
-        if (active) {
-          setBookingsByBoat(allBookings);
-        }
-      } catch (err) {
-        console.error(err);
-      } finally {
-        if (active) setIsLoadingCalendar(false);
-      }
-    };
-    loadCalendar();
-    return () => {
-      active = false;
-    };
-  }, [boats]);
-
-  useEffect(() => {
-    if (isLoadingCalendar || !activeBoatForCalendar) return;
-    const boatBookings = bookingsByBoat[activeBoatForCalendar];
-    if (boatBookings) {
-      saveAllCalendarBookings(activeBoatForCalendar, boatBookings);
-    }
-  }, [bookingsByBoat, activeBoatForCalendar, isLoadingCalendar]);
-
-  const daysInVisibleMonth = new Date(
-    visibleYear,
-    visibleMonthIndex + 1,
-    0,
-  ).getDate();
-  const firstDayWeekIndex = new Date(
-    visibleYear,
-    visibleMonthIndex,
-    1,
-  ).getDay();
-
-  const calendarDays = [
-    ...Array.from({ length: firstDayWeekIndex }, () => null as number | null),
-    ...Array.from({ length: daysInVisibleMonth }, (_, i) => i + 1),
-  ];
-
-  const weekdayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const visibleMonthTitle = visibleMonth.toLocaleString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
-
-  useEffect(() => {
-    if (currentSelectedDateKey !== lastLoadedKey) {
-      setLastLoadedKey(currentSelectedDateKey);
-      if (currentSelectedDateKey) {
-        const day = selectedDates[0];
-        setSelectedDate({ year: visibleYear, month: visibleMonthIndex, day });
-        setIsSheetForBulk(false);
-
-        const existing = bookingsByDate[currentSelectedDateKey];
-        setIsDateClosedVal(existing?.isClosed || false);
-        setDayCruiseClosedVal(existing?.dayCruiseClosed || false);
-        setOvernightClosedVal(existing?.overnightCruiseClosed || false);
-        setNightClosedVal(existing?.nightCruiseClosed || false);
-
-        const c1 = existing?.configs?.["1BH"];
-        setModalDayCruisePrice(formatLocalNumber(c1?.dayCruisePrice));
-        setModalDayExtraGuest(formatLocalNumber(c1?.dayCruiseExtraGuest));
-        setModalDayExtraRoom(formatLocalNumber(c1?.dayCruiseExtraRoom));
-        setModalDay1BHClosed(c1?.dayCruiseClosed || false);
-        
-        setModalOvernightPrice(formatLocalNumber(c1?.overnightCruisePrice));
-        setModalOvernightExtraBed(formatLocalNumber(c1?.overnightExtraBed));
-        setModalOvernightExtraCot(formatLocalNumber(c1?.overnightExtraCot));
-        setModalOvernightExtraGuest(formatLocalNumber(c1?.overnightExtraGuest));
-        setModalOvernightExtraRoom(formatLocalNumber(c1?.overnightExtraRoom));
-        setModalOvernight1BHClosed(c1?.overnightCruiseClosed || false);
-        
-        setModalNightPrice(formatLocalNumber(c1?.nightCruisePrice));
-        setModalNightExtraGuest(formatLocalNumber(c1?.nightCruiseExtraGuest));
-        setModalNightExtraRoom(formatLocalNumber(c1?.nightCruiseExtraRoom));
-        setModalNightExtraBed(formatLocalNumber(c1?.nightExtraBed));
-        setModalNightExtraCot(formatLocalNumber(c1?.nightExtraCot));
-        setModalNight1BHClosed(c1?.nightCruiseClosed || false);
-
-        // Load other configurations
-        const otherConfigsPricing: Record<string, any> = {};
-        const configNames = ["2BH", "3BH", "4BH"];
-        configNames.forEach(config => {
-          const c = existing?.configs?.[config];
-          otherConfigsPricing[config] = {
-            dayCruisePrice: formatLocalNumber(c?.dayCruisePrice),
-            dayExtraGuest: formatLocalNumber(c?.dayCruiseExtraGuest),
-            dayExtraRoom: formatLocalNumber(c?.dayCruiseExtraRoom),
-            dayCruiseClosed: c?.dayCruiseClosed || false,
-            
-            overnightPrice: formatLocalNumber(c?.overnightCruisePrice),
-            overnightExtraBed: formatLocalNumber(c?.overnightExtraBed),
-            overnightExtraCot: formatLocalNumber(c?.overnightExtraCot),
-            overnightExtraGuest: formatLocalNumber(c?.overnightExtraGuest),
-            overnightExtraRoom: formatLocalNumber(c?.overnightExtraRoom),
-            overnightCruiseClosed: c?.overnightCruiseClosed || false,
-            
-            nightPrice: formatLocalNumber(c?.nightCruisePrice),
-            nightExtraGuest: formatLocalNumber(c?.nightCruiseExtraGuest),
-            nightExtraRoom: formatLocalNumber(c?.nightCruiseExtraRoom),
-            nightExtraBed: formatLocalNumber(c?.nightExtraBed),
-            nightExtraCot: formatLocalNumber(c?.nightExtraCot),
-            nightCruiseClosed: c?.nightCruiseClosed || false,
-          };
-        });
-        setConfigPricingState(otherConfigsPricing);
-      } else {
-        setSelectedDate(null);
-        setIsSheetForBulk(selectedDates.length > 1);
-
-        setIsDateClosedVal(false);
-        setDayCruiseClosedVal(false);
-        setOvernightClosedVal(false);
-        setNightClosedVal(false);
-        setModalDay1BHClosed(false);
-        setModalOvernight1BHClosed(false);
-        setModalNight1BHClosed(false);
-
-        // Clear pricing forms for bulk editing or no selection
-        setModalDayCruisePrice("");
-        setModalDayExtraGuest("");
-        setModalDayExtraRoom("");
-        setModalOvernightPrice("");
-        setModalOvernightExtraBed("");
-        setModalOvernightExtraCot("");
-        setModalOvernightExtraGuest("");
-        setModalOvernightExtraRoom("");
-        setModalNightPrice("");
-        setModalNightExtraGuest("");
-        setModalNightExtraRoom("");
-        setModalNightExtraBed("");
-        setModalNightExtraCot("");
-        setConfigPricingState({});
-      }
-    }
-  }, [currentSelectedDateKey, lastLoadedKey, selectedDates, visibleYear, visibleMonthIndex, bookingsByDate]);
-
-  function saveBooking(
-    type: "day" | "overnight" | "night",
-    guestName: string,
-    guestCount: string,
-    notes: string,
-    basePrice: string,
-    extra1: string,
-    extra2: string,
-    extra3: string,
-    extra4: string,
-    bookedAmount: string,
-    extra1Qty: string,
-    extra2Qty: string,
-    extra3Qty: string,
-    extra4Qty: string,
-  ) {
-    if (!selectedDate || !activeBoatForCalendar) return;
-    const dateKey = getDateKey(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-    );
-
-    const guestText = guestName.trim() || "Guest";
-    const countText = guestCount.trim() ? `${guestCount.trim()} guests` : "";
-    const notesText = notes.trim() ? `Notes: ${notes.trim()}` : "";
-    const detailParts = [guestText, countText, notesText].filter(Boolean);
-    const constructedDetails = detailParts.join(" · ");
-
-    const parsedBase = parsePriceString(basePrice);
-    const parsedExtra1 = parsePriceString(extra1);
-    const parsedExtra2 = parsePriceString(extra2);
-    const parsedExtra3 = parsePriceString(extra3);
-    const parsedExtra4 = parsePriceString(extra4);
-    const parsedBookedAmount = parsePriceString(bookedAmount);
-
-    const parsedQty1 = parseInt(extra1Qty, 10) || 0;
-    const parsedQty2 = parseInt(extra2Qty, 10) || 0;
-    const parsedQty3 = parseInt(extra3Qty, 10) || 0;
-    const parsedQty4 = parseInt(extra4Qty, 10) || 0;
-
-    setBookingsByBoat((current) => {
-      const boatBookings = current[activeBoatForCalendar] ?? {};
-      const currentDayBooking = boatBookings[dateKey] ?? {
-        dayCruise: false,
-        overnightCruise: false,
-        nightCruise: false,
-        details: "",
-      };
-
-      const key = type === "day" ? "dayCruise" : type === "overnight" ? "overnightCruise" : "nightCruise";
-      const detailsKey = type === "day" ? "dayCruiseDetails" : type === "overnight" ? "overnightCruiseDetails" : "nightCruiseDetails";
-      const guestNameKey = type === "day" ? "dayCruiseGuestName" : type === "overnight" ? "overnightCruiseGuestName" : "nightCruiseGuestName";
-      const guestCountKey = type === "day" ? "dayCruiseGuestCount" : type === "overnight" ? "overnightCruiseGuestCount" : "nightCruiseGuestCount";
-      const notesKey = type === "day" ? "dayCruiseNotes" : type === "overnight" ? "overnightCruiseNotes" : "nightCruiseNotes";
-
-      let priceUpdates: Partial<DayBooking> = {};
-      if (type === "day") {
-        priceUpdates = {
-          dayCruisePrice: parsedBase,
-          dayCruiseExtraGuest: parsedExtra1,
-          dayCruiseExtraRoom: parsedExtra2,
-          dayCruiseBookedAmount: parsedBookedAmount,
-          dayCruiseExtraGuestQty: parsedQty1,
-          dayCruiseExtraRoomQty: parsedQty2,
-          dayCruiseIsOffline: true,
-        };
-      } else if (type === "overnight") {
-        priceUpdates = {
-          overnightCruisePrice: parsedBase,
-          overnightExtraBed: parsedExtra1,
-          overnightExtraCot: parsedExtra2,
-          overnightExtraGuest: parsedExtra3,
-          overnightExtraRoom: parsedExtra4,
-          overnightCruiseBookedAmount: parsedBookedAmount,
-          overnightExtraBedQty: parsedQty1,
-          overnightExtraCotQty: parsedQty2,
-          overnightExtraGuestQty: parsedQty3,
-          overnightExtraRoomQty: parsedQty4,
-          overnightCruiseIsOffline: true,
-        };
-      } else if (type === "night") {
-        priceUpdates = {
-          nightCruisePrice: parsedBase,
-          nightExtraBed: parsedExtra1,
-          nightExtraCot: parsedExtra2,
-          nightCruiseExtraGuest: parsedExtra3,
-          nightCruiseExtraRoom: parsedExtra4,
-          nightCruiseBookedAmount: parsedBookedAmount,
-          nightExtraBedQty: parsedQty1,
-          nightExtraCotQty: parsedQty2,
-          nightCruiseExtraGuestQty: parsedQty3,
-          nightCruiseExtraRoomQty: parsedQty4,
-          nightCruiseIsOffline: true,
-        };
-      }
-
-      const nextBooking: DayBooking = {
-        ...currentDayBooking,
-        [key]: true,
-        [detailsKey]: constructedDetails,
-        [guestNameKey]: guestName.trim(),
-        [guestCountKey]: guestCount.trim(),
-        [notesKey]: notes.trim(),
-        ...priceUpdates,
-      };
-
-      // Save bedroom configuration and pricing
-      nextBooking.configs = nextBooking.configs || {};
-      const typeConfigPricing = {
-        dayCruisePrice: type === "day" ? parsedBase : nextBooking.configs[selectedBookingConfig]?.dayCruisePrice,
-        dayCruiseExtraGuest: type === "day" ? parsedExtra1 : nextBooking.configs[selectedBookingConfig]?.dayCruiseExtraGuest,
-        dayCruiseExtraRoom: type === "day" ? parsedExtra2 : nextBooking.configs[selectedBookingConfig]?.dayCruiseExtraRoom,
-        overnightCruisePrice: type === "overnight" ? parsedBase : nextBooking.configs[selectedBookingConfig]?.overnightCruisePrice,
-        overnightExtraBed: type === "overnight" ? parsedExtra1 : nextBooking.configs[selectedBookingConfig]?.overnightExtraBed,
-        overnightExtraCot: type === "overnight" ? parsedExtra2 : nextBooking.configs[selectedBookingConfig]?.overnightExtraCot,
-        overnightExtraGuest: type === "overnight" ? parsedExtra3 : nextBooking.configs[selectedBookingConfig]?.overnightExtraGuest,
-        overnightExtraRoom: type === "overnight" ? parsedExtra4 : nextBooking.configs[selectedBookingConfig]?.overnightExtraRoom,
-        nightCruisePrice: type === "night" ? parsedBase : nextBooking.configs[selectedBookingConfig]?.nightCruisePrice,
-        nightCruiseExtraGuest: type === "night" ? parsedExtra3 : nextBooking.configs[selectedBookingConfig]?.nightCruiseExtraGuest,
-        nightCruiseExtraRoom: type === "night" ? parsedExtra4 : nextBooking.configs[selectedBookingConfig]?.nightCruiseExtraRoom,
-        nightExtraBed: type === "night" ? parsedExtra1 : nextBooking.configs[selectedBookingConfig]?.nightExtraBed,
-        nightExtraCot: type === "night" ? parsedExtra2 : nextBooking.configs[selectedBookingConfig]?.nightExtraCot,
-      };
-      
-      nextBooking.configs[selectedBookingConfig] = {
-        ...nextBooking.configs[selectedBookingConfig],
-        ...typeConfigPricing,
-      };
-
-      if (type === "day") {
-        nextBooking.dayCruiseBookedConfig = selectedBookingConfig;
-      } else if (type === "overnight") {
-        nextBooking.overnightCruiseBookedConfig = selectedBookingConfig;
-      } else if (type === "night") {
-        nextBooking.nightCruiseBookedConfig = selectedBookingConfig;
-      }
-
-      if (type === "overnight") {
-        // Clear Day Cruise
-        nextBooking.dayCruise = false;
-        nextBooking.dayCruiseDetails = undefined;
-        nextBooking.dayCruiseGuestName = undefined;
-        nextBooking.dayCruiseGuestCount = undefined;
-        nextBooking.dayCruiseNotes = undefined;
-        nextBooking.dayCruiseBookedAmount = undefined;
-        nextBooking.dayCruiseExtraGuestQty = undefined;
-        nextBooking.dayCruiseExtraRoomQty = undefined;
-        nextBooking.dayCruiseIsOffline = undefined;
-
-        // Clear Night Stay
-        nextBooking.nightCruise = false;
-        nextBooking.nightCruiseDetails = undefined;
-        nextBooking.nightCruiseGuestName = undefined;
-        nextBooking.nightCruiseGuestCount = undefined;
-        nextBooking.nightCruiseNotes = undefined;
-        nextBooking.nightCruiseBookedAmount = undefined;
-        nextBooking.nightExtraBedQty = undefined;
-        nextBooking.nightExtraCotQty = undefined;
-        nextBooking.nightCruiseExtraGuestQty = undefined;
-        nextBooking.nightCruiseExtraRoomQty = undefined;
-        nextBooking.nightCruiseIsOffline = undefined;
-      } else if (type === "day" || type === "night") {
-        // Clear Overnight Stay
-        nextBooking.overnightCruise = false;
-        nextBooking.overnightCruiseDetails = undefined;
-        nextBooking.overnightCruiseGuestName = undefined;
-        nextBooking.overnightCruiseGuestCount = undefined;
-        nextBooking.overnightCruiseNotes = undefined;
-        nextBooking.overnightCruiseBookedAmount = undefined;
-        nextBooking.overnightExtraBedQty = undefined;
-        nextBooking.overnightExtraCotQty = undefined;
-        nextBooking.overnightExtraGuestQty = undefined;
-        nextBooking.overnightExtraRoomQty = undefined;
-        nextBooking.overnightCruiseIsOffline = undefined;
-      }
-
-      return {
-        ...current,
-        [activeBoatForCalendar]: {
-          ...boatBookings,
-          [dateKey]: normalizeBooking(nextBooking),
-        },
-      };
+  const updateDiet = (index: number, key: keyof DietEntry, val: any) => {
+    setAddBookingForm(prev => {
+      const breakdown = [...prev.dietBreakdown];
+      breakdown[index] = { ...breakdown[index], [key]: key === "count" ? Number(val) : val };
+      return { ...prev, dietBreakdown: breakdown };
     });
+  };
 
-    if (type === "day") {
-      setModalDayCruisePrice(basePrice);
-      setModalDayExtraGuest(extra1);
-      setModalDayExtraRoom(extra2);
-    } else if (type === "overnight") {
-      setModalOvernightPrice(basePrice);
-      setModalOvernightExtraBed(extra1);
-      setModalOvernightExtraCot(extra2);
-      setModalOvernightExtraGuest(extra3);
-      setModalOvernightExtraRoom(extra4);
-    } else if (type === "night") {
-      setModalNightPrice(basePrice);
-      setModalNightExtraBed(extra1);
-      setModalNightExtraCot(extra2);
-      setModalNightExtraGuest(extra3);
-      setModalNightExtraRoom(extra4);
+  const handleConfirmDirectBooking = async () => {
+    // Validations
+    if (!addBookingForm.guest.trim()) {
+      Alert.alert("Required", "Please enter guest name");
+      return;
     }
-  }
+    const totalCountable = addBookingForm.adults + addBookingForm.children;
+    const dietTotal = addBookingForm.dietBreakdown.reduce((sum, d) => sum + d.count, 0);
+    if (dietTotal !== totalCountable) {
+      Alert.alert("Diet Mismatch", `Diet breakdown sum (${dietTotal}) must equal total guests (${totalCountable})`);
+      return;
+    }
 
-  function removeBooking(type: "day" | "overnight" | "night") {
-    if (!selectedDate || !activeBoatForCalendar) return;
-    const dateKey = getDateKey(
-      selectedDate.year,
-      selectedDate.month,
-      selectedDate.day,
-    );
+    const firstDate = new Date(addBookingForm.checkIn);
+    const secondDate = new Date(addBookingForm.checkOut);
+    if (addBookingForm.type === "Overnight Stay" && secondDate <= firstDate) {
+      Alert.alert("Date Error", "Check-out date must be after check-in date");
+      return;
+    }
 
-    setBookingsByBoat((current) => {
-      const boatBookings = current[activeBoatForCalendar] ?? {};
-      const currentDayBooking = boatBookings[dateKey];
-      if (!currentDayBooking) return current;
-
-      const key = type === "day" ? "dayCruise" : type === "overnight" ? "overnightCruise" : "nightCruise";
-      const detailsKey = type === "day" ? "dayCruiseDetails" : type === "overnight" ? "overnightCruiseDetails" : "nightCruiseDetails";
-      const guestNameKey = type === "day" ? "dayCruiseGuestName" : type === "overnight" ? "overnightCruiseGuestName" : "nightCruiseGuestName";
-      const guestCountKey = type === "day" ? "dayCruiseGuestCount" : type === "overnight" ? "overnightCruiseGuestCount" : "nightCruiseGuestCount";
-      const notesKey = type === "day" ? "dayCruiseNotes" : type === "overnight" ? "overnightCruiseNotes" : "nightCruiseNotes";
-      const bookedAmountKey = type === "day" ? "dayCruiseBookedAmount" : type === "overnight" ? "overnightCruiseBookedAmount" : "nightCruiseBookedAmount";
-      const isOfflineKey = type === "day" ? "dayCruiseIsOffline" : type === "overnight" ? "overnightCruiseIsOffline" : "nightCruiseIsOffline";
-
-      const nextBooking: DayBooking = {
-        ...currentDayBooking,
-        [key]: false,
-        [detailsKey]: undefined,
-        [guestNameKey]: undefined,
-        [guestCountKey]: undefined,
-        [notesKey]: undefined,
-        [bookedAmountKey]: undefined,
-        [isOfflineKey]: undefined,
+    setIsLoading(true);
+    try {
+      const typeLabel = addBookingForm.type === "Day Cruise" ? "Day cruise" : addBookingForm.type === "Overnight Stay" ? "Overnight stay" : "Night stay";
+      const formattedBooking: Booking = {
+        id: addBookingForm.editingBookingId ?? Date.now(),
+        bookingId: `AB-${Date.now().toString().slice(-4)}`,
+        guest: addBookingForm.guest,
+        phone: addBookingForm.phone,
+        boat: addBookingForm.boat,
+        type: typeLabel,
+        date: fromISODate(toISODate(addBookingForm.checkIn)),
+        dateEnd: fromISODate(toISODate(addBookingForm.checkOut)),
+        adults: addBookingForm.adults,
+        children: addBookingForm.children,
+        kids: addBookingForm.kids,
+        rooms: addBookingForm.rooms,
+        cots: addBookingForm.cots,
+        dietBreakdown: addBookingForm.dietBreakdown,
+        specialRequests: addBookingForm.specialRequests ? addBookingForm.specialRequests.split(",").map(r => r.trim()) : [],
+        price: Number(addBookingForm.price) || 0,
+        isDirect: true,
+        bookingSource: addBookingForm.source,
       };
 
-      if (type === "day") {
-        nextBooking.dayCruiseExtraGuestQty = undefined;
-        nextBooking.dayCruiseExtraRoomQty = undefined;
-      } else if (type === "overnight") {
-        nextBooking.overnightExtraBedQty = undefined;
-        nextBooking.overnightExtraCotQty = undefined;
-        nextBooking.overnightExtraGuestQty = undefined;
-        nextBooking.overnightExtraRoomQty = undefined;
-      } else if (type === "night") {
-        nextBooking.nightExtraBedQty = undefined;
-        nextBooking.nightExtraCotQty = undefined;
-        nextBooking.nightCruiseExtraGuestQty = undefined;
-        nextBooking.nightCruiseExtraRoomQty = undefined;
+      const res = await saveDirectBooking(formattedBooking);
+      if (res.data) {
+        await loadData();
+        setAddBookingFormOpen(false);
       }
-
-      return {
-        ...current,
-        [activeBoatForCalendar]: {
-          ...boatBookings,
-          [dateKey]: normalizeBooking(nextBooking),
-        },
-      };
-    });
-  }
-
-  function openAddBookingModalForType(type: "day" | "overnight" | "night") {
-    setSelectedBookingConfig("1BH");
-    setBookingGuestName("");
-    setBookingGuestCount("");
-    setBookingSpecialNotes("");
-    setIsBookedAmountManuallyEdited(false);
-    
-    if (type === "day") {
-      setBookingBasePrice(modalDayCruisePrice);
-      setBookingExtra1(modalDayExtraGuest);
-      setBookingExtra2(modalDayExtraRoom);
-      setBookingExtra3("");
-      setBookingExtra4("");
-      setBookingExtra1Qty("0");
-      setBookingExtra2Qty("0");
-      setBookingExtra3Qty("0");
-      setBookingExtra4Qty("0");
-      setBookingBookedAmount(modalDayCruisePrice);
-    } else if (type === "overnight") {
-      setBookingBasePrice(modalOvernightPrice);
-      setBookingExtra1(modalOvernightExtraBed);
-      setBookingExtra2(modalOvernightExtraCot);
-      setBookingExtra3(modalOvernightExtraGuest);
-      setBookingExtra4(modalOvernightExtraRoom);
-      setBookingExtra1Qty("0");
-      setBookingExtra2Qty("0");
-      setBookingExtra3Qty("0");
-      setBookingExtra4Qty("0");
-      setBookingBookedAmount(modalOvernightPrice);
-    } else {
-      setBookingBasePrice(modalNightPrice);
-      setBookingExtra1(modalNightExtraBed);
-      setBookingExtra2(modalNightExtraCot);
-      setBookingExtra3(modalNightExtraGuest);
-      setBookingExtra4(modalNightExtraRoom);
-      setBookingExtra1Qty("0");
-      setBookingExtra2Qty("0");
-      setBookingExtra3Qty("0");
-      setBookingExtra4Qty("0");
-      setBookingBookedAmount(modalNightPrice);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
-    setActiveAddBookingType(type);
-    setIsBookingModalVisible(true);
-  }
+  };
 
-  const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function handleDayPress(day: number) {
-    // Clear any pending transition timer
-    if (transitionTimerRef.current) {
-      clearTimeout(transitionTimerRef.current);
-      transitionTimerRef.current = null;
+  const handleConfirmDeleteBooking = async (bookingId: number) => {
+    setIsLoading(true);
+    try {
+      await deleteBooking(bookingId);
+      await loadData();
+      setModifyDeleteConfirmOpen(false);
+      setModifySelectedBookingId(null);
+      setModifyBookingListOpen(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsLoading(false);
     }
-
-    const nextDates = selectedDates.includes(day)
-      ? selectedDates.filter((d) => d !== day)
-      : [...selectedDates, day];
-
-    // Detect if the detail panel will switch between single-date and bulk modes.
-    // single = exactly 1 date selected, bulk = 2+ dates selected.
-    // This transition unmounts/remounts hundreds of native views (Switch, TextInput)
-    // which crashes Hermes GC during ShadowNode cleanup.
-    const wasSingle = selectedDates.length === 1;
-    const willBeSingle = nextDates.length === 1;
-    const wasBulk = selectedDates.length > 1;
-    const willBeBulk = nextDates.length > 1;
-    const isViewModeSwitch = (wasSingle && willBeBulk) || (wasBulk && willBeSingle);
-
-    if (isViewModeSwitch) {
-      // Stagger the transition: first hide the detail panel (unmount old views),
-      // wait for native to finish cleanup, then show new views.
-      setIsDetailTransitioning(true);
-      // Use setTimeout to push the date update to the NEXT event loop tick,
-      // giving Hermes GC time to clean up the unmounted ShadowNodes.
-      transitionTimerRef.current = setTimeout(() => {
-        setSelectedDates(nextDates);
-        // Wait one more tick for React to commit the new view tree
-        transitionTimerRef.current = setTimeout(() => {
-          setIsDetailTransitioning(false);
-          transitionTimerRef.current = null;
-        }, 80);
-      }, 50);
-    } else {
-      // No view mode switch — safe to update immediately
-      setSelectedDates(nextDates);
-    }
-  }
-
-  function handleDayLongPress(day: number) {
-    setSelectedDates((current) =>
-      current.includes(day) ? current : [...current, day],
-    );
-  }
-
-  function handleOpenBulkEditSheet() {
-    setIsSheetForBulk(true);
-  }
-
-  function moveMonth(delta: number) {
-    setSlideDirection(delta > 0 ? 'left' : 'right');
-    setVisibleMonth(
-      (current) =>
-        new Date(current.getFullYear(), current.getMonth() + delta, 1),
-    );
-    setSelectedDates([]);
-    setSelectedDate(null);
-  }
-
-  function cancelBulkMode() {
-    setIsBulkPricingMode(false);
-    bulkModeRef.current = false;
-    setSelectedDates([]);
-    setIsSheetForBulk(false);
-  }
-
-  const swipeLeft = Gesture.Fling()
-    .direction(Directions.LEFT)
-    .runOnJS(true)
-    .onEnd(() => {
-      moveMonth(1);
-    });
-
-  const swipeRight = Gesture.Fling()
-    .direction(Directions.RIGHT)
-    .runOnJS(true)
-    .onEnd(() => {
-      moveMonth(-1);
-    });
-
-  const calendarSwipeGesture = Gesture.Simultaneous(swipeLeft, swipeRight);
-
-  const miniCalendarDays = [
-    ...Array.from(
-      { length: firstDayWeekIndex },
-      () => null as number | null,
-    ),
-    ...Array.from({ length: daysInVisibleMonth }, (_, i) => i + 1),
-  ];
-
-  const miniCalendarWeeks: Array<Array<number | null>> = [];
-  for (let i = 0; i < miniCalendarDays.length; i += 7) {
-    miniCalendarWeeks.push(miniCalendarDays.slice(i, i + 7));
-  }
-
-  const miniWeekdayLabels = ["S", "M", "T", "W", "T", "F", "S"];
-
-  function handleSaveChanges() {
-    if (!activeBoatForCalendar) return;
-
-    if (isSheetForBulk) {
-      const parsedDay = parsePriceString(modalDayCruisePrice);
-      const parsedDayExtraGuest = parsePriceString(modalDayExtraGuest);
-      const parsedDayExtraRoom = parsePriceString(modalDayExtraRoom);
-      const parsedOvernight = parsePriceString(modalOvernightPrice);
-      const parsedOvernightExtraBed = parsePriceString(modalOvernightExtraBed);
-      const parsedOvernightExtraCot = parsePriceString(modalOvernightExtraCot);
-      const parsedOvernightExtraGuest = parsePriceString(modalOvernightExtraGuest);
-      const parsedOvernightExtraRoom = parsePriceString(modalOvernightExtraRoom);
-      const parsedNight = parsePriceString(modalNightPrice);
-      const parsedNightExtraGuest = parsePriceString(modalNightExtraGuest);
-      const parsedNightExtraRoom = parsePriceString(modalNightExtraRoom);
-      const parsedNightExtraBed = parsePriceString(modalNightExtraBed);
-      const parsedNightExtraCot = parsePriceString(modalNightExtraCot);
-
-      setBookingsByBoat((current) => {
-        const boatBookings = { ...(current[activeBoatForCalendar] ?? {}) };
-        selectedDates.forEach((day) => {
-          const dateKey = getDateKey(visibleYear, visibleMonthIndex, day);
-          const existing = boatBookings[dateKey] ?? {
-            dayCruise: false,
-            overnightCruise: false,
-            nightCruise: false,
-            details: "No bookings for this day.",
-          };
-          
-          const updatedConfigs = { ...(existing.configs || {}) };
-          updatedConfigs["1BH"] = {
-            ...updatedConfigs["1BH"],
-            dayCruisePrice: parsedDay !== undefined ? parsedDay : updatedConfigs["1BH"]?.dayCruisePrice,
-            dayCruiseExtraGuest: parsedDayExtraGuest !== undefined ? parsedDayExtraGuest : updatedConfigs["1BH"]?.dayCruiseExtraGuest,
-            dayCruiseExtraRoom: parsedDayExtraRoom !== undefined ? parsedDayExtraRoom : updatedConfigs["1BH"]?.dayCruiseExtraRoom,
-            dayCruiseClosed: modalDay1BHClosed,
-            overnightCruisePrice: parsedOvernight !== undefined ? parsedOvernight : updatedConfigs["1BH"]?.overnightCruisePrice,
-            overnightExtraBed: parsedOvernightExtraBed !== undefined ? parsedOvernightExtraBed : updatedConfigs["1BH"]?.overnightExtraBed,
-            overnightExtraCot: parsedOvernightExtraCot !== undefined ? parsedOvernightExtraCot : updatedConfigs["1BH"]?.overnightExtraCot,
-            overnightExtraGuest: parsedOvernightExtraGuest !== undefined ? parsedOvernightExtraGuest : updatedConfigs["1BH"]?.overnightExtraGuest,
-            overnightExtraRoom: parsedOvernightExtraRoom !== undefined ? parsedOvernightExtraRoom : updatedConfigs["1BH"]?.overnightExtraRoom,
-            overnightCruiseClosed: modalOvernight1BHClosed,
-            nightCruisePrice: parsedNight !== undefined ? parsedNight : updatedConfigs["1BH"]?.nightCruisePrice,
-            nightCruiseExtraGuest: parsedNightExtraGuest !== undefined ? parsedNightExtraGuest : updatedConfigs["1BH"]?.nightCruiseExtraGuest,
-            nightCruiseExtraRoom: parsedNightExtraRoom !== undefined ? parsedNightExtraRoom : updatedConfigs["1BH"]?.nightCruiseExtraRoom,
-            nightExtraBed: parsedNightExtraBed !== undefined ? parsedNightExtraBed : updatedConfigs["1BH"]?.nightExtraBed,
-            nightExtraCot: parsedNightExtraCot !== undefined ? parsedNightExtraCot : updatedConfigs["1BH"]?.nightExtraCot,
-            nightCruiseClosed: modalNight1BHClosed,
-          };
-
-          const otherConfigs = ["2BH", "3BH", "4BH"];
-          otherConfigs.forEach((config) => {
-            const state = configPricingState[config];
-            if (state) {
-              const parsedCBaseDay = parsePriceString(state.dayCruisePrice);
-              const parsedCExtraDayG = parsePriceString(state.dayExtraGuest);
-              const parsedCExtraDayR = parsePriceString(state.dayExtraRoom);
-              const parsedCBaseOvernight = parsePriceString(state.overnightPrice);
-              const parsedCExtraOvernightB = parsePriceString(state.overnightExtraBed);
-              const parsedCExtraOvernightC = parsePriceString(state.overnightExtraCot);
-              const parsedCExtraOvernightG = parsePriceString(state.overnightExtraGuest);
-              const parsedCExtraOvernightR = parsePriceString(state.overnightExtraRoom);
-              const parsedCBaseNight = parsePriceString(state.nightPrice);
-              const parsedCExtraNightG = parsePriceString(state.nightExtraGuest);
-              const parsedCExtraNightR = parsePriceString(state.nightExtraRoom);
-              const parsedCExtraNightB = parsePriceString(state.nightExtraBed);
-              const parsedCExtraNightC = parsePriceString(state.nightExtraCot);
-
-              updatedConfigs[config] = {
-                ...updatedConfigs[config],
-                dayCruisePrice: parsedCBaseDay !== undefined ? parsedCBaseDay : updatedConfigs[config]?.dayCruisePrice,
-                dayCruiseExtraGuest: parsedCExtraDayG !== undefined ? parsedCExtraDayG : updatedConfigs[config]?.dayCruiseExtraGuest,
-                dayCruiseExtraRoom: parsedCExtraDayR !== undefined ? parsedCExtraDayR : updatedConfigs[config]?.dayCruiseExtraRoom,
-                dayCruiseClosed: state.dayCruiseClosed || false,
-                overnightCruisePrice: parsedCBaseOvernight !== undefined ? parsedCBaseOvernight : updatedConfigs[config]?.overnightCruisePrice,
-                overnightExtraBed: parsedCExtraOvernightB !== undefined ? parsedCExtraOvernightB : updatedConfigs[config]?.overnightExtraBed,
-                overnightExtraCot: parsedCExtraOvernightC !== undefined ? parsedCExtraOvernightC : updatedConfigs[config]?.overnightExtraCot,
-                overnightExtraGuest: parsedCExtraOvernightG !== undefined ? parsedCExtraOvernightG : updatedConfigs[config]?.overnightExtraGuest,
-                overnightExtraRoom: parsedCExtraOvernightR !== undefined ? parsedCExtraOvernightR : updatedConfigs[config]?.overnightExtraRoom,
-                overnightCruiseClosed: state.overnightCruiseClosed || false,
-                nightCruisePrice: parsedCBaseNight !== undefined ? parsedCBaseNight : updatedConfigs[config]?.nightCruisePrice,
-                nightCruiseExtraGuest: parsedCExtraNightG !== undefined ? parsedCExtraNightG : updatedConfigs[config]?.nightCruiseExtraGuest,
-                nightCruiseExtraRoom: parsedCExtraNightR !== undefined ? parsedCExtraNightR : updatedConfigs[config]?.nightCruiseExtraRoom,
-                nightExtraBed: parsedCExtraNightB !== undefined ? parsedCExtraNightB : updatedConfigs[config]?.nightExtraBed,
-                nightExtraCot: parsedCExtraNightC !== undefined ? parsedCExtraNightC : updatedConfigs[config]?.nightExtraCot,
-                nightCruiseClosed: state.nightCruiseClosed || false,
-              };
-            }
-          });
-
-          boatBookings[dateKey] = normalizeBooking({
-            ...existing,
-            isClosed: isDateClosedVal,
-            dayCruiseClosed: dayCruiseClosedVal,
-            overnightCruiseClosed: overnightClosedVal,
-            nightCruiseClosed: nightClosedVal,
-            configs: updatedConfigs,
-          });
-        });
-        return {
-          ...current,
-          [activeBoatForCalendar]: boatBookings,
-        };
-      });
-
-      setSelectedDates([]);
-      setIsBulkPricingMode(false);
-      bulkModeRef.current = false;
-      setIsSheetForBulk(false);
-    } else if (selectedDate) {
-      const dateKey = getDateKey(
-        selectedDate.year,
-        selectedDate.month,
-        selectedDate.day,
-      );
-      const parsedDay = parsePriceString(modalDayCruisePrice);
-      const parsedDayExtraGuest = parsePriceString(modalDayExtraGuest);
-      const parsedDayExtraRoom = parsePriceString(modalDayExtraRoom);
-      const parsedOvernight = parsePriceString(modalOvernightPrice);
-      const parsedOvernightExtraBed = parsePriceString(modalOvernightExtraBed);
-      const parsedOvernightExtraCot = parsePriceString(modalOvernightExtraCot);
-      const parsedOvernightExtraGuest = parsePriceString(modalOvernightExtraGuest);
-      const parsedOvernightExtraRoom = parsePriceString(modalOvernightExtraRoom);
-      const parsedNight = parsePriceString(modalNightPrice);
-      const parsedNightExtraGuest = parsePriceString(modalNightExtraGuest);
-      const parsedNightExtraRoom = parsePriceString(modalNightExtraRoom);
-      const parsedNightExtraBed = parsePriceString(modalNightExtraBed);
-      const parsedNightExtraCot = parsePriceString(modalNightExtraCot);
-
-      setBookingsByBoat((current) => {
-        const boatBookings = current[activeBoatForCalendar] ?? {};
-        const existing = boatBookings[dateKey] ?? {
-          dayCruise: false,
-          overnightCruise: false,
-          nightCruise: false,
-          details: "No bookings for this day.",
-        };
-        
-        const updatedConfigs = { ...(existing.configs || {}) };
-        updatedConfigs["1BH"] = {
-          dayCruisePrice: parsedDay,
-          dayCruiseExtraGuest: parsedDayExtraGuest,
-          dayCruiseExtraRoom: parsedDayExtraRoom,
-          dayCruiseClosed: modalDay1BHClosed,
-          overnightCruisePrice: parsedOvernight,
-          overnightExtraBed: parsedOvernightExtraBed,
-          overnightExtraCot: parsedOvernightExtraCot,
-          overnightExtraGuest: parsedOvernightExtraGuest,
-          overnightExtraRoom: parsedOvernightExtraRoom,
-          overnightCruiseClosed: modalOvernight1BHClosed,
-          nightCruisePrice: parsedNight,
-          nightCruiseExtraGuest: parsedNightExtraGuest,
-          nightCruiseExtraRoom: parsedNightExtraRoom,
-          nightExtraBed: parsedNightExtraBed,
-          nightExtraCot: parsedNightExtraCot,
-          nightCruiseClosed: modalNight1BHClosed,
-        };
-
-        const otherConfigs = ["2BH", "3BH", "4BH"];
-        otherConfigs.forEach((config) => {
-          const state = configPricingState[config];
-          if (state) {
-            const parsedCBaseDay = parsePriceString(state.dayCruisePrice);
-            const parsedCExtraDayG = parsePriceString(state.dayExtraGuest);
-            const parsedCExtraDayR = parsePriceString(state.dayExtraRoom);
-            const parsedCBaseOvernight = parsePriceString(state.overnightPrice);
-            const parsedCExtraOvernightB = parsePriceString(state.overnightExtraBed);
-            const parsedCExtraOvernightC = parsePriceString(state.overnightExtraCot);
-            const parsedCExtraOvernightG = parsePriceString(state.overnightExtraGuest);
-            const parsedCExtraOvernightR = parsePriceString(state.overnightExtraRoom);
-            const parsedCBaseNight = parsePriceString(state.nightPrice);
-            const parsedCExtraNightG = parsePriceString(state.nightExtraGuest);
-            const parsedCExtraNightR = parsePriceString(state.nightExtraRoom);
-            const parsedCExtraNightB = parsePriceString(state.nightExtraBed);
-            const parsedCExtraNightC = parsePriceString(state.nightExtraCot);
-
-            updatedConfigs[config] = {
-              dayCruisePrice: parsedCBaseDay,
-              dayCruiseExtraGuest: parsedCExtraDayG,
-              dayCruiseExtraRoom: parsedCExtraDayR,
-              dayCruiseClosed: state.dayCruiseClosed || false,
-              overnightCruisePrice: parsedCBaseOvernight,
-              overnightExtraBed: parsedCExtraOvernightB,
-              overnightExtraCot: parsedCExtraOvernightC,
-              overnightExtraGuest: parsedCExtraOvernightG,
-              overnightExtraRoom: parsedCExtraOvernightR,
-              nightCruisePrice: parsedCBaseNight,
-              nightCruiseExtraGuest: parsedCExtraNightG,
-              nightCruiseExtraRoom: parsedCExtraNightR,
-              nightExtraBed: parsedCExtraNightB,
-              nightExtraCot: parsedCExtraNightC,
-              nightCruiseClosed: state.nightCruiseClosed || false,
-            };
-          }
-        });
-
-        return {
-          ...current,
-          [activeBoatForCalendar]: {
-            ...boatBookings,
-            [dateKey]: normalizeBooking({
-              ...existing,
-              isClosed: isDateClosedVal,
-              dayCruiseClosed: dayCruiseClosedVal,
-              overnightCruiseClosed: overnightClosedVal,
-              nightCruiseClosed: nightClosedVal,
-              configs: updatedConfigs,
-            }),
-          },
-        };
-      });
-
-      setSelectedDate(null);
-      setSelectedDates([]);
-      setIsBulkPricingMode(false);
-      bulkModeRef.current = false;
-      setIsSheetForBulk(false);
-    }
-  }
-
-  const selectedBooking = selectedDate
-    ? (bookingsByDate[
-        getDateKey(selectedDate.year, selectedDate.month, selectedDate.day)
-      ] ?? {
-        dayCruise: false,
-        overnightCruise: false,
-        nightCruise: false,
-        details: "No bookings for this day.",
-      })
-    : {
-        dayCruise: false,
-        overnightCruise: false,
-        nightCruise: false,
-        details: "No bookings for this day.",
-      };
-
-  const showBulkView = isSheetForBulk || selectedDates.length > 1;
+  };
 
   return (
-    <GestureHandlerRootView style={styles.calendarPageRoot}>
-    <KeyboardAvoidingView
-      style={styles.calendarPageRoot}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      {activeBoatForCalendar === null ? (
-        <View
-          key="home"
-          style={styles.flex1}
-        >
-          <ScrollView contentContainerStyle={styles.pageScrollContent}>
-            <PageHeader
-              title="Availability"
-              sub={`Select a boat to manage detailed availability · ${visibleMonthTitle}`}
-            />
-
-            <View style={[styles.card, { marginBottom: 16 }]}>
-              <View style={[styles.calendarMonthRow, { marginBottom: 0 }]}>
-                <Pressable
-                  onPress={() => moveMonth(-1)}
-                  style={styles.monthChevronButton}
-                  testID="home-month-prev"
-                >
-                  <Text style={styles.monthChevronText}>‹</Text>
-                </Pressable>
-                <Text
-                  style={styles.calendarMonthTitle}
-                  testID="home-calendar-month-title"
-                >
-                  {visibleMonthTitle}
-                </Text>
-                <Pressable
-                  onPress={() => moveMonth(1)}
-                  style={styles.monthChevronButton}
-                  testID="home-month-next"
-                >
-                  <Text style={styles.monthChevronText}>›</Text>
-                </Pressable>
-              </View>
-            </View>
-
-            {isLoadingCalendar ? (
-              <View style={styles.boatGrid} testID="skeleton-loading-grid">
-                {(boats.length > 0 ? boats : Array.from({ length: 4 })).map((item, idx) => (
-                  <SkeletonCard
-                    key={item && typeof item === "object" && "id" in item ? (item as any).id : idx}
-                    miniWeekdayLabels={miniWeekdayLabels}
-                    miniCalendarWeeks={miniCalendarWeeks}
-                  />
-                ))}
-              </View>
-            ) : (
-              <View style={styles.boatGrid}>
-                {boats.map((boat) => (
-                  <Pressable
-                    key={boat.id}
-                    onPress={(event) => {
-                      const pageX = event?.nativeEvent?.pageX;
-                      const pageY = event?.nativeEvent?.pageY;
-                      setZoomOrigin({
-                        x: pageX ?? screenWidth / 2,
-                        y: pageY ?? screenHeight / 2,
-                      });
-                      if (process.env.NODE_ENV === "test") {
-                        setActiveBoatForCalendar(boat.id);
-                      } else {
-                        // Defer view toggle state updates to the next frame to ensure the
-                        // home view re-renders with the correct zoomOrigin before unmounting.
-                        requestAnimationFrame(() => {
-                          setActiveBoatForCalendar(boat.id);
-                        });
-                      }
-                    }}
-                    style={({ pressed }) => [
-                      styles.boatCard,
-                      pressed ? styles.boatCardPressed : null,
-                    ]}
-                    testID={`boat-card-${boat.name.replace(/\s+/g, "-").toLowerCase()}`}
-                  >
-                    <Text style={styles.boatCardTitle} numberOfLines={1}>
-                      {boat.name}
-                    </Text>
-
-                    <View style={styles.miniCalendarContainer}>
-                      <View style={styles.miniCalendarHeader}>
-                        {miniWeekdayLabels.map((l, idx) => (
-                          <Text key={idx} style={styles.miniCalendarHeaderLabel}>
-                            {l}
-                          </Text>
-                        ))}
-                      </View>
-                      <View style={styles.miniCalendarGrid}>
-                        {miniCalendarWeeks.map((week, weekIdx) => (
-                          <View key={weekIdx} style={styles.miniCalendarWeekRow}>
-                            {week.map((day, dayIdx) => {
-                              if (day === null) {
-                                return (
-                                  <View
-                                    key={`empty-${dayIdx}`}
-                                    style={styles.miniCalendarCellBlank}
-                                  />
-                                );
-                              }
-                              const dateKey = getDateKey(
-                                visibleYear,
-                                visibleMonthIndex,
-                                day,
-                              );
-                              const booking = bookingsByBoat[boat.id]?.[dateKey];
-                              const allCruisesBooked =
-                                booking?.dayCruise &&
-                                (booking?.overnightCruise ||
-                                  booking?.nightCruise);
-                              const anyCruiseBooked =
-                                booking?.dayCruise ||
-                                booking?.overnightCruise ||
-                                booking?.nightCruise;
-
-                              let cellColor = styles.dayCellEmpty.backgroundColor;
-                              let borderColor = styles.dayCellEmpty.borderColor;
-                              if (allCruisesBooked) {
-                                cellColor = styles.dayCellFull.backgroundColor;
-                                borderColor = styles.dayCellFull.borderColor;
-                              } else if (anyCruiseBooked) {
-                                cellColor = styles.dayCellPartial.backgroundColor;
-                                borderColor = styles.dayCellPartial.borderColor;
-                              }
-
-                              return (
-                                <View
-                                  key={day}
-                                  style={[
-                                    styles.miniCalendarCell,
-                                    {
-                                      backgroundColor: cellColor,
-                                      borderColor: borderColor,
-                                    },
-                                  ]}
-                                />
-                              );
-                            })}
-                            {week.length < 7 &&
-                              Array.from({ length: 7 - week.length }).map(
-                                (_, padIdx) => (
-                                  <View
-                                    key={`pad-${padIdx}`}
-                                    style={styles.miniCalendarCellBlank}
-                                  />
-                                ),
-                              )}
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
-            )}
-
-            <View style={styles.calendarLegendRow}>
-              <View style={styles.legendItem}>
-                <View
-                  style={[
-                    styles.legendDot,
-                    {
-                      backgroundColor: styles.dayCellEmpty.backgroundColor,
-                      borderColor: styles.dayCellEmpty.borderColor,
-                    },
-                  ]}
-                />
-                <Text style={styles.legendText}>Available</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View
-                  style={[
-                    styles.legendDot,
-                    {
-                      backgroundColor: styles.dayCellPartial.backgroundColor,
-                      borderColor: styles.dayCellPartial.borderColor,
-                    },
-                  ]}
-                />
-                <Text style={styles.legendText}>Partially Booked</Text>
-              </View>
-              <View style={styles.legendItem}>
-                <View
-                  style={[
-                    styles.legendDot,
-                    {
-                      backgroundColor: styles.dayCellFull.backgroundColor,
-                      borderColor: styles.dayCellFull.borderColor,
-                    },
-                  ]}
-                />
-                <Text style={styles.legendText}>Fully Booked</Text>
-              </View>
-            </View>
-          </ScrollView>
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
+        {/* Header */}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 18 }}>
+          <Pressable onPress={() => setLocalBoatName(null)} style={{ padding: 4 }}>
+            <ArrowLeft size={20} color={COLORS.navy} />
+          </Pressable>
+          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>{boat}</Text>
         </View>
-      ) : (
-        <View
-          key="detail"
-          style={styles.flex1}
-        >
-          <ScrollView contentContainerStyle={styles.pageScrollContent}>
-            <PageHeader
-              title={activeBoatDetails?.name || ""}
-              sub={`Manage detailed availability, override prices, and view bookings. · Date: ${visibleMonthTitle}`}
-              onBack={() => setActiveBoatForCalendar(null)}
-            />
 
-            <View style={styles.card}>
-              <View style={styles.calendarMonthRow}>
-                <Pressable
-                  onPress={() => moveMonth(-1)}
-                  style={styles.monthChevronButton}
-                  testID="month-prev"
-                >
-                  <Text style={styles.monthChevronText}>‹</Text>
+        {isLoading ? (
+          <View style={{ paddingVertical: 100, justifyContent: "center", alignItems: "center" }}>
+            <ActivityIndicator size="large" color={COLORS.teal} />
+            <Text style={{ marginTop: 10, color: COLORS.muted, fontSize: 14 }}>Loading calendar state...</Text>
+          </View>
+        ) : (
+          <>
+            {/* Availability Calendar */}
+            <View
+              style={{
+                backgroundColor: COLORS.white,
+                borderWidth: 1,
+                borderColor: COLORS.border,
+                borderRadius: 24,
+                padding: 16,
+                marginBottom: 16,
+              }}
+            >
+              {/* Month navigation */}
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
+                <Pressable onPress={() => { if (!isAtFloor) goToMonth(-1); }} style={{ opacity: isAtFloor ? 0.3 : 1, padding: 6 }}>
+                  <ArrowLeft size={16} color={COLORS.navy} />
                 </Pressable>
-                <Text
-                  style={styles.calendarMonthTitle}
-                  testID="calendar-month-title"
-                >
-                  {visibleMonthTitle}
-                </Text>
-                <Pressable
-                  onPress={() => moveMonth(1)}
-                  style={styles.monthChevronButton}
-                  testID="month-next"
-                >
-                  <Text style={styles.monthChevronText}>›</Text>
+
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  <Calendar size={15} color={COLORS.teal} />
+                  <Pressable onPress={() => { setAvailabilityMonthPickerOpen(!availabilityMonthPickerOpen); setAvailabilityYearPickerOpen(false); }} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.navy }}>{MONTHS[availabilityMonth.month]}</Text>
+                    <ChevronDown size={12} color={COLORS.muted} />
+                  </Pressable>
+                  <Pressable onPress={() => { setAvailabilityYearPickerOpen(!availabilityYearPickerOpen); setAvailabilityMonthPickerOpen(false); }} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
+                    <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.navy }}>{availabilityMonth.year}</Text>
+                    <ChevronDown size={12} color={COLORS.muted} />
+                  </Pressable>
+                </View>
+
+                <Pressable onPress={() => goToMonth(1)} style={{ padding: 6 }}>
+                  <ArrowRight size={16} color={COLORS.navy} />
                 </Pressable>
               </View>
 
-              <View style={styles.calendarWeekRow}>
-                {weekdayLabels.map((label, idx) => (
-                  <Text
-                    key={label}
-                    style={[
-                      styles.weekdayHeaderText,
-                      (idx === 0 || idx === 6) ? styles.weekdayHeaderTextWeekend : null,
-                    ]}
-                  >
-                    {label}
-                  </Text>
+              {/* Weekday headers */}
+              <View style={{ flexDirection: "row", marginBottom: 8 }}>
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
+                  <Text key={d} style={{ flex: 1, textAlign: "center", fontSize: 10, fontWeight: "700", color: COLORS.muted }}>{d}</Text>
                 ))}
               </View>
 
-              <GestureDetector gesture={calendarSwipeGesture}>
-              <View style={{ overflow: 'hidden', flex: 1 }}>
-              <View
-                key={`${visibleYear}-${visibleMonthIndex}`}
-                style={styles.calendarGrid}
-              >
-                {Array.from(
-                  { length: Math.ceil(calendarDays.length / 7) },
-                  (_, weekIndex) => (
-                    <View key={weekIndex} style={styles.calendarWeekRow}>
-                      {[
-                        ...calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7),
-                        ...Array.from(
-                          {
-                            length: Math.max(
-                              0,
-                              7 -
-                                calendarDays.slice(
-                                  weekIndex * 7,
-                                  weekIndex * 7 + 7,
-                                ).length,
-                            ),
-                          },
-                          () => null as number | null,
-                        ),
-                      ].map((day, cellIndex) => {
-                        if (!day) {
-                          return (
-                            <View
-                              key={`blank-${weekIndex}-${cellIndex}`}
-                              style={styles.dayCellBlank}
-                            />
-                          );
-                        }
-                        const dateKey = getDateKey(
-                          visibleYear,
-                          visibleMonthIndex,
-                          day,
-                        );
-                        const booking = bookingsByDate[dateKey];
-                        const boat = activeBoatDetails;
-                        const isDayBlocked =
-                          !!booking?.isClosed ||
-                          !!booking?.overnightCruise ||
-                          !!booking?.dayCruise ||
-                          !!booking?.dayCruiseClosed ||
-                          (!!boat && Array.from({ length: boat.bedrooms }, (_, i) => `${i + 1}BH`).every(c => !!booking?.configs?.[c]?.dayCruiseClosed));
+              {/* Calendar cells grid */}
+              <View style={{ flexDirection: "column", gap: 6 }}>
+                {rows.map((row, rowIdx) => (
+                  <View key={rowIdx} style={{ flexDirection: "row", gap: 6 }}>
+                    {row.map((day, cellIdx) => {
+                      if (!day) return <View key={`blank-${rowIdx}-${cellIdx}`} style={{ flex: 1, aspectRatio: 1 }} />;
 
-                        const isNightBlocked =
-                          !!booking?.isClosed ||
-                          !!booking?.overnightCruise ||
-                          !!booking?.nightCruise ||
-                          !!booking?.nightCruiseClosed ||
-                          (!!boat && Array.from({ length: boat.bedrooms }, (_, i) => `${i + 1}BH`).every(c => !!booking?.configs?.[c]?.nightCruiseClosed));
+                      const dateStr = dateStrFor(day);
+                      const result = getAvailabilityStatus(boat, dateStr, allBookings, allBlockedDates, localDateOpenState, localTripPricing);
+                      const selected = isInSelection(day);
+                      const isClosed = result.status === "closed";
+                      
+                      let background = selected ? COLORS.tealMedium : isClosed ? "#E2E8F0" : result.status === "empty" ? STATUS_TINTS.empty : STATUS_TINTS[result.background ?? ""] || COLORS.white;
+                      const openDots = !isClosed && result.circles ? TRIP_TYPES.map(type => result.circles[type as keyof typeof result.circles]).filter(Boolean) : [];
 
-                        const isOvernightBlocked =
-                          !!booking?.isClosed ||
-                          !!booking?.overnightCruise ||
-                          !!booking?.dayCruise ||
-                          !!booking?.nightCruise ||
-                          !!booking?.overnightCruiseClosed ||
-                          (!!boat && Array.from({ length: boat.bedrooms }, (_, i) => `${i + 1}BH`).every(c => !!booking?.configs?.[c]?.overnightCruiseClosed));
-
-                        const allCruisesBooked = isDayBlocked && isNightBlocked && isOvernightBlocked;
-                        const anyCruiseBooked = isDayBlocked || isNightBlocked || isOvernightBlocked;
-                        const isSelected = selectedDates.includes(day);
-
-                        return (
-                          <Pressable
-                            key={day}
-                            onPress={() => handleDayPress(day)}
-                            onLongPress={() => handleDayLongPress(day)}
-                            delayLongPress={220}
-                            testID={`calendar-day-${dateKey}`}
-                            style={[
-                              styles.dayCell,
-                              allCruisesBooked
-                                ? styles.dayCellFull
-                                : anyCruiseBooked
-                                  ? styles.dayCellPartial
-                                  : styles.dayCellEmpty,
-                              isSelected ? styles.dayCellBulkSelected : null,
-                            ]}
+                      return (
+                        <Pressable
+                          key={day}
+                          onPress={() => handleDayTap(day)}
+                          style={{
+                            flex: 1,
+                            aspectRatio: 1,
+                            borderRadius: 10,
+                            backgroundColor: background,
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderWidth: selected ? 0 : isTodayDay(day) ? 2.5 : !isClosed ? 1 : 0,
+                            borderColor: isTodayDay(day) ? COLORS.navy : COLORS.border,
+                          }}
+                        >
+                          {!isClosed && result.hasDirectBooking && (
+                            <Text style={{ fontSize: 7, fontWeight: "800", color: selected ? COLORS.white : COLORS.navy, marginBottom: 1 }}>AB</Text>
+                          )}
+                          <Text
+                            style={{
+                              fontSize: 12,
+                              fontWeight: selected || isTodayDay(day) ? "700" : "500",
+                              color: selected ? COLORS.white : isClosed ? COLORS.muted : COLORS.navy,
+                            }}
                           >
-                            {isSelected ? (
-                              <View style={styles.bulkCheckBadge}>
-                                <Check
-                                  size={8}
-                                  color="#ffffff"
-                                  strokeWidth={3}
-                                />
-                              </View>
-                            ) : null}
-                            <Text style={styles.dayCellNumber}>{day}</Text>
-                            
-                            {/* Warning icon if pricing is not set */}
-                            {boat && !isPricingSet(booking, boat) && (
-                              <View 
-                                style={{
-                                  position: "absolute",
-                                  top: 4,
-                                  right: 4,
-                                }}
-                                testID="pricing-warning-icon"
-                              >
-                                <AlertCircle size={10} color="#f59e0b" />
-                              </View>
-                            )}
-
-                            {/* Hidden test-compatibility view for Jest price checks */}
-                            <View style={{ height: 0, width: 0, opacity: 0, overflow: 'hidden' }} pointerEvents="none">
-                              <View style={styles.dayCellCruiseRows}>
-                                {booking?.dayCruise || booking?.dayCruisePrice ? (
-                                  <View style={styles.dayCellCruiseRow}>
-                                    <CruiseTypeIcon type="day" />
-                                    <Text
-                                      style={styles.dayCellCruisePrice}
-                                      numberOfLines={1}
-                                    >
-                                      {formatLocalPrice(booking.dayCruise ? (booking.dayCruiseBookedAmount ?? booking.dayCruisePrice) : booking.dayCruisePrice)}
-                                    </Text>
-                                  </View>
-                                ) : null}
-                                {booking?.overnightCruise ||
-                                booking?.overnightCruisePrice ? (
-                                  <View style={styles.dayCellCruiseRow}>
-                                    <CruiseTypeIcon type="overnight" />
-                                    <Text
-                                      style={styles.dayCellCruisePrice}
-                                      numberOfLines={1}
-                                    >
-                                      {formatLocalPrice(booking.overnightCruise ? (booking.overnightCruiseBookedAmount ?? booking.overnightCruisePrice) : booking.overnightCruisePrice)}
-                                    </Text>
-                                  </View>
-                                ) : null}
-                                {booking?.nightCruise ||
-                                booking?.nightCruisePrice ? (
-                                  <View style={styles.dayCellCruiseRow}>
-                                    <CruiseTypeIcon type="night" />
-                                    <Text
-                                      style={styles.dayCellCruisePrice}
-                                      numberOfLines={1}
-                                    >
-                                      {formatLocalPrice(booking.nightCruise ? (booking.nightCruiseBookedAmount ?? booking.nightCruisePrice) : booking.nightCruisePrice)}
-                                    </Text>
-                                  </View>
-                                ) : null}
-                              </View>
+                            {day}
+                          </Text>
+                          {!isClosed && openDots.length > 0 && (
+                            <View style={{ flexDirection: "row", gap: 2, marginTop: 2 }}>
+                              {openDots.map((color, idx) => (
+                                <View key={idx} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: STATUS_COLORS[color ?? ""], borderWidth: selected ? 1 : 0, borderColor: COLORS.white }} />
+                              ))}
                             </View>
-                          </Pressable>
-                        );
-                      })}
+                          )}
+                          {isClosed && (
+                            <View style={{ position: "absolute", top: 2, right: 2 }}>
+                              <X size={9} color={COLORS.muted} />
+                            </View>
+                          )}
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                ))}
+              </View>
+
+              {/* Legend */}
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 10, marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.border, justifyContent: "center" }}>
+                {[
+                  { label: "Available", color: COLORS.green },
+                  { label: "Partially Booked", color: COLORS.amber },
+                  { label: "Booked", color: COLORS.red },
+                  { label: "No price set", empty: true },
+                  { label: "Closed", icon: true },
+                  { label: "Added Booking", ab: true },
+                ].map((item) => (
+                  <View key={item.label} style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                    {item.ab ? (
+                      <Text style={{ fontSize: 10, fontWeight: "800", color: COLORS.navy }}>AB</Text>
+                    ) : item.icon ? (
+                      <X size={10} color={COLORS.muted} />
+                    ) : item.empty ? (
+                      <View style={{ width: 8, height: 8, borderRadius: 4, borderWidth: 1, borderColor: COLORS.border, backgroundColor: COLORS.bg }} />
+                    ) : (
+                      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: item.color }} />
+                    )}
+                    <Text style={{ fontSize: 11, color: COLORS.muted }}>{item.label}</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Config controls panel */}
+            {availabilitySelection.length > 0 && (
+              <View
+                style={{
+                  backgroundColor: COLORS.white,
+                  borderWidth: 1,
+                  borderColor: COLORS.border,
+                  borderRadius: 24,
+                  padding: 18,
+                  marginBottom: 16,
+                }}
+              >
+                {/* Date Status toggle row */}
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border, marginBottom: 18 }}>
+                  <View style={{ flex: 1, marginRight: 10 }}>
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: COLORS.navy }}>Date Status</Text>
+                    <Text style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }}>
+                      {hasRealBookingOnSelection ? "Has a confirmed booking — can't be closed" : "Closed by default until opened"}
+                    </Text>
+                  </View>
+
+                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                    <View style={{ backgroundColor: isDateOpen ? COLORS.tealLight : COLORS.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: isDateOpen ? COLORS.teal : COLORS.muted }}>
+                        {isDateOpen ? "Open" : "Closed"}
+                      </Text>
                     </View>
-                  ),
+                    <Switch
+                      value={isDateOpen}
+                      disabled={hasRealBookingOnSelection}
+                      onValueChange={(val) => {
+                        setLocalDateOpenState((prev) => {
+                          const next = { ...prev };
+                          selectedDates.forEach((dateStr) => {
+                            next[`${boat}|${dateStr}`] = val;
+                          });
+                          return next;
+                        });
+                      }}
+                      trackColor={{ false: COLORS.border, true: COLORS.teal }}
+                    />
+                  </View>
+                </View>
+
+                {/* Subtitle */}
+                <Text style={{ fontSize: 15, fontWeight: "700", color: COLORS.navy, marginBottom: 4 }}>Open/Close Cruise Types</Text>
+                <Text style={{ fontSize: 12, color: COLORS.muted, marginBottom: 16 }}>
+                  Choose which cruise types are open to booking for the selected dates.
+                </Text>
+
+                {/* Shared unit indicator */}
+                {isShared && isDateOpen && totalUnits && (
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: COLORS.bg, borderRadius: 12, padding: 12, marginBottom: 16 }}>
+                    <View>
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy }}>Rooms available</Text>
+                      <Text style={{ fontSize: 11, color: COLORS.navy, marginTop: 3 }}>Number of configured rooms: {totalUnits}</Text>
+                    </View>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                      <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.teal }}>{totalUnits}</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Trip pricing list */}
+                <View style={{ gap: 10, opacity: isDateOpen ? 1 : 0.5 }}>
+                  {TRIP_TYPES.map((type) => {
+                    const isExpanded = expandedTripType === type;
+                    const bhTiers = BOAT_BH_CONFIGS[boat] || [BOAT_TOTAL_BH[boat]];
+                    const isTypeOpen = bhTiers.some((bh) => {
+                      return true; // mockup default to true or open
+                    });
+
+                    return (
+                      <View key={type} style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, overflow: "hidden" }}>
+                        <Pressable
+                          onPress={() => {
+                            if (!isDateOpen) return;
+                            setExpandedTripType(isExpanded ? null : type);
+                          }}
+                          style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12 }}
+                        >
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.tealLight, alignItems: "center", justifyContent: "center" }}>
+                              {type === "Day Cruise" ? <Sun size={17} color={COLORS.teal} /> : type === "Overnight Stay" ? <Moon size={17} color={COLORS.teal} /> : <Sunrise size={17} color={COLORS.teal} />}
+                            </View>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                              <Text style={{ fontSize: 14, fontWeight: "600", color: COLORS.navy }}>{type}</Text>
+                              {!isShared && (
+                                <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.muted }}>
+                                  {bhTiers.map((bh, idx) => (
+                                    <Text key={bh}>
+                                      <Text style={{ color: COLORS.teal }}>{bh}BH</Text>
+                                      {idx < bhTiers.length - 1 ? "/" : ""}
+                                    </Text>
+                                  ))}
+                                </Text>
+                              )}
+                            </View>
+                          </View>
+
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                            <View style={{ backgroundColor: COLORS.tealLight, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+                              <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.teal }}>Open</Text>
+                            </View>
+                            <ChevronDown size={14} color={COLORS.muted} />
+                          </View>
+                        </Pressable>
+
+                        {isExpanded && (
+                          <View style={{ padding: 12, borderTopWidth: 1, borderTopColor: COLORS.border, backgroundColor: COLORS.bg }}>
+                            {bhTiers.map((bh) => (
+                              <View key={bh} style={{ marginTop: 6 }}>
+                                <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.navy, marginBottom: 8 }}>{isShared ? "" : `${bh}BH Config`}</Text>
+                                {[
+                                  { label: "Base Price", val: "₹18,500" },
+                                  { label: "Extra Adult", val: "₹1,500" },
+                                  { label: "Extra Child", val: "₹750" },
+                                ].map((row) => (
+                                  <View key={row.label} style={{ flexDirection: "row", justifyContent: "space-between", paddingVertical: 4 }}>
+                                    <Text style={{ fontSize: 12, color: COLORS.muted }}>{row.label}</Text>
+                                    <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.navy }}>{row.val}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+
+                {/* Add/Modify Booking actions */}
+                {isDateOpen && (
+                  <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
+                    {/* Modify Booking button if there is a direct booking */}
+                    {allBookings.filter((b) => b.boat === boat && b.isDirect && b.status !== "cancelled" && b.status !== "deleted" && selectedDates.includes(b.date)).length > 0 && (
+                      <Pressable
+                        onPress={() => {
+                          setModifySelectedBookingId(null);
+                          setModifyBookingListOpen(true);
+                        }}
+                        style={{
+                          flex: 1,
+                          backgroundColor: COLORS.bg,
+                          borderWidth: 1,
+                          borderColor: COLORS.border,
+                          borderRadius: 14,
+                          padding: 14,
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <Pencil size={18} color={COLORS.navy} />
+                        <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy }}>Modify Booking</Text>
+                      </Pressable>
+                    )}
+
+                    <Pressable
+                      onPress={() => {
+                        const firstDate = selectedDates[0];
+                        const bhTiers = BOAT_BH_CONFIGS[boat] || [BOAT_TOTAL_BH[boat]];
+                        setAddBookingForm({
+                          editingBookingId: undefined,
+                          source: "Direct Booking",
+                          guest: "",
+                          boat,
+                          rooms: bhTiers[0],
+                          type: "Day Cruise",
+                          checkIn: firstDate,
+                          checkOut: firstDate,
+                          adults: 2,
+                          children: 0,
+                          kids: 0,
+                          cots: 0,
+                          dietBreakdown: [{ type: "Veg", count: 2 }],
+                          phone: "",
+                          specialRequests: "",
+                          price: "18500",
+                        });
+                        setAddBookingFormOpen(true);
+                      }}
+                      style={{
+                        flex: 1,
+                        backgroundColor: COLORS.bg,
+                        borderWidth: 1,
+                        borderColor: COLORS.border,
+                        borderRadius: 14,
+                        padding: 14,
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <Calendar size={18} color={COLORS.navy} />
+                      <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy }}>Add Booking</Text>
+                    </Pressable>
+                  </View>
                 )}
               </View>
-              </View>
-              </GestureDetector>
-
-              <View style={[styles.calendarLegendRow, { marginTop: 16, borderTopWidth: 1, borderTopColor: "#eceff1", paddingTop: 16 }]}>
-                <View style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendDot,
-                      {
-                        backgroundColor: styles.dayCellEmpty.backgroundColor,
-                        borderColor: styles.dayCellEmpty.borderColor,
-                      },
-                    ]}
-                  />
-                  <Text style={styles.legendText}>Available</Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendDot,
-                      {
-                        backgroundColor: styles.dayCellPartial.backgroundColor,
-                        borderColor: styles.dayCellPartial.borderColor,
-                      },
-                    ]}
-                  />
-                  <Text style={styles.legendText}>Partially Booked</Text>
-                </View>
-                <View style={styles.legendItem}>
-                  <View
-                    style={[
-                      styles.legendDot,
-                      {
-                        backgroundColor: styles.dayCellFull.backgroundColor,
-                        borderColor: styles.dayCellFull.borderColor,
-                      },
-                    ]}
-                  />
-                  <Text style={styles.legendText}>Fully Booked</Text>
-                </View>
-              </View>
-            </View>
-
-            <AvailabilityDetailPanel
-              hidden={isDetailTransitioning}
-              selectedDates={selectedDates}
-              selectedDate={selectedDate}
-              showBulkView={showBulkView}
-              isDateClosedVal={isDateClosedVal}
-              setIsDateClosedVal={setIsDateClosedVal}
-              dayCruiseClosedVal={dayCruiseClosedVal}
-              setDayCruiseClosedVal={setDayCruiseClosedVal}
-              overnightClosedVal={overnightClosedVal}
-              setOvernightClosedVal={setOvernightClosedVal}
-              nightClosedVal={nightClosedVal}
-              setNightClosedVal={setNightClosedVal}
-              modalDay1BHClosed={modalDay1BHClosed}
-              setModalDay1BHClosed={setModalDay1BHClosed}
-              modalOvernight1BHClosed={modalOvernight1BHClosed}
-              setModalOvernight1BHClosed={setModalOvernight1BHClosed}
-              modalNight1BHClosed={modalNight1BHClosed}
-              setModalNight1BHClosed={setModalNight1BHClosed}
-              configPricingState={configPricingState}
-              handleConfigPricingChange={handleConfigPricingChange}
-              modalDayCruisePrice={modalDayCruisePrice}
-              setModalDayCruisePrice={setModalDayCruisePrice}
-              modalDayExtraGuest={modalDayExtraGuest}
-              setModalDayExtraGuest={setModalDayExtraGuest}
-              modalDayExtraRoom={modalDayExtraRoom}
-              setModalDayExtraRoom={setModalDayExtraRoom}
-              modalOvernightPrice={modalOvernightPrice}
-              setModalOvernightPrice={setModalOvernightPrice}
-              modalOvernightExtraBed={modalOvernightExtraBed}
-              setModalOvernightExtraBed={setModalOvernightExtraBed}
-              modalOvernightExtraCot={modalOvernightExtraCot}
-              setModalOvernightExtraCot={setModalOvernightExtraCot}
-              modalOvernightExtraGuest={modalOvernightExtraGuest}
-              setModalOvernightExtraGuest={setModalOvernightExtraGuest}
-              modalOvernightExtraRoom={modalOvernightExtraRoom}
-              setModalOvernightExtraRoom={setModalOvernightExtraRoom}
-              modalNightPrice={modalNightPrice}
-              setModalNightPrice={setModalNightPrice}
-              modalNightExtraBed={modalNightExtraBed}
-              setModalNightExtraBed={setModalNightExtraBed}
-              modalNightExtraCot={modalNightExtraCot}
-              setModalNightExtraCot={setModalNightExtraCot}
-              modalNightExtraGuest={modalNightExtraGuest}
-              setModalNightExtraGuest={setModalNightExtraGuest}
-              modalNightExtraRoom={modalNightExtraRoom}
-              setModalNightExtraRoom={setModalNightExtraRoom}
-              selectedBooking={selectedBooking}
-              activeBoatDetails={activeBoatDetails}
-              setSelectedBookingConfig={setSelectedBookingConfig}
-              setBookingGuestName={setBookingGuestName}
-              setBookingGuestCount={setBookingGuestCount}
-              setBookingSpecialNotes={setBookingSpecialNotes}
-              setBookingBasePrice={setBookingBasePrice}
-              setBookingExtra1={setBookingExtra1}
-              setBookingExtra2={setBookingExtra2}
-              setBookingExtra3={setBookingExtra3}
-              setBookingExtra4={setBookingExtra4}
-              setBookingExtra1Qty={setBookingExtra1Qty}
-              setBookingExtra2Qty={setBookingExtra2Qty}
-              setBookingExtra3Qty={setBookingExtra3Qty}
-              setBookingExtra4Qty={setBookingExtra4Qty}
-              setBookingBookedAmount={setBookingBookedAmount}
-              setIsBookedAmountManuallyEdited={setIsBookedAmountManuallyEdited}
-              setActiveAddBookingType={setActiveAddBookingType}
-              setIsBookingModalVisible={setIsBookingModalVisible}
-              removeBooking={removeBooking}
-              openAddBookingModalForType={openAddBookingModalForType}
-              setIsSelectTypeModalVisible={setIsSelectTypeModalVisible}
-              handleSaveChanges={handleSaveChanges}
-            />
-          </ScrollView>
-
-          {/* Hidden Test Compatibility Layer */}
-          <View style={{ height: 0, width: 0, opacity: 0, overflow: 'hidden' }}>
-            <Pressable onPress={() => setIsBulkPricingMode(!isBulkPricingMode)}>
-              <Text>{isBulkPricingMode ? "Cancel" : "Enable"}</Text>
-            </Pressable>
-            <Pressable onPress={handleOpenBulkEditSheet} testID="edit-selected-dates-button" />
-            <Pressable onPress={cancelBulkMode} testID="bulk-close-button" />
-            {selectedDates.length > 0 && (
-              <Text>{selectedDates.length} {selectedDates.length === 1 ? "date" : "dates"} selected</Text>
             )}
-            <Pressable
-              testID="add-booking-button-day"
-              onPress={() => openAddBookingModalForType("day")}
-            >
-              <Text>+ Add booking</Text>
-            </Pressable>
-            <Pressable
-              testID="add-booking-button-overnight"
-              onPress={() => openAddBookingModalForType("overnight")}
-            >
-              <Text>+ Add booking</Text>
-            </Pressable>
-            <Pressable
-              testID="add-booking-button-night"
-              onPress={() => openAddBookingModalForType("night")}
-            >
-              <Text>+ Add booking</Text>
-            </Pressable>
-          </View>
+          </>
+        )}
+      </ScrollView>
 
-        </View>
-      )}
-
-      {/* Select Cruise Type Modal */}
-      <Modal
-        visible={isSelectTypeModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setIsSelectTypeModalVisible(false)}
-        testID="select-cruise-type-modal"
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setIsSelectTypeModalVisible(false)}
-        >
-          <View style={[styles.modalContent, { maxWidth: 320, padding: 20 }]}>
-            <Text style={[styles.modalTitle, { marginBottom: 8, textAlign: 'center' }]}>Select Cruise Type</Text>
-            <Text style={{ fontSize: 13, color: '#64748b', textAlign: 'center', marginBottom: 20 }}>
-              Choose the cruise type for the new booking.
-            </Text>
-            
-            <View style={{ gap: 12 }}>
-              {!selectedBooking.dayCruise && !dayCruiseClosedVal && (
-                <Pressable
-                  onPress={() => {
-                    setIsSelectTypeModalVisible(false);
-                    openAddBookingModalForType("day");
-                  }}
-                  style={{
-                    backgroundColor: '#e6fffa',
-                    borderColor: '#319795',
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    padding: 14,
-                    alignItems: 'center',
-                  }}
-                  testID="select-type-day"
-                >
-                  <Text style={{ color: '#234e52', fontWeight: '700', fontSize: 14 }}>Day Cruise</Text>
-                </Pressable>
-              )}
-
-              {!selectedBooking.overnightCruise && !selectedBooking.dayCruise && !selectedBooking.nightCruise && !overnightClosedVal && (
-                <Pressable
-                  onPress={() => {
-                    setIsSelectTypeModalVisible(false);
-                    openAddBookingModalForType("overnight");
-                  }}
-                  style={{
-                    backgroundColor: '#ebf8ff',
-                    borderColor: '#3182ce',
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    padding: 14,
-                    alignItems: 'center',
-                  }}
-                  testID="select-type-overnight"
-                >
-                  <Text style={{ color: '#2b6cb0', fontWeight: '700', fontSize: 14 }}>Overnight Stay</Text>
-                </Pressable>
-              )}
-
-              {!selectedBooking.nightCruise && !nightClosedVal && (
-                <Pressable
-                  onPress={() => {
-                    setIsSelectTypeModalVisible(false);
-                    openAddBookingModalForType("night");
-                  }}
-                  style={{
-                    backgroundColor: '#faf5ff',
-                    borderColor: '#805ad5',
-                    borderWidth: 1,
-                    borderRadius: 8,
-                    padding: 14,
-                    alignItems: 'center',
-                  }}
-                  testID="select-type-night"
-                >
-                  <Text style={{ color: '#553c9a', fontWeight: '700', fontSize: 14 }}>Night Stay</Text>
-                </Pressable>
-              )}
-              
-              <Pressable
-                onPress={() => setIsSelectTypeModalVisible(false)}
-                style={{
-                  backgroundColor: '#cbd5e1',
-                  borderRadius: 8,
-                  padding: 12,
-                  alignItems: 'center',
-                  marginTop: 8,
-                }}
-                testID="select-type-cancel"
-              >
-                <Text style={{ color: '#334155', fontWeight: '600', fontSize: 13 }}>Cancel</Text>
+      {/* Add Booking Modal Dialog */}
+      {addBookingFormOpen && (
+        <Modal visible={addBookingFormOpen} animationType="slide">
+          <View style={{ flex: 1, backgroundColor: COLORS.white }}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingHorizontal: 18, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: COLORS.border }}>
+              <Text style={{ fontSize: 17, fontWeight: "800", color: COLORS.navy }}>
+                {addBookingForm.editingBookingId ? "Edit Direct Booking" : "Add Direct Booking"}
+              </Text>
+              <Pressable onPress={() => setAddBookingFormOpen(false)} style={{ padding: 4 }}>
+                <X size={20} color={COLORS.muted} />
               </Pressable>
             </View>
-          </View>
-        </Pressable>
-      </Modal>
 
-      {/* Booking Form Modal Overlay */}
-      <Modal
-        visible={isBookingModalVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setIsBookingModalVisible(false)}
-      >
-        <KeyboardAvoidingView
-          behavior={Platform.OS === "ios" ? "padding" : "height"}
-          style={styles.modalOverlay}
-        >
-          <View style={styles.modalContent}>
-            <ScrollView contentContainerStyle={styles.modalScrollContent}>
-              <View style={styles.modalFormHeader}>
-                <Text style={styles.modalTitle}>
-                  {activeAddBookingType === "day"
-                    ? (selectedBooking.dayCruise ? "Edit Offline Booking" : "Add Offline Booking")
-                    : activeAddBookingType === "overnight"
-                      ? (selectedBooking.overnightCruise ? "Edit Offline Booking" : "Add Offline Booking")
-                      : (selectedBooking.nightCruise ? "Edit Offline Booking" : "Add Offline Booking")}
-                </Text>
-                <Text style={styles.modalHeaderSubtitle}>
-                  {activeBoatDetails?.name || ""} · {selectedDate?.day}{" "}
-                  {selectedDate
-                    ? new Date(
-                        selectedDate.year,
-                        selectedDate.month,
-                        selectedDate.day,
-                      ).toLocaleString("en-US", { month: "short" })
-                    : ""}{" "}
-                  {selectedDate?.year} · {activeAddBookingType === "day" ? "Day Cruise" : activeAddBookingType === "overnight" ? "Overnight stay" : "Night stay"}
-                </Text>
+            <ScrollView contentContainerStyle={{ padding: 18, gap: 14 }}>
+              {/* Form Input fields */}
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Booking Source</Text>
+                <TextInput
+                  style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
+                  value={addBookingForm.source}
+                  onChangeText={(val) => updateField("source", val)}
+                />
               </View>
 
-              {/* Guest Name */}
-              <View style={styles.formField}>
-                <Text style={styles.formLabel}>Guest Name</Text>
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Guest Name</Text>
                 <TextInput
-                  value={bookingGuestName}
-                  onChangeText={setBookingGuestName}
+                  style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
                   placeholder="e.g. John Doe"
-                  placeholderTextColor="#9aafbf"
-                  style={styles.formInput}
-                  testID="form-guest-name"
+                  value={addBookingForm.guest}
+                  onChangeText={(val) => updateField("guest", val)}
                 />
               </View>
 
-              {/* Number of Guests */}
-              <View style={styles.formField}>
-                <Text style={styles.formLabel}>Number of Guests</Text>
-                <TextInput
-                  value={bookingGuestCount}
-                  onChangeText={setBookingGuestCount}
-                  placeholder="e.g. 4"
-                  placeholderTextColor="#9aafbf"
-                  keyboardType="numeric"
-                  style={styles.formInput}
-                  testID="form-guest-count"
-                />
-              </View>
-
-              {/* Bedroom Configuration */}
-              <View style={styles.formField}>
-                <Text style={styles.formLabel}>Bedroom Configuration</Text>
-                <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
-                  {Array.from({ length: activeBoatDetails?.bedrooms || 2 }, (_, i) => `${i + 1}BH`).map((configName) => (
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Cruise Type</Text>
+                <View style={{ flexDirection: "row", gap: 8, marginTop: 6 }}>
+                  {TRIP_TYPES.map((t) => (
                     <Pressable
-                      key={configName}
-                      onPress={() => {
-                        setSelectedBookingConfig(configName);
-                        if (activeAddBookingType) {
-                          loadPricingForConfig(configName, activeAddBookingType);
-                        }
+                      key={t}
+                      onPress={() => updateField("type", t)}
+                      style={{
+                        flex: 1,
+                        paddingVertical: 8,
+                        borderRadius: 10,
+                        borderWidth: 1,
+                        borderColor: addBookingForm.type === t ? COLORS.teal : COLORS.border,
+                        backgroundColor: addBookingForm.type === t ? COLORS.tealLight : COLORS.white,
+                        alignItems: "center",
                       }}
-                      style={[
-                        {
-                          flex: 1,
-                          paddingVertical: 10,
-                          borderRadius: 8,
-                          borderWidth: 1,
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backgroundColor: '#f8fafc',
-                          borderColor: '#cbd5e1',
-                        },
-                        selectedBookingConfig === configName 
-                          ? { backgroundColor: '#1e293b', borderColor: '#1e293b' } 
-                          : null
-                      ]}
-                      testID={`form-config-${configName}`}
                     >
-                      <Text style={[
-                        { color: '#475569', fontWeight: '600', fontSize: 13 },
-                        selectedBookingConfig === configName ? { color: '#ffffff' } : null
-                      ]}>
-                        {configName}
-                      </Text>
+                      <Text style={{ fontSize: 11, fontWeight: "700", color: addBookingForm.type === t ? COLORS.teal : COLORS.navy }}>{t}</Text>
                     </Pressable>
                   ))}
                 </View>
               </View>
 
-              {/* Base Price Rate */}
-              <View style={styles.formField}>
-                <Text style={styles.formLabel}>Base Price Rate (₹)</Text>
-                <TextInput
-                  value={bookingBasePrice}
-                  onChangeText={(v) => setBookingBasePrice(formatInputWithCommas(v))}
-                  keyboardType="numeric"
-                  placeholder="0"
-                  placeholderTextColor="#9aafbf"
-                  style={styles.formInput}
-                  testID="form-base-price"
-                />
-              </View>
-
-              {/* Extra 1 Rate & Quantity */}
-              <View style={styles.formField}>
-                <Text style={styles.formLabel}>
-                  {(activeAddBookingType === "overnight" || activeAddBookingType === "night") ? "Extra Bed Price Rate (₹) & Quantity" : "Extra Guest Price Rate (₹) & Quantity"}
-                </Text>
-                <View style={styles.formRowWithCounter}>
+              {/* Dates */}
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Check-in</Text>
                   <TextInput
-                    value={bookingExtra1}
-                    onChangeText={(v) => {
-                      setBookingExtra1(formatInputWithCommas(v));
-                      if (v && (parseInt(bookingExtra1Qty, 10) || 0) === 0) {
-                        setBookingExtra1Qty("1");
-                      }
-                    }}
-                    keyboardType="numeric"
-                    placeholder="0"
-                    placeholderTextColor="#9aafbf"
-                    style={[styles.formInput, { flex: 1, marginRight: 8 }]}
-                    testID="form-extra-1"
+                    style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
+                    value={addBookingForm.checkIn}
+                    onChangeText={(val) => updateField("checkIn", val)}
                   />
-                  <View style={styles.counterContainer}>
-                    <Pressable
-                      onPress={() => {
-                        const cur = parseInt(bookingExtra1Qty, 10) || 0;
-                        if (cur > 0) setBookingExtra1Qty(String(cur - 1));
-                      }}
-                      style={styles.counterButton}
-                      testID="form-extra-1-dec"
-                    >
-                      <Text style={styles.counterButtonText}>-</Text>
-                    </Pressable>
-                    <TextInput
-                      value={bookingExtra1Qty}
-                      onChangeText={(v) => {
-                        const digits = v.replace(/[^0-9]/g, "");
-                        setBookingExtra1Qty(digits || "0");
-                      }}
-                      keyboardType="numeric"
-                      style={styles.counterValueInput}
-                      testID="form-extra-1-qty"
-                    />
-                    <Pressable
-                      onPress={() => {
-                        const cur = parseInt(bookingExtra1Qty, 10) || 0;
-                        setBookingExtra1Qty(String(cur + 1));
-                      }}
-                      style={styles.counterButton}
-                      testID="form-extra-1-inc"
-                    >
-                      <Text style={styles.counterButtonText}>+</Text>
-                    </Pressable>
-                  </View>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Check-out</Text>
+                  <TextInput
+                    style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
+                    value={addBookingForm.checkOut}
+                    onChangeText={(val) => updateField("checkOut", val)}
+                  />
                 </View>
               </View>
 
-              {/* Extra 2 Rate & Quantity */}
-              <View style={styles.formField}>
-                <Text style={styles.formLabel}>
-                  {(activeAddBookingType === "overnight" || activeAddBookingType === "night") ? "Extra Cot Price Rate (₹) & Quantity" : "Extra Room Price Rate (₹) & Quantity"}
-                </Text>
-                <View style={styles.formRowWithCounter}>
+              {/* Guests */}
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Adults (13+)</Text>
                   <TextInput
-                    value={bookingExtra2}
-                    onChangeText={(v) => {
-                      setBookingExtra2(formatInputWithCommas(v));
-                      if (v && (parseInt(bookingExtra2Qty, 10) || 0) === 0) {
-                        setBookingExtra2Qty("1");
-                      }
-                    }}
                     keyboardType="numeric"
-                    placeholder="0"
-                    placeholderTextColor="#9aafbf"
-                    style={[styles.formInput, { flex: 1, marginRight: 8 }]}
-                    testID="form-extra-2"
+                    style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
+                    value={String(addBookingForm.adults)}
+                    onChangeText={(val) => updateField("adults", Math.max(0, parseInt(val, 10) || 0))}
                   />
-                  <View style={styles.counterContainer}>
-                    <Pressable
-                      onPress={() => {
-                        const cur = parseInt(bookingExtra2Qty, 10) || 0;
-                        if (cur > 0) setBookingExtra2Qty(String(cur - 1));
-                      }}
-                      style={styles.counterButton}
-                      testID="form-extra-2-dec"
-                    >
-                      <Text style={styles.counterButtonText}>-</Text>
-                    </Pressable>
-                    <TextInput
-                      value={bookingExtra2Qty}
-                      onChangeText={(v) => {
-                        const digits = v.replace(/[^0-9]/g, "");
-                        setBookingExtra2Qty(digits || "0");
-                      }}
-                      keyboardType="numeric"
-                      style={styles.counterValueInput}
-                      testID="form-extra-2-qty"
-                    />
-                    <Pressable
-                      onPress={() => {
-                        const cur = parseInt(bookingExtra2Qty, 10) || 0;
-                        setBookingExtra2Qty(String(cur + 1));
-                      }}
-                      style={styles.counterButton}
-                      testID="form-extra-2-inc"
-                    >
-                      <Text style={styles.counterButtonText}>+</Text>
-                    </Pressable>
-                  </View>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Children (6-12)</Text>
+                  <TextInput
+                    keyboardType="numeric"
+                    style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
+                    value={String(addBookingForm.children)}
+                    onChangeText={(val) => updateField("children", Math.max(0, parseInt(val, 10) || 0))}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Kids (0-5)</Text>
+                  <TextInput
+                    keyboardType="numeric"
+                    style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
+                    value={String(addBookingForm.kids)}
+                    onChangeText={(val) => updateField("kids", Math.max(0, parseInt(val, 10) || 0))}
+                  />
                 </View>
               </View>
 
-              {/* Extra 3 Rate & Quantity (Overnight & Night Stay only) */}
-              {(activeAddBookingType === "overnight" || activeAddBookingType === "night") && (
-                <View style={styles.formField}>
-                  <Text style={styles.formLabel}>
-                    Extra Guest Price Rate (₹) & Quantity
-                  </Text>
-                  <View style={styles.formRowWithCounter}>
-                    <TextInput
-                      value={bookingExtra3}
-                      onChangeText={(v) => {
-                        setBookingExtra3(formatInputWithCommas(v));
-                        if (v && (parseInt(bookingExtra3Qty, 10) || 0) === 0) {
-                          setBookingExtra3Qty("1");
-                        }
-                      }}
-                      keyboardType="numeric"
-                      placeholder="0"
-                      placeholderTextColor="#9aafbf"
-                      style={[styles.formInput, { flex: 1, marginRight: 8 }]}
-                      testID="form-extra-3"
-                    />
-                    <View style={styles.counterContainer}>
-                      <Pressable
-                        onPress={() => {
-                          const cur = parseInt(bookingExtra3Qty, 10) || 0;
-                          if (cur > 0) setBookingExtra3Qty(String(cur - 1));
-                        }}
-                        style={styles.counterButton}
-                        testID="form-extra-3-dec"
-                      >
-                        <Text style={styles.counterButtonText}>-</Text>
-                      </Pressable>
+              {/* Rooms and Cots */}
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Rooms</Text>
+                  <TextInput
+                    keyboardType="numeric"
+                    style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
+                    value={String(addBookingForm.rooms)}
+                    onChangeText={(val) => updateField("rooms", Math.max(1, parseInt(val, 10) || 1))}
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Cots</Text>
+                  <TextInput
+                    keyboardType="numeric"
+                    style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
+                    value={String(addBookingForm.cots)}
+                    onChangeText={(val) => updateField("cots", Math.max(0, parseInt(val, 10) || 0))}
+                  />
+                </View>
+              </View>
+
+              {/* Diets Breakdown */}
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase", marginBottom: 6 }}>Diet per Guest</Text>
+                <View style={{ gap: 8 }}>
+                  {addBookingForm.dietBreakdown.map((diet, idx) => (
+                    <View key={idx} style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
                       <TextInput
-                        value={bookingExtra3Qty}
-                        onChangeText={(v) => {
-                          const digits = v.replace(/[^0-9]/g, "");
-                          setBookingExtra3Qty(digits || "0");
-                        }}
-                        keyboardType="numeric"
-                        style={styles.counterValueInput}
-                        testID="form-extra-3-qty"
+                        style={{ flex: 1.5, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 8, color: COLORS.navy, fontSize: 14 }}
+                        value={diet.type}
+                        placeholder="Type (e.g. Veg)"
+                        onChangeText={(val) => updateDiet(idx, "type", val)}
                       />
-                      <Pressable
-                        onPress={() => {
-                          const cur = parseInt(bookingExtra3Qty, 10) || 0;
-                          setBookingExtra3Qty(String(cur + 1));
-                        }}
-                        style={styles.counterButton}
-                        testID="form-extra-3-inc"
-                      >
-                        <Text style={styles.counterButtonText}>+</Text>
+                      <TextInput
+                        keyboardType="numeric"
+                        style={{ flex: 1, borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 8, color: COLORS.navy, fontSize: 14 }}
+                        value={String(diet.count)}
+                        onChangeText={(val) => updateDiet(idx, "count", Math.max(0, parseInt(val, 10) || 0))}
+                      />
+                      <Pressable onPress={() => removeDietRow(idx)} style={{ padding: 4 }}>
+                        <X size={16} color={COLORS.muted} />
                       </Pressable>
                     </View>
-                  </View>
+                  ))}
+                  <Pressable onPress={addDietRow} style={{ marginTop: 4 }}>
+                    <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.teal }}>+ Add diet type</Text>
+                  </Pressable>
                 </View>
-              )}
+              </View>
 
-              {/* Extra 4 Rate & Quantity (Overnight & Night Stay only) */}
-              {(activeAddBookingType === "overnight" || activeAddBookingType === "night") && (
-                <View style={styles.formField}>
-                  <Text style={styles.formLabel}>
-                    Extra Room Price Rate (₹) & Quantity
-                  </Text>
-                  <View style={styles.formRowWithCounter}>
-                    <TextInput
-                      value={bookingExtra4}
-                      onChangeText={(v) => {
-                        setBookingExtra4(formatInputWithCommas(v));
-                        if (v && (parseInt(bookingExtra4Qty, 10) || 0) === 0) {
-                          setBookingExtra4Qty("1");
-                        }
-                      }}
-                      keyboardType="numeric"
-                      placeholder="0"
-                      placeholderTextColor="#9aafbf"
-                      style={[styles.formInput, { flex: 1, marginRight: 8 }]}
-                      testID="form-extra-4"
-                    />
-                    <View style={styles.counterContainer}>
-                      <Pressable
-                        onPress={() => {
-                          const cur = parseInt(bookingExtra4Qty, 10) || 0;
-                          if (cur > 0) setBookingExtra4Qty(String(cur - 1));
-                        }}
-                        style={styles.counterButton}
-                        testID="form-extra-4-dec"
-                      >
-                        <Text style={styles.counterButtonText}>-</Text>
-                      </Pressable>
-                      <TextInput
-                        value={bookingExtra4Qty}
-                        onChangeText={(v) => {
-                          const digits = v.replace(/[^0-9]/g, "");
-                          setBookingExtra4Qty(digits || "0");
-                        }}
-                        keyboardType="numeric"
-                        style={styles.counterValueInput}
-                        testID="form-extra-4-qty"
-                      />
-                      <Pressable
-                        onPress={() => {
-                          const cur = parseInt(bookingExtra4Qty, 10) || 0;
-                          setBookingExtra4Qty(String(cur + 1));
-                        }}
-                        style={styles.counterButton}
-                        testID="form-extra-4-inc"
-                      >
-                        <Text style={styles.counterButtonText}>+</Text>
-                      </Pressable>
-                    </View>
-                  </View>
-                </View>
-              )}
-
-              {/* Booked Amount / Total Agreed Price */}
-              <View style={styles.formField}>
-                <Text style={styles.formLabel}>Actual Booked Amount / Sold Price (₹)</Text>
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Contact Phone</Text>
                 <TextInput
-                  value={bookingBookedAmount}
-                  onChangeText={(v) => {
-                    setBookingBookedAmount(formatInputWithCommas(v));
-                    setIsBookedAmountManuallyEdited(true);
-                  }}
+                  style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
+                  placeholder="+91 98765 43210"
+                  value={addBookingForm.phone}
+                  onChangeText={(val) => updateField("phone", val)}
+                />
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Special Requests</Text>
+                <TextInput
+                  style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
+                  placeholder="Anniversary cake, separate parking"
+                  value={addBookingForm.specialRequests}
+                  onChangeText={(val) => updateField("specialRequests", val)}
+                />
+              </View>
+
+              <View>
+                <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Booking Price (₹)</Text>
+                <TextInput
                   keyboardType="numeric"
-                  placeholder="0"
-                  placeholderTextColor="#9aafbf"
-                  style={[styles.formInput, { borderColor: "#1a7f7f", borderWidth: 1.5, fontSize: 15, fontWeight: "700" }]}
-                  testID="form-booked-amount"
+                  style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
+                  value={addBookingForm.price}
+                  onChangeText={(val) => updateField("price", val)}
                 />
               </View>
 
-              {/* Special Notes */}
-              <View style={styles.formField}>
-                <Text style={styles.formLabel}>Special Notes / Requests</Text>
-                <TextInput
-                  value={bookingSpecialNotes}
-                  onChangeText={setBookingSpecialNotes}
-                  placeholder="e.g. Vegetarian meals, anniversary setup"
-                  placeholderTextColor="#9aafbf"
-                  multiline={true}
-                  numberOfLines={3}
-                  style={[styles.formInput, styles.formInputMultiline]}
-                  testID="form-notes"
-                />
-              </View>
-
-              {/* Actions */}
-              <View style={styles.formActionsRow}>
-                <Pressable
-                  onPress={() => setIsBookingModalVisible(false)}
-                  style={styles.formCancelButton}
-                  testID="form-cancel-button"
-                >
-                  <Text style={styles.formCancelButtonText}>Cancel</Text>
-                </Pressable>
-                <Pressable
-                  onPress={() => {
-                    if (activeAddBookingType) {
-                      saveBooking(
-                        activeAddBookingType,
-                        bookingGuestName,
-                        bookingGuestCount,
-                        bookingSpecialNotes,
-                        bookingBasePrice,
-                        bookingExtra1,
-                        bookingExtra2,
-                        bookingExtra3,
-                        bookingExtra4,
-                        bookingBookedAmount,
-                        bookingExtra1Qty,
-                        bookingExtra2Qty,
-                        bookingExtra3Qty,
-                        bookingExtra4Qty,
-                      );
-                    }
-                    setIsBookingModalVisible(false);
-                  }}
-                  style={styles.formConfirmButton}
-                  testID="form-confirm-button"
-                >
-                  <Text style={styles.formConfirmButtonText}>
-                    {activeAddBookingType === "day"
-                      ? (selectedBooking.dayCruise ? "Save changes" : "Confirm Booking")
-                      : activeAddBookingType === "overnight"
-                        ? (selectedBooking.overnightCruise ? "Save changes" : "Confirm Booking")
-                        : (selectedBooking.nightCruise ? "Save changes" : "Confirm Booking")}
-                  </Text>
-                </Pressable>
-              </View>
+              {/* Submit button */}
+              <Pressable
+                onPress={handleConfirmDirectBooking}
+                style={{
+                  backgroundColor: COLORS.teal,
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  alignItems: "center",
+                  marginTop: 10,
+                  marginBottom: 30,
+                }}
+              >
+                <Text style={{ color: COLORS.white, fontSize: 14, fontWeight: "700" }}>
+                  {addBookingForm.editingBookingId ? "Save Changes" : "Confirm Booking"}
+                </Text>
+              </Pressable>
             </ScrollView>
           </View>
-        </KeyboardAvoidingView>
-      </Modal>
-    </KeyboardAvoidingView>
-    </GestureHandlerRootView>
-  );
-}
+        </Modal>
+      )}
 
-interface AvailabilityDetailPanelProps {
-  hidden: boolean;
-  selectedDates: number[];
-  selectedDate: SelectedDate | null;
-  showBulkView: boolean;
-  isDateClosedVal: boolean;
-  setIsDateClosedVal: (val: boolean) => void;
-  dayCruiseClosedVal: boolean;
-  setDayCruiseClosedVal: (val: boolean) => void;
-  overnightClosedVal: boolean;
-  setOvernightClosedVal: (val: boolean) => void;
-  nightClosedVal: boolean;
-  setNightClosedVal: (val: boolean) => void;
-  modalDay1BHClosed: boolean;
-  setModalDay1BHClosed: (val: boolean) => void;
-  modalOvernight1BHClosed: boolean;
-  setModalOvernight1BHClosed: (val: boolean) => void;
-  modalNight1BHClosed: boolean;
-  setModalNight1BHClosed: (val: boolean) => void;
-  configPricingState: any;
-  handleConfigPricingChange: (configName: string, field: string, value: any) => void;
-  modalDayCruisePrice: string;
-  setModalDayCruisePrice: (val: string) => void;
-  modalDayExtraGuest: string;
-  setModalDayExtraGuest: (val: string) => void;
-  modalDayExtraRoom: string;
-  setModalDayExtraRoom: (val: string) => void;
-  modalOvernightPrice: string;
-  setModalOvernightPrice: (val: string) => void;
-  modalOvernightExtraBed: string;
-  setModalOvernightExtraBed: (val: string) => void;
-  modalOvernightExtraCot: string;
-  setModalOvernightExtraCot: (val: string) => void;
-  modalOvernightExtraGuest: string;
-  setModalOvernightExtraGuest: (val: string) => void;
-  modalOvernightExtraRoom: string;
-  setModalOvernightExtraRoom: (val: string) => void;
-  modalNightPrice: string;
-  setModalNightPrice: (val: string) => void;
-  modalNightExtraBed: string;
-  setModalNightExtraBed: (val: string) => void;
-  modalNightExtraCot: string;
-  setModalNightExtraCot: (val: string) => void;
-  modalNightExtraGuest: string;
-  setModalNightExtraGuest: (val: string) => void;
-  modalNightExtraRoom: string;
-  setModalNightExtraRoom: (val: string) => void;
-  selectedBooking: any;
-  activeBoatDetails: any;
-  setSelectedBookingConfig: (val: string) => void;
-  setBookingGuestName: (val: string) => void;
-  setBookingGuestCount: (val: string) => void;
-  setBookingSpecialNotes: (val: string) => void;
-  setBookingBasePrice: (val: string) => void;
-  setBookingExtra1: (val: string) => void;
-  setBookingExtra2: (val: string) => void;
-  setBookingExtra3: (val: string) => void;
-  setBookingExtra4: (val: string) => void;
-  setBookingExtra1Qty: (val: string) => void;
-  setBookingExtra2Qty: (val: string) => void;
-  setBookingExtra3Qty: (val: string) => void;
-  setBookingExtra4Qty: (val: string) => void;
-  setBookingBookedAmount: (val: string) => void;
-  setIsBookedAmountManuallyEdited: (val: boolean) => void;
-  setActiveAddBookingType: (val: "day" | "overnight" | "night" | null) => void;
-  setIsBookingModalVisible: (val: boolean) => void;
-  removeBooking: (type: "day" | "overnight" | "night") => void;
-  openAddBookingModalForType: (type: "day" | "overnight" | "night") => void;
-  setIsSelectTypeModalVisible: (val: boolean) => void;
-  handleSaveChanges: () => void;
-}
+      {/* Modify Bookings List Modal Dialog */}
+      {modifyBookingListOpen && (
+        <Modal transparent visible={modifyBookingListOpen} animationType="slide">
+          <View style={{ flex: 1, backgroundColor: "rgba(15,23,42,0.5)", justifyContent: "flex-end" }}>
+            <View style={{ backgroundColor: COLORS.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 18, maxHeight: "85%" }}>
+              
+              {/* Header */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                <Text style={{ fontSize: 17, fontWeight: "800", color: COLORS.navy }}>
+                  {modifySelectedBookingId ? "Booking Details" : "Modify Booking"}
+                </Text>
+                <Pressable onPress={() => { setModifyBookingListOpen(false); setModifySelectedBookingId(null); setModifyDeleteConfirmOpen(false); }} style={{ padding: 4 }}>
+                  <X size={18} color={COLORS.muted} />
+                </Pressable>
+              </View>
 
-function AvailabilityDetailPanel({
-  hidden,
-  selectedDates,
-  selectedDate,
-  showBulkView,
-  isDateClosedVal,
-  setIsDateClosedVal,
-  dayCruiseClosedVal,
-  setDayCruiseClosedVal,
-  overnightClosedVal,
-  setOvernightClosedVal,
-  nightClosedVal,
-  setNightClosedVal,
-  modalDay1BHClosed,
-  setModalDay1BHClosed,
-  modalOvernight1BHClosed,
-  setModalOvernight1BHClosed,
-  modalNight1BHClosed,
-  setModalNight1BHClosed,
-  configPricingState,
-  handleConfigPricingChange,
-  modalDayCruisePrice,
-  setModalDayCruisePrice,
-  modalDayExtraGuest,
-  setModalDayExtraGuest,
-  modalDayExtraRoom,
-  setModalDayExtraRoom,
-  modalOvernightPrice,
-  setModalOvernightPrice,
-  modalOvernightExtraBed,
-  setModalOvernightExtraBed,
-  modalOvernightExtraCot,
-  setModalOvernightExtraCot,
-  modalOvernightExtraGuest,
-  setModalOvernightExtraGuest,
-  modalOvernightExtraRoom,
-  setModalOvernightExtraRoom,
-  modalNightPrice,
-  setModalNightPrice,
-  modalNightExtraBed,
-  setModalNightExtraBed,
-  modalNightExtraCot,
-  setModalNightExtraCot,
-  modalNightExtraGuest,
-  setModalNightExtraGuest,
-  modalNightExtraRoom,
-  setModalNightExtraRoom,
-  selectedBooking,
-  activeBoatDetails,
-  setSelectedBookingConfig,
-  setBookingGuestName,
-  setBookingGuestCount,
-  setBookingSpecialNotes,
-  setBookingBasePrice,
-  setBookingExtra1,
-  setBookingExtra2,
-  setBookingExtra3,
-  setBookingExtra4,
-  setBookingExtra1Qty,
-  setBookingExtra2Qty,
-  setBookingExtra3Qty,
-  setBookingExtra4Qty,
-  setBookingBookedAmount,
-  setIsBookedAmountManuallyEdited,
-  setActiveAddBookingType,
-  setIsBookingModalVisible,
-  removeBooking,
-  openAddBookingModalForType,
-  setIsSelectTypeModalVisible,
-  handleSaveChanges,
-}: AvailabilityDetailPanelProps) {
-  if (selectedDates.length === 0) return null;
+              {/* Show list of modifiable bookings */}
+              {!modifySelectedBookingId && (
+                <ScrollView contentContainerStyle={{ gap: 10, paddingBottom: 20 }}>
+                  {allBookings.filter(b => b.boat === boat && b.isDirect && b.status !== "cancelled" && b.status !== "deleted" && selectedDates.includes(b.date)).map((b) => (
+                    <Pressable
+                      key={b.id}
+                      onPress={() => setModifySelectedBookingId(b.id)}
+                      style={{
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        borderWidth: 1,
+                        borderColor: COLORS.border,
+                        borderRadius: 14,
+                        padding: 14,
+                      }}
+                    >
+                      <View>
+                        <Text style={{ fontWeight: "700", fontSize: 14, color: COLORS.navy }}>{b.guest}</Text>
+                        <Text style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }}>{b.type} · {b.rooms}BH</Text>
+                      </View>
+                      <ArrowRight size={16} color={COLORS.muted} />
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              )}
 
-  return (
-    <View style={[styles.card, { marginTop: 16, display: hidden ? 'none' : 'flex' }]} testID="details-card-container">
-      {/* Header: Date + actions */}
-      <View style={[styles.sheetDateHeader, { alignItems: 'center', justifyContent: 'space-between', flexDirection: 'row' }]}>
-        <Text style={styles.sheetDateText}>
-          {showBulkView
-            ? `Bulk Edit: ${selectedDates.length} ${selectedDates.length === 1 ? "date" : "dates"} selected`
-            : selectedDate
-              ? `${selectedDate.day} ${new Date(selectedDate.year, selectedDate.month, selectedDate.day).toLocaleString("en-US", { month: "short" })} ${selectedDate.year}`
-              : ""}
-        </Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }} testID="date-closed-toggle-container">
-          <Text style={{ fontSize: 13, fontWeight: '600', color: '#64748b' }}>Close Date</Text>
-          <Switch
-            value={isDateClosedVal}
-            onValueChange={(val) => {
-              setIsDateClosedVal(val);
-              if (val) {
-                setDayCruiseClosedVal(true);
-                setOvernightClosedVal(true);
-                setNightClosedVal(true);
-                setModalDay1BHClosed(true);
-                setModalOvernight1BHClosed(true);
-                setModalNight1BHClosed(true);
-              }
+              {/* Show selected booking details */}
+              {modifySelectedBookingId && (() => {
+                const selectedBooking = allBookings.find(b => b.id === modifySelectedBookingId);
+                if (!selectedBooking) return null;
+
+                if (modifyDeleteConfirmOpen) {
+                  return (
+                    <View style={{ paddingVertical: 20, alignItems: "center" }}>
+                      <Text style={{ fontSize: 14, fontWeight: "600", color: COLORS.navy, marginBottom: 20, textAlign: "center" }}>
+                        Do you confirm the cancellation of this booking?
+                      </Text>
+                      <View style={{ flexDirection: "row", gap: 10, width: "100%" }}>
+                        <Pressable
+                          onPress={() => setModifyDeleteConfirmOpen(false)}
+                          style={{ flex: 1, borderWidth: 1, borderColor: COLORS.border, borderRadius: 12, paddingVertical: 12, alignItems: "center" }}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy }}>No</Text>
+                        </Pressable>
+                        <Pressable
+                          onPress={() => handleConfirmDeleteBooking(selectedBooking.id)}
+                          style={{ flex: 1, backgroundColor: COLORS.red, borderRadius: 12, paddingVertical: 12, alignItems: "center" }}
+                        >
+                          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.white }}>Yes</Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  );
+                }
+
+                return (
+                  <View>
+                    {/* Back arrow */}
+                    <Pressable
+                      onPress={() => setModifySelectedBookingId(null)}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 14 }}
+                    >
+                      <ArrowLeft size={14} color={COLORS.teal} />
+                      <Text style={{ fontSize: 12, fontWeight: "600", color: COLORS.teal }}>Back to list</Text>
+                    </Pressable>
+
+                    {/* Details Card */}
+                    <View style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 16, padding: 16, marginBottom: 18, gap: 10 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <Text style={{ fontWeight: "700", fontSize: 15, color: COLORS.navy }}>{selectedBooking.guest}</Text>
+                        <View style={{ backgroundColor: COLORS.tealLight, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
+                          <Text style={{ fontSize: 10, fontWeight: "700", color: COLORS.navy, textTransform: "uppercase" }}>Direct</Text>
+                        </View>
+                      </View>
+
+                      {[
+                        ["Cruise Type", selectedBooking.type],
+                        ["Dates", formatDateRange(selectedBooking.date, selectedBooking.dateEnd)],
+                        ["Houseboat", selectedBooking.boat],
+                        ["Rooms", `${selectedBooking.rooms}BH`],
+                        ["Guests", `${selectedBooking.adults} adults · ${selectedBooking.children} children`],
+                        ["Phone", selectedBooking.phone],
+                        ["Price", `₹${selectedBooking.price?.toLocaleString("en-IN")}`],
+                      ].map(([lbl, val]) => (
+                        <View key={lbl} style={{ flexDirection: "row", justifyContent: "space-between", paddingTop: 6, borderTopWidth: 1, borderTopColor: COLORS.border }}>
+                          <Text style={{ fontSize: 12, color: COLORS.muted }}>{lbl}</Text>
+                          <Text style={{ fontSize: 12, fontWeight: "600", color: COLORS.navy, textAlign: "right" }}>{val}</Text>
+                        </View>
+                      ))}
+                    </View>
+
+                    {/* Actions */}
+                    <View style={{ flexDirection: "row", gap: 10, marginBottom: 20 }}>
+                      <Pressable
+                        onPress={() => {
+                          // Start Edit booking
+                          setAddBookingForm({
+                            editingBookingId: selectedBooking.id,
+                            originalBoat: selectedBooking.boat,
+                            source: selectedBooking.bookingSource || "Direct Booking",
+                            guest: selectedBooking.guest,
+                            boat: selectedBooking.boat,
+                            rooms: selectedBooking.rooms,
+                            type: selectedBooking.type === "Day cruise" ? "Day Cruise" : selectedBooking.type === "Overnight stay" ? "Overnight Stay" : "Night Stay",
+                            checkIn: toISODate(selectedBooking.date),
+                            checkOut: toISODate(selectedBooking.dateEnd),
+                            adults: selectedBooking.adults,
+                            children: selectedBooking.children,
+                            kids: selectedBooking.kids ?? 0,
+                            cots: selectedBooking.cots ?? 0,
+                            dietBreakdown: selectedBooking.dietBreakdown ?? [{ type: "Veg", count: 2 }],
+                            phone: selectedBooking.phone,
+                            specialRequests: (selectedBooking.specialRequests || []).join(", "),
+                            price: String(selectedBooking.price),
+                          });
+                          setModifyBookingListOpen(false);
+                          setAddBookingFormOpen(true);
+                        }}
+                        style={{
+                          flex: 1,
+                          borderWidth: 1,
+                          borderColor: COLORS.teal,
+                          borderRadius: 12,
+                          paddingVertical: 12,
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text style={{ color: COLORS.teal, fontSize: 13, fontWeight: "700" }}>Edit Booking</Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => setModifyDeleteConfirmOpen(true)}
+                        style={{
+                          flex: 1,
+                          backgroundColor: COLORS.red,
+                          borderRadius: 12,
+                          paddingVertical: 12,
+                          alignItems: "center",
+                        }}
+                      >
+                        <Text style={{ color: COLORS.white, fontSize: 13, fontWeight: "700" }}>Delete Booking</Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                );
+              })()}
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* Month dropdown list modal overlay */}
+      {availabilityMonthPickerOpen && (
+        <Modal transparent visible={availabilityMonthPickerOpen} animationType="none" onRequestClose={() => setAvailabilityMonthPickerOpen(false)}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setAvailabilityMonthPickerOpen(false)} />
+          <View
+            style={{
+              position: "absolute",
+              top: 154,
+              left: 50,
+              backgroundColor: COLORS.white,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              borderRadius: 16,
+              minWidth: 150,
+              maxHeight: 260,
+              shadowColor: COLORS.navy,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.12,
+              shadowRadius: 16,
+              elevation: 5,
+              paddingVertical: 6,
             }}
-            trackColor={{ false: '#cbd5e1', true: '#ef4444' }}
-            thumbColor={Platform.OS === 'ios' ? undefined : (isDateClosedVal ? '#dc2626' : '#f1f5f9')}
-            testID="date-closed-toggle"
-          />
-        </View>
-      </View>
-
-      {/* Info banner */}
-      <View style={styles.sheetInfoBanner}>
-        <Info size={16} color="#5a6d82" strokeWidth={2} />
-        <Text style={styles.sheetInfoText}>
-          Overnight stay cannot be booked alongside Day cruise or Night stay.
-        </Text>
-      </View>
-
-      {/* Day Cruise Card Container */}
-      <View style={{ display: (!showBulkView && selectedBooking.dayCruise) ? 'flex' : 'none' }}>
-        <View style={[styles.cruiseCardHeader, { justifyContent: 'space-between', width: '100%', flexDirection: 'row', alignItems: 'center', marginBottom: 8 }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <CruiseTypeIcon type="day" size="large" />
-            <Text style={styles.cruiseCardLabel}>Day cruise</Text>
+          >
+            <ScrollView>
+              {MONTHS.map((m, i) => {
+                const isBeforeFloor = availabilityMonth.year === MIN_YEAR && i < MIN_MONTH;
+                if (isBeforeFloor) return null;
+                const isCurrent = availabilityMonth.month === i;
+                return (
+                  <Pressable
+                    key={m}
+                    onPress={() => {
+                      setAvailabilityMonth((prev) => ({ ...prev, month: i }));
+                      setAvailabilityMonthPickerOpen(false);
+                      setAvailabilitySelection([]);
+                    }}
+                    style={{ paddingHorizontal: 16, paddingVertical: 9, backgroundColor: isCurrent ? COLORS.tealLight : "transparent" }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: isCurrent ? "700" : "500", color: isCurrent ? COLORS.teal : COLORS.navy }}>{m}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </View>
-        </View>
-        <CruiseCard
-          title={selectedBooking.dayCruiseGuestName || "Offline Booking"}
-          subtitle={selectedDate ? `${selectedDate.day} ${new Date(selectedDate.year, selectedDate.month, selectedDate.day).toLocaleString("en-US", { month: "short" })} ${selectedDate.year}` : ""}
-          cruiseType="day"
-          status="Booked"
-          config={selectedBooking.dayCruiseDetails || "No details provided"}
-          priceLine={`INR ${formatLocalPrice(selectedBooking.dayCruiseBookedAmount ?? selectedBooking.dayCruisePrice)}`}
-          actions={selectedBooking.dayCruiseIsOffline ? (
-            <View style={[styles.formActionsRow, { marginTop: 0 }]}>
-              <Pressable
-                onPress={() => {
-                  let guestName = selectedBooking.dayCruiseGuestName || "";
-                  let guestCount = selectedBooking.dayCruiseGuestCount || "";
-                  let notes = selectedBooking.dayCruiseNotes || "";
-                  if (!guestName && !guestCount && !notes && selectedBooking.dayCruiseDetails) {
-                    const parts = selectedBooking.dayCruiseDetails.split(" · ");
-                    guestName = parts[0] || "";
-                    if (parts[1] && parts[1].includes("guests")) {
-                      guestCount = parts[1].replace(/[^0-9]/g, "");
-                    }
-                    const notesPart = parts.find((p: string) => p.startsWith("Notes: "));
-                    if (notesPart) {
-                      notes = notesPart.replace("Notes: ", "");
-                    } else if (parts.length > 2) {
-                      notes = parts[2];
-                    }
-                  }
-                  setSelectedBookingConfig(selectedBooking.dayCruiseBookedConfig || "1BH");
-                  setBookingGuestName(guestName);
-                  setBookingGuestCount(guestCount);
-                  setBookingSpecialNotes(notes);
-                  setBookingBasePrice(selectedBooking.dayCruisePrice ? formatLocalNumber(selectedBooking.dayCruisePrice) : "");
-                  setBookingExtra1(selectedBooking.dayCruiseExtraGuest ? formatLocalNumber(selectedBooking.dayCruiseExtraGuest) : "");
-                  setBookingExtra2(selectedBooking.dayCruiseExtraRoom ? formatLocalNumber(selectedBooking.dayCruiseExtraRoom) : "");
-                  setBookingExtra3("");
-                  setBookingExtra4("");
-                  setBookingExtra1Qty(selectedBooking.dayCruiseExtraGuestQty !== undefined ? String(selectedBooking.dayCruiseExtraGuestQty) : "1");
-                  setBookingExtra2Qty(selectedBooking.dayCruiseExtraRoomQty !== undefined ? String(selectedBooking.dayCruiseExtraRoomQty) : "1");
-                  setBookingExtra3Qty("0");
-                  setBookingExtra4Qty("0");
-                  setBookingBookedAmount(selectedBooking.dayCruiseBookedAmount ? formatLocalNumber(selectedBooking.dayCruiseBookedAmount) : (selectedBooking.dayCruisePrice ? formatLocalNumber(selectedBooking.dayCruisePrice) : ""));
-                  setIsBookedAmountManuallyEdited(true);
-                  setActiveAddBookingType("day");
-                  setIsBookingModalVisible(true);
-                }}
-                style={styles.editBookingButton}
-                testID="edit-booking-button-day"
-              >
-                <Text style={styles.editBookingButtonText}>Edit</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => removeBooking("day")}
-                style={styles.removeBookingButton}
-                testID="remove-booking-button-day"
-              >
-                <Text style={styles.removeBookingButtonText}>Remove booking</Text>
-              </Pressable>
-            </View>
-          ) : null}
-        />
-        <View style={[styles.bookedPriceSummary, { marginTop: 4, marginBottom: 16 }]}>
-          <Text style={styles.bookedPriceItem}>
-            Base Rate: ₹{formatLocalPrice(selectedBooking.dayCruisePrice)}
-          </Text>
-          {selectedBooking.dayCruiseExtraGuest ? (
-            <Text style={styles.bookedPriceItem}>
-              Extra Guest (x{selectedBooking.dayCruiseExtraGuestQty || 1}): ₹
-              {formatLocalPrice(
-                selectedBooking.dayCruiseExtraGuest *
-                  (selectedBooking.dayCruiseExtraGuestQty || 1),
-              )}
-            </Text>
-          ) : null}
-          {selectedBooking.dayCruiseExtraRoom ? (
-            <Text style={styles.bookedPriceItem}>
-              Extra Room (x{selectedBooking.dayCruiseExtraRoomQty || 1}): ₹
-              {formatLocalPrice(
-                selectedBooking.dayCruiseExtraRoom *
-                  (selectedBooking.dayCruiseExtraRoomQty || 1),
-              )}
-            </Text>
-          ) : null}
-          <Text style={[styles.bookedPriceItem, styles.bookedAmountHighlight]}>
-            Booked For: ₹{formatLocalPrice(selectedBooking.dayCruiseBookedAmount ?? selectedBooking.dayCruisePrice)}
-          </Text>
-        </View>
-      </View>
+        </Modal>
+      )}
 
-      {/* Day Cruise Editor Container */}
-      <View style={[styles.cruiseCard, { display: (showBulkView || !selectedBooking.dayCruise) ? 'flex' : 'none' }]}>
-        <View style={[styles.cruiseCardHeader, { marginBottom: dayCruiseClosedVal ? 0 : 12 }]}>
-          <CruiseTypeIcon type="day" size="large" />
-          <Text style={styles.cruiseCardLabel}>Day cruise</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748b' }}>Close</Text>
-            <Switch
-              value={dayCruiseClosedVal}
-              onValueChange={(val) => {
-                setDayCruiseClosedVal(val);
-                if (val) {
-                  setModalDay1BHClosed(true);
-                }
-              }}
-              trackColor={{ false: '#cbd5e1', true: '#ef4444' }}
-              thumbColor={Platform.OS === 'ios' ? undefined : (dayCruiseClosedVal ? '#dc2626' : '#f1f5f9')}
-              testID="day-cruise-closed-toggle"
-            />
+      {/* Year dropdown list modal overlay */}
+      {availabilityYearPickerOpen && (
+        <Modal transparent visible={availabilityYearPickerOpen} animationType="none" onRequestClose={() => setAvailabilityYearPickerOpen(false)}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setAvailabilityYearPickerOpen(false)} />
+          <View
+            style={{
+              position: "absolute",
+              top: 154,
+              left: 180,
+              backgroundColor: COLORS.white,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              borderRadius: 16,
+              minWidth: 100,
+              maxHeight: 220,
+              shadowColor: COLORS.navy,
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.12,
+              shadowRadius: 16,
+              elevation: 5,
+              paddingVertical: 6,
+            }}
+          >
+            <ScrollView>
+              {Array.from({ length: 8 }, (_, idx) => MIN_YEAR + idx).map((year) => {
+                const isCurrent = availabilityMonth.year === year;
+                return (
+                  <Pressable
+                    key={year}
+                    onPress={() => {
+                      setAvailabilityMonth((prev) => {
+                        const month = year === MIN_YEAR && prev.month < MIN_MONTH ? MIN_MONTH : prev.month;
+                        return { month, year };
+                      });
+                      setAvailabilityYearPickerOpen(false);
+                      setAvailabilitySelection([]);
+                    }}
+                    style={{ paddingHorizontal: 16, paddingVertical: 9, backgroundColor: isCurrent ? COLORS.tealLight : "transparent" }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: isCurrent ? "700" : "500", color: isCurrent ? COLORS.teal : COLORS.navy }}>{year}</Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
           </View>
-        </View>
-
-        <View style={{ display: (!dayCruiseClosedVal) ? 'flex' : 'none', marginBottom: 0 }}>
-          {Array.from({ length: activeBoatDetails?.bedrooms || 2 }, (_, i) => `${i + 1}BH`).map((configName) => {
-            const is1BH = configName === "1BH";
-            const isConfigClosed = is1BH ? modalDay1BHClosed : (configPricingState[configName]?.dayCruiseClosed || false);
-            return (
-              <View key={configName} style={{ marginTop: is1BH ? 0 : 12, paddingTop: is1BH ? 0 : 12, borderTopWidth: is1BH ? 0 : 1, borderTopColor: "#e2e8f0" }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontWeight: '700', color: '#102949', fontSize: 15 }}>
-                    {configName}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '500', color: '#64748b' }}>Close</Text>
-                    <Switch
-                      value={isConfigClosed}
-                      onValueChange={(val) => {
-                        if (is1BH) {
-                          setModalDay1BHClosed(val);
-                        } else {
-                          handleConfigPricingChange(configName, "dayCruiseClosed", val);
-                        }
-                      }}
-                      trackColor={{ false: '#cbd5e1', true: '#ef4444' }}
-                      thumbColor={Platform.OS === 'ios' ? undefined : (isConfigClosed ? '#dc2626' : '#f1f5f9')}
-                      testID={`day-closed-toggle-${configName}`}
-                    />
-                  </View>
-                </View>
-                
-                <View style={{ display: !isConfigClosed ? 'flex' : 'none', gap: 12, marginTop: 12 }}>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Base price</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalDayCruisePrice : (configPricingState[configName]?.dayCruisePrice || "")}
-                        onChangeText={(v) => is1BH ? setModalDayCruisePrice(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "dayCruisePrice", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-price-input-day" : `modal-price-input-day-${configName}`}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Extra guest</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalDayExtraGuest : (configPricingState[configName]?.dayExtraGuest || "")}
-                        onChangeText={(v) => is1BH ? setModalDayExtraGuest(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "dayExtraGuest", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-day-extra-guest" : `modal-day-extra-guest-${configName}`}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Extra room</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalDayExtraRoom : (configPricingState[configName]?.dayExtraRoom || "")}
-                        onChangeText={(v) => is1BH ? setModalDayExtraRoom(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "dayExtraRoom", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-day-extra-room" : `modal-day-extra-room-${configName}`}
-                      />
-                    </View>
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Overnight Card Container */}
-      <View style={{ display: (!showBulkView && selectedBooking.overnightCruise) ? 'flex' : 'none' }}>
-        <View style={[styles.cruiseCardHeader, { justifyContent: 'space-between', width: '100%', flexDirection: 'row', alignItems: 'center', marginBottom: 8 }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <CruiseTypeIcon type="overnight" size="large" />
-            <Text style={styles.cruiseCardLabel}>Overnight</Text>
-          </View>
-        </View>
-        <CruiseCard
-          title={selectedBooking.overnightCruiseGuestName || "Offline Booking"}
-          subtitle={selectedDate ? `${selectedDate.day} ${new Date(selectedDate.year, selectedDate.month, selectedDate.day).toLocaleString("en-US", { month: "short" })} ${selectedDate.year}` : ""}
-          cruiseType="overnight"
-          status="Booked"
-          config={selectedBooking.overnightCruiseDetails || "No details provided"}
-          priceLine={`INR ${formatLocalPrice(selectedBooking.overnightCruiseBookedAmount ?? selectedBooking.overnightCruisePrice)}`}
-          actions={selectedBooking.overnightCruiseIsOffline ? (
-            <View style={[styles.formActionsRow, { marginTop: 0 }]}>
-              <Pressable
-                onPress={() => {
-                  let guestName = selectedBooking.overnightCruiseGuestName || "";
-                  let guestCount = selectedBooking.overnightCruiseGuestCount || "";
-                  let notes = selectedBooking.overnightCruiseNotes || "";
-                  if (!guestName && !guestCount && !notes && selectedBooking.overnightCruiseDetails) {
-                    const parts = selectedBooking.overnightCruiseDetails.split(" · ");
-                    guestName = parts[0] || "";
-                    if (parts[1] && parts[1].includes("guests")) {
-                      guestCount = parts[1].replace(/[^0-9]/g, "");
-                    }
-                    const notesPart = parts.find((p: string) => p.startsWith("Notes: "));
-                    if (notesPart) {
-                      notes = notesPart.replace("Notes: ", "");
-                    } else if (parts.length > 2) {
-                      notes = parts[2];
-                    }
-                  }
-                  setSelectedBookingConfig(selectedBooking.overnightCruiseBookedConfig || "1BH");
-                  setBookingGuestName(guestName);
-                  setBookingGuestCount(guestCount);
-                  setBookingSpecialNotes(notes);
-                  setBookingBasePrice(selectedBooking.overnightCruisePrice ? formatLocalNumber(selectedBooking.overnightCruisePrice) : "");
-                  setBookingExtra1(selectedBooking.overnightExtraBed ? formatLocalNumber(selectedBooking.overnightExtraBed) : "");
-                  setBookingExtra2(selectedBooking.overnightExtraCot ? formatLocalNumber(selectedBooking.overnightExtraCot) : "");
-                  setBookingExtra3(selectedBooking.overnightExtraGuest ? formatLocalNumber(selectedBooking.overnightExtraGuest) : "");
-                  setBookingExtra4(selectedBooking.overnightExtraRoom ? formatLocalNumber(selectedBooking.overnightExtraRoom) : "");
-                  setBookingExtra1Qty(selectedBooking.overnightExtraBedQty !== undefined ? String(selectedBooking.overnightExtraBedQty) : "1");
-                  setBookingExtra2Qty(selectedBooking.overnightExtraCotQty !== undefined ? String(selectedBooking.overnightExtraCotQty) : "1");
-                  setBookingExtra3Qty(selectedBooking.overnightExtraGuestQty !== undefined ? String(selectedBooking.overnightExtraGuestQty) : "1");
-                  setBookingExtra4Qty(selectedBooking.overnightExtraRoomQty !== undefined ? String(selectedBooking.overnightExtraRoomQty) : "1");
-                  setBookingBookedAmount(selectedBooking.overnightCruiseBookedAmount ? formatLocalNumber(selectedBooking.overnightCruiseBookedAmount) : (selectedBooking.overnightCruisePrice ? formatLocalNumber(selectedBooking.overnightCruisePrice) : ""));
-                  setIsBookedAmountManuallyEdited(true);
-                  setActiveAddBookingType("overnight");
-                  setIsBookingModalVisible(true);
-                }}
-                style={styles.editBookingButton}
-                testID="edit-booking-button-overnight"
-              >
-                <Text style={styles.editBookingButtonText}>Edit</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => removeBooking("overnight")}
-                style={styles.removeBookingButton}
-                testID="remove-booking-button-overnight"
-              >
-                <Text style={styles.removeBookingButtonText}>Remove booking</Text>
-              </Pressable>
-            </View>
-          ) : null}
-        />
-        <View style={[styles.bookedPriceSummary, { marginTop: 4, marginBottom: 16 }]}>
-          <Text style={styles.bookedPriceItem}>
-            Base Rate: ₹{formatLocalPrice(selectedBooking.overnightCruisePrice)}
-          </Text>
-          {selectedBooking.overnightExtraBed ? (
-            <Text style={styles.bookedPriceItem}>
-              Extra Bed (x{selectedBooking.overnightExtraBedQty || 1}): ₹
-              {formatLocalPrice(
-                selectedBooking.overnightExtraBed *
-                  (selectedBooking.overnightExtraBedQty || 1),
-              )}
-            </Text>
-          ) : null}
-          {selectedBooking.overnightExtraCot ? (
-            <Text style={styles.bookedPriceItem}>
-              Extra Cot (x{selectedBooking.overnightExtraCotQty || 1}): ₹
-              {formatLocalPrice(
-                selectedBooking.overnightExtraCot *
-                  (selectedBooking.overnightExtraCotQty || 1),
-              )}
-            </Text>
-          ) : null}
-          {selectedBooking.overnightExtraGuest ? (
-            <Text style={styles.bookedPriceItem}>
-              Extra Guest (x{selectedBooking.overnightExtraGuestQty || 1}): ₹
-              {formatLocalPrice(
-                selectedBooking.overnightExtraGuest *
-                  (selectedBooking.overnightExtraGuestQty || 1),
-              )}
-            </Text>
-          ) : null}
-          {selectedBooking.overnightExtraRoom ? (
-            <Text style={styles.bookedPriceItem}>
-              Extra Room (x{selectedBooking.overnightExtraRoomQty || 1}): ₹
-              {formatLocalPrice(
-                selectedBooking.overnightExtraRoom *
-                  (selectedBooking.overnightExtraRoomQty || 1),
-              )}
-            </Text>
-          ) : null}
-          <Text style={[styles.bookedPriceItem, styles.bookedAmountHighlight]}>
-            Booked For: ₹{formatLocalPrice(selectedBooking.overnightCruiseBookedAmount ?? selectedBooking.overnightCruisePrice)}
-          </Text>
-        </View>
-      </View>
-
-      {/* Overnight Editor Container */}
-      <View style={[styles.cruiseCard, { display: (showBulkView || !selectedBooking.overnightCruise) ? 'flex' : 'none' }]}>
-        <View style={[styles.cruiseCardHeader, { marginBottom: overnightClosedVal ? 0 : 12 }]}>
-          <CruiseTypeIcon type="overnight" size="large" />
-          <Text style={styles.cruiseCardLabel}>Overnight stay</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748b' }}>Close</Text>
-            <Switch
-              value={overnightClosedVal}
-              onValueChange={(val) => {
-                setOvernightClosedVal(val);
-                if (val) {
-                  setModalOvernight1BHClosed(true);
-                }
-              }}
-              trackColor={{ false: '#cbd5e1', true: '#ef4444' }}
-              thumbColor={Platform.OS === 'ios' ? undefined : (overnightClosedVal ? '#dc2626' : '#f1f5f9')}
-              testID="overnight-cruise-closed-toggle"
-            />
-          </View>
-        </View>
-
-        <View style={{ display: (!overnightClosedVal) ? 'flex' : 'none', marginBottom: 0 }}>
-          {Array.from({ length: activeBoatDetails?.bedrooms || 2 }, (_, i) => `${i + 1}BH`).map((configName) => {
-            const is1BH = configName === "1BH";
-            const isConfigClosed = is1BH ? modalOvernight1BHClosed : (configPricingState[configName]?.overnightCruiseClosed || false);
-            return (
-              <View key={configName} style={{ marginTop: is1BH ? 0 : 12, paddingTop: is1BH ? 0 : 12, borderTopWidth: is1BH ? 0 : 1, borderTopColor: "#e2e8f0" }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontWeight: '700', color: '#102949', fontSize: 15 }}>
-                    {configName}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '500', color: '#64748b' }}>Close</Text>
-                    <Switch
-                      value={isConfigClosed}
-                      onValueChange={(val) => {
-                        if (is1BH) {
-                          setModalOvernight1BHClosed(val);
-                        } else {
-                          handleConfigPricingChange(configName, "overnightCruiseClosed", val);
-                        }
-                      }}
-                      trackColor={{ false: '#cbd5e1', true: '#ef4444' }}
-                      thumbColor={Platform.OS === 'ios' ? undefined : (isConfigClosed ? '#dc2626' : '#f1f5f9')}
-                      testID={`overnight-closed-toggle-${configName}`}
-                    />
-                  </View>
-                </View>
-
-                <View style={{ display: !isConfigClosed ? 'flex' : 'none', gap: 12, marginTop: 12 }}>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Base price</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalOvernightPrice : (configPricingState[configName]?.overnightPrice || "")}
-                        onChangeText={(v) => is1BH ? setModalOvernightPrice(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "overnightPrice", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-price-input-overnight" : `modal-price-input-overnight-${configName}`}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Extra bed</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalOvernightExtraBed : (configPricingState[configName]?.overnightExtraBed || "")}
-                        onChangeText={(v) => is1BH ? setModalOvernightExtraBed(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "overnightExtraBed", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-overnight-extra-bed" : `modal-overnight-extra-bed-${configName}`}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Extra cot</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalOvernightExtraCot : (configPricingState[configName]?.overnightExtraCot || "")}
-                        onChangeText={(v) => is1BH ? setModalOvernightExtraCot(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "overnightExtraCot", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-overnight-extra-cot" : `modal-overnight-extra-cot-${configName}`}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Extra guest</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalOvernightExtraGuest : (configPricingState[configName]?.overnightExtraGuest || "")}
-                        onChangeText={(v) => is1BH ? setModalOvernightExtraGuest(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "overnightExtraGuest", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-overnight-extra-guest" : `modal-overnight-extra-guest-${configName}`}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Extra room</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalOvernightExtraRoom : (configPricingState[configName]?.overnightExtraRoom || "")}
-                        onChangeText={(v) => is1BH ? setModalOvernightExtraRoom(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "overnightExtraRoom", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-overnight-extra-room" : `modal-overnight-extra-room-${configName}`}
-                      />
-                    </View>
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Night Stay Card Container */}
-      <View style={{ display: (!showBulkView && selectedBooking.nightCruise) ? 'flex' : 'none' }}>
-        <View style={[styles.cruiseCardHeader, { justifyContent: 'space-between', width: '100%', flexDirection: 'row', alignItems: 'center', marginBottom: 8 }]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <CruiseTypeIcon type="night" size="large" />
-            <Text style={styles.cruiseCardLabel}>Night stay</Text>
-          </View>
-        </View>
-        <CruiseCard
-          title={selectedBooking.nightCruiseGuestName || "Offline Booking"}
-          subtitle={selectedDate ? `${selectedDate.day} ${new Date(selectedDate.year, selectedDate.month, selectedDate.day).toLocaleString("en-US", { month: "short" })} ${selectedDate.year}` : ""}
-          cruiseType="night"
-          status="Booked"
-          config={selectedBooking.nightCruiseDetails || "No details provided"}
-          priceLine={`INR ${formatLocalPrice(selectedBooking.nightCruiseBookedAmount ?? selectedBooking.nightCruisePrice)}`}
-          actions={selectedBooking.nightCruiseIsOffline ? (
-            <View style={[styles.formActionsRow, { marginTop: 0 }]}>
-              <Pressable
-                onPress={() => {
-                  let guestName = selectedBooking.nightCruiseGuestName || "";
-                  let guestCount = selectedBooking.nightCruiseGuestCount || "";
-                  let notes = selectedBooking.nightCruiseNotes || "";
-                  if (!guestName && !guestCount && !notes && selectedBooking.nightCruiseDetails) {
-                    const parts = selectedBooking.nightCruiseDetails.split(" · ");
-                    guestName = parts[0] || "";
-                    if (parts[1] && parts[1].includes("guests")) {
-                      guestCount = parts[1].replace(/[^0-9]/g, "");
-                    }
-                    const notesPart = parts.find((p: string) => p.startsWith("Notes: "));
-                    if (notesPart) {
-                      notes = notesPart.replace("Notes: ", "");
-                    } else if (parts.length > 2) {
-                      notes = parts[2];
-                    }
-                  }
-                  setSelectedBookingConfig(selectedBooking.nightCruiseBookedConfig || "1BH");
-                  setBookingGuestName(guestName);
-                  setBookingGuestCount(guestCount);
-                  setBookingSpecialNotes(notes);
-                  setBookingBasePrice(selectedBooking.nightCruisePrice ? formatLocalNumber(selectedBooking.nightCruisePrice) : "");
-                  setBookingExtra1(selectedBooking.nightExtraBed ? formatLocalNumber(selectedBooking.nightExtraBed) : "");
-                  setBookingExtra2(selectedBooking.nightExtraCot ? formatLocalNumber(selectedBooking.nightExtraCot) : "");
-                  setBookingExtra3(selectedBooking.nightCruiseExtraGuest ? formatLocalNumber(selectedBooking.nightCruiseExtraGuest) : "");
-                  setBookingExtra4(selectedBooking.nightCruiseExtraRoom ? formatLocalNumber(selectedBooking.nightCruiseExtraRoom) : "");
-                  setBookingExtra1Qty(selectedBooking.nightExtraBedQty !== undefined ? String(selectedBooking.nightExtraBedQty) : "1");
-                  setBookingExtra2Qty(selectedBooking.nightExtraCotQty !== undefined ? String(selectedBooking.nightExtraCotQty) : "1");
-                  setBookingExtra3Qty(selectedBooking.nightCruiseExtraGuestQty !== undefined ? String(selectedBooking.nightCruiseExtraGuestQty) : "1");
-                  setBookingExtra4Qty(selectedBooking.nightCruiseExtraRoomQty !== undefined ? String(selectedBooking.nightCruiseExtraRoomQty) : "1");
-                  setBookingBookedAmount(selectedBooking.nightCruiseBookedAmount ? formatLocalNumber(selectedBooking.nightCruiseBookedAmount) : (selectedBooking.nightCruisePrice ? formatLocalNumber(selectedBooking.nightCruisePrice) : ""));
-                  setIsBookedAmountManuallyEdited(true);
-                  setActiveAddBookingType("night");
-                  setIsBookingModalVisible(true);
-                }}
-                style={styles.editBookingButton}
-                testID="edit-booking-button-night"
-              >
-                <Text style={styles.editBookingButtonText}>Edit</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => removeBooking("night")}
-                style={styles.removeBookingButton}
-                testID="remove-booking-button-night"
-              >
-                <Text style={styles.removeBookingButtonText}>Remove booking</Text>
-              </Pressable>
-            </View>
-          ) : null}
-        />
-        <View style={[styles.bookedPriceSummary, { marginTop: 4, marginBottom: 16 }]}>
-          <Text style={styles.bookedPriceItem}>
-            Base Rate: ₹{formatLocalPrice(selectedBooking.nightCruisePrice)}
-          </Text>
-          {selectedBooking.nightExtraBed ? (
-            <Text style={styles.bookedPriceItem}>
-              Extra Bed (x{selectedBooking.nightExtraBedQty || 1}): ₹
-              {formatLocalPrice(
-                selectedBooking.nightExtraBed *
-                  (selectedBooking.nightExtraBedQty || 1),
-              )}
-            </Text>
-          ) : null}
-          {selectedBooking.nightExtraCot ? (
-            <Text style={styles.bookedPriceItem}>
-              Extra Cot (x{selectedBooking.nightExtraCotQty || 1}): ₹
-              {formatLocalPrice(
-                selectedBooking.nightExtraCot *
-                  (selectedBooking.nightExtraCotQty || 1),
-              )}
-            </Text>
-          ) : null}
-          {selectedBooking.nightCruiseExtraGuest ? (
-            <Text style={styles.bookedPriceItem}>
-              Extra Guest (x{selectedBooking.nightCruiseExtraGuestQty || 1}): ₹
-              {formatLocalPrice(
-                selectedBooking.nightCruiseExtraGuest *
-                  (selectedBooking.nightCruiseExtraGuestQty || 1),
-              )}
-            </Text>
-          ) : null}
-          {selectedBooking.nightCruiseExtraRoom ? (
-            <Text style={styles.bookedPriceItem}>
-              Extra Room (x{selectedBooking.nightCruiseExtraRoomQty || 1}): ₹
-              {formatLocalPrice(
-                selectedBooking.nightCruiseExtraRoom *
-                  (selectedBooking.nightCruiseExtraRoomQty || 1),
-              )}
-            </Text>
-          ) : null}
-          <Text style={[styles.bookedPriceItem, styles.bookedAmountHighlight]}>
-            Booked For: ₹{formatLocalPrice(selectedBooking.nightCruiseBookedAmount ?? selectedBooking.nightCruisePrice)}
-          </Text>
-        </View>
-      </View>
-
-      {/* Night Stay Editor Container */}
-      <View style={[styles.cruiseCard, { display: (showBulkView || !selectedBooking.nightCruise) ? 'flex' : 'none' }]}>
-        <View style={[styles.cruiseCardHeader, { marginBottom: nightClosedVal ? 0 : 12 }]}>
-          <CruiseTypeIcon type="night" size="large" />
-          <Text style={styles.cruiseCardLabel}>Night stay</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontSize: 12, fontWeight: '600', color: '#64748b' }}>Close</Text>
-            <Switch
-              value={nightClosedVal}
-              onValueChange={(val) => {
-                setNightClosedVal(val);
-                if (val) {
-                  setModalNight1BHClosed(true);
-                }
-              }}
-              trackColor={{ false: '#cbd5e1', true: '#ef4444' }}
-              thumbColor={Platform.OS === 'ios' ? undefined : (nightClosedVal ? '#dc2626' : '#f1f5f9')}
-              testID="night-cruise-closed-toggle"
-            />
-          </View>
-        </View>
-
-        <View style={{ display: (!nightClosedVal) ? 'flex' : 'none', marginBottom: 0 }}>
-          {Array.from({ length: activeBoatDetails?.bedrooms || 2 }, (_, i) => `${i + 1}BH`).map((configName) => {
-            const is1BH = configName === "1BH";
-            const isConfigClosed = is1BH ? modalNight1BHClosed : (configPricingState[configName]?.nightCruiseClosed || false);
-            return (
-              <View key={configName} style={{ marginTop: is1BH ? 0 : 12, paddingTop: is1BH ? 0 : 12, borderTopWidth: is1BH ? 0 : 1, borderTopColor: "#e2e8f0" }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Text style={{ fontWeight: '700', color: '#102949', fontSize: 15 }}>
-                    {configName}
-                  </Text>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Text style={{ fontSize: 12, fontWeight: '500', color: '#64748b' }}>Close</Text>
-                    <Switch
-                      value={isConfigClosed}
-                      onValueChange={(val) => {
-                        if (is1BH) {
-                          setModalNight1BHClosed(val);
-                        } else {
-                          handleConfigPricingChange(configName, "nightCruiseClosed", val);
-                        }
-                      }}
-                      trackColor={{ false: '#cbd5e1', true: '#ef4444' }}
-                      thumbColor={Platform.OS === 'ios' ? undefined : (isConfigClosed ? '#dc2626' : '#f1f5f9')}
-                      testID={`night-closed-toggle-${configName}`}
-                    />
-                  </View>
-                </View>
-
-                <View style={{ display: !isConfigClosed ? 'flex' : 'none', gap: 12, marginTop: 12 }}>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Base price</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalNightPrice : (configPricingState[configName]?.nightPrice || "")}
-                        onChangeText={(v) => is1BH ? setModalNightPrice(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "nightPrice", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-price-input-night" : `modal-price-input-night-${configName}`}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Extra bed</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalNightExtraBed : (configPricingState[configName]?.nightExtraBed || "")}
-                        onChangeText={(v) => is1BH ? setModalNightExtraBed(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "nightExtraBed", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-night-extra-bed" : `modal-night-extra-bed-${configName}`}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Extra cot</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalNightExtraCot : (configPricingState[configName]?.nightExtraCot || "")}
-                        onChangeText={(v) => is1BH ? setModalNightExtraCot(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "nightExtraCot", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-night-extra-cot" : `modal-night-extra-cot-${configName}`}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Extra guest</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalNightExtraGuest : (configPricingState[configName]?.nightExtraGuest || "")}
-                        onChangeText={(v) => is1BH ? setModalNightExtraGuest(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "nightExtraGuest", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-night-extra-guest" : `modal-night-extra-guest-${configName}`}
-                      />
-                    </View>
-                  </View>
-                  <View style={styles.priceFieldContainer}>
-                    <Text style={styles.priceFieldLabel}>Extra room</Text>
-                    <View style={styles.priceFieldInput}>
-                      <Text style={styles.priceFieldRupee}>₹</Text>
-                      <TextInput
-                        value={is1BH ? modalNightExtraRoom : (configPricingState[configName]?.nightExtraRoom || "")}
-                        onChangeText={(v) => is1BH ? setModalNightExtraRoom(formatInputWithCommas(v)) : handleConfigPricingChange(configName, "nightExtraRoom", v)}
-                        keyboardType="numeric"
-                        placeholder="0"
-                        placeholderTextColor="#9aafbf"
-                        style={styles.priceFieldTextInput}
-                        testID={is1BH ? "modal-night-extra-room" : `modal-night-extra-room-${configName}`}
-                      />
-                    </View>
-                  </View>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* Common Add Booking Button Container */}
-      <View style={{ display: (selectedDates.length === 1 && !isDateClosedVal && !selectedBooking.overnightCruise && !(selectedBooking.dayCruise && selectedBooking.nightCruise)) ? 'flex' : 'none', marginBottom: 12 }}>
-        <Pressable
-          onPress={() => {
-            const isDayAvailable = !selectedBooking.dayCruise && !dayCruiseClosedVal;
-            const isOvernightAvailable = !selectedBooking.overnightCruise && !selectedBooking.dayCruise && !selectedBooking.nightCruise && !overnightClosedVal;
-            const isNightAvailable = !selectedBooking.nightCruise && !nightClosedVal;
-
-            const availableTypes: Array<"day" | "overnight" | "night"> = [];
-            if (isDayAvailable) availableTypes.push("day");
-            if (isOvernightAvailable) availableTypes.push("overnight");
-            if (isNightAvailable) availableTypes.push("night");
-
-            if (availableTypes.length === 1) {
-              openAddBookingModalForType(availableTypes[0]);
-            } else if (availableTypes.length > 1) {
-              setIsSelectTypeModalVisible(true);
-            }
-          }}
-          style={[styles.saveChangesButton, { backgroundColor: '#1a7f7f', marginBottom: 0 }]}
-          testID="common-add-booking-button"
-        >
-          <Text style={styles.saveChangesButtonText}>+ Add Booking</Text>
-        </Pressable>
-      </View>
-
-      {/* Save Changes Button */}
-      <Pressable
-        onPress={handleSaveChanges}
-        style={styles.saveChangesButton}
-        testID="modal-save-changes-button"
-      >
-        <Text style={styles.saveChangesButtonText}>Save changes</Text>
-      </Pressable>
+        </Modal>
+      )}
     </View>
   );
 }
