@@ -16,8 +16,11 @@ import UserProfileScreen from "../screens/UserProfileScreen";
 import LoginScreen from "../screens/LoginScreen";
 import NotificationsScreen from "../screens/NotificationsScreen";
 import MoreStack from "./MoreStack";
+import BookingDetailScreen from "../screens/BookingDetailScreen";
+import RequestDetailScreen from "../screens/RequestDetailScreen";
 import { useAuth } from "../context/AuthContext";
 import type { MainTabParamList, RootStackParamList } from "./types";
+import { DISABLE_ANIMATIONS } from "../config/animations";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Root = createNativeStackNavigator<RootStackParamList>();
@@ -30,7 +33,7 @@ function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        animation: "shift",
+        animation: DISABLE_ANIMATIONS ? "none" : "shift",
         headerShown: false,
         tabBarStyle: {
           backgroundColor: "#faf6f1",
@@ -97,7 +100,7 @@ export default function AppNavigator() {
   const { isAuthenticated } = useAuth();
 
   return (
-    <Root.Navigator screenOptions={{ headerShown: false }}>
+    <Root.Navigator screenOptions={{ headerShown: false, animation: DISABLE_ANIMATIONS ? "none" : undefined }}>
       {!isAuthenticated ? (
         <Root.Screen name="Login" component={LoginScreen} />
       ) : (
@@ -135,6 +138,24 @@ export default function AppNavigator() {
               headerStyle: { backgroundColor: "#faf6f1" },
               headerTintColor: "#0f284e",
               headerTitleStyle: { fontWeight: "700" },
+              contentStyle: { backgroundColor: "#f5f1ed" },
+            }}
+          />
+          <Root.Screen
+            name="BookingDetail"
+            component={BookingDetailScreen}
+            options={{
+              title: "Booking details",
+              headerShown: false,
+              contentStyle: { backgroundColor: "#f5f1ed" },
+            }}
+          />
+          <Root.Screen
+            name="RequestDetail"
+            component={RequestDetailScreen}
+            options={{
+              title: "Request details",
+              headerShown: false,
               contentStyle: { backgroundColor: "#f5f1ed" },
             }}
           />

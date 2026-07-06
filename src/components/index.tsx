@@ -1,26 +1,13 @@
-import { FontAwesome5 } from "@expo/vector-icons";
+import React from "react";
 import { Pressable, Text, View } from "react-native";
 import { ChevronLeft } from "lucide-react-native";
 import styles from "../styles";
 
-type Request = {
-  name: string;
-  dateLine: string;
-  status: "Date locked" | "Confirmed" | "Pending" | "Rejected";
-  config: string;
-};
-
-export const requestStatusStyle: Record<
-  Request["status"],
-  { bg: string; text: string; border: string }
-> = {
-  "Date locked": { bg: "#fff1d6", text: "#8f6300", border: "#f5d392" },
-  Confirmed: { bg: "#dcfce8", text: "#0f7a4f", border: "#9dd8bc" },
-  Pending: { bg: "#e6f5f4", text: "#1a7f7f", border: "#9dd8bc" },
-  Rejected: { bg: "#ffe5e8", text: "#9f1836", border: "#f3b2c0" },
-};
-
-export type { Request };
+export { default as StatusPill } from "./StatusPill";
+export { default as CruiseTypeIcon } from "./CruiseTypeIcon";
+export { default as CruiseCard } from "./CruiseCard";
+export type { Request } from "./StatusPill";
+export { requestStatusStyle } from "./StatusPill";
 
 export function PageHeader({
   title,
@@ -115,42 +102,4 @@ export function OptionSelect({
       </Text>
     </Pressable>
   );
-}
-
-export function StatusPill({ status }: { status: Request["status"] }) {
-  return (
-    <View
-      style={[
-        styles.statusPill,
-        {
-          backgroundColor: requestStatusStyle[status].bg,
-          borderColor: requestStatusStyle[status].border,
-        },
-      ]}
-    >
-      <Text
-        style={[styles.statusPillText, { color: requestStatusStyle[status].text }]}
-      >
-        {status}
-      </Text>
-    </View>
-  );
-}
-
-export function CruiseTypeIcon({
-  type,
-  size = "compact",
-}: {
-  type: "day" | "overnight" | "night";
-  size?: "compact" | "regular";
-}) {
-  const iconSize = size === "regular" ? 12 : 7;
-
-  if (type === "day") {
-    return <FontAwesome5 name="sun" size={iconSize} color={"#1a7f7f"} solid />;
-  }
-  if (type === "overnight") {
-    return <FontAwesome5 name="bed" size={iconSize} color={"#1a7f7f"} solid />;
-  }
-  return <FontAwesome5 name="moon" size={iconSize} color={"#1a7f7f"} solid />;
 }

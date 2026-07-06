@@ -9,17 +9,29 @@
       "resizeMode": "contain",
       "backgroundColor": "#faf6f1"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#faf6f1"
-      }
+      },
+      "package": "com.favasme08.sailceptadmin"
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "plugins": [
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "17235c82-c1b9-4770-97b3-7426b7e0e213"
+      }
+    },
+    "owner": "favasme08"
   }
 }

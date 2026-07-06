@@ -44,8 +44,10 @@ export function BoatProvider({ children }: { children: ReactNode }) {
     const timer = setTimeout(() => {
       loadBoats();
     }, 0);
-    return () => clearTimeout(timer);
-  }, [loadBoats]);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, []);
 
   return (
     <BoatContext.Provider

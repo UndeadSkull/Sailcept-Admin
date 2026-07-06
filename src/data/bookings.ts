@@ -22,11 +22,34 @@ export type BookingRequest = {
   actedOn?: string;
 };
 
+export type ConfigPricing = {
+  dayCruisePrice?: number;
+  dayCruiseExtraGuest?: number;
+  dayCruiseExtraRoom?: number;
+  dayCruiseClosed?: boolean;
+  overnightCruisePrice?: number;
+  overnightExtraBed?: number;
+  overnightExtraCot?: number;
+  overnightExtraGuest?: number;
+  overnightExtraRoom?: number;
+  overnightCruiseClosed?: boolean;
+  nightCruisePrice?: number;
+  nightCruiseExtraGuest?: number;
+  nightCruiseExtraRoom?: number;
+  nightExtraBed?: number;
+  nightExtraCot?: number;
+  nightCruiseClosed?: boolean;
+};
+
 export type DayBooking = {
   dayCruise: boolean;
   overnightCruise: boolean;
   nightCruise: boolean;
   details: string;
+  isClosed?: boolean;
+  dayCruiseClosed?: boolean;
+  overnightCruiseClosed?: boolean;
+  nightCruiseClosed?: boolean;
   dayCruiseDetails?: string;
   overnightCruiseDetails?: string;
   nightCruiseDetails?: string;
@@ -39,6 +62,9 @@ export type DayBooking = {
   nightCruiseGuestName?: string;
   nightCruiseGuestCount?: string;
   nightCruiseNotes?: string;
+  dayCruiseIsOffline?: boolean;
+  overnightCruiseIsOffline?: boolean;
+  nightCruiseIsOffline?: boolean;
   dayCruisePrice?: number;
   dayCruiseExtraGuest?: number;
   dayCruiseExtraRoom?: number;
@@ -47,14 +73,26 @@ export type DayBooking = {
   overnightCruisePrice?: number;
   overnightExtraBed?: number;
   overnightExtraCot?: number;
+  overnightExtraGuest?: number;
+  overnightExtraRoom?: number;
   overnightExtraBedQty?: number;
   overnightExtraCotQty?: number;
+  overnightExtraGuestQty?: number;
+  overnightExtraRoomQty?: number;
   nightCruisePrice?: number;
   nightCruiseExtraGuest?: number;
   nightCruiseExtraRoom?: number;
+  nightExtraBed?: number;
+  nightExtraCot?: number;
   nightCruiseExtraGuestQty?: number;
   nightCruiseExtraRoomQty?: number;
+  nightExtraBedQty?: number;
+  nightExtraCotQty?: number;
   dayCruiseBookedAmount?: number;
   overnightCruiseBookedAmount?: number;
   nightCruiseBookedAmount?: number;
+  dayCruiseBookedConfig?: string;
+  overnightCruiseBookedConfig?: string;
+  nightCruiseBookedConfig?: string;
+  configs?: Record<string, ConfigPricing>;
 };

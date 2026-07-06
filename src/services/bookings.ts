@@ -58,6 +58,81 @@ const mockBookings: BookingRecord[] = [
     ],
     notes: "Local experience focus. Wants traditional Kerala style lunch.",
   },
+  {
+    id: "booking-lucas-martin",
+    guestName: "Lucas Martin",
+    boatId: 1,
+    boatName: "Vembanad Crest",
+    bookingId: "#SC-2025-0043",
+    details: [
+      ["Cruise type", "Night stay"],
+      ["Date & time", `22 ${currentMonthStr} ${currentYear} · 5:00 PM - 10:00 PM`],
+      ["Configuration", "Premium · Shared · 6 guests"],
+      ["Total agreed price", "INR 14,500"],
+      ["Inclusions", "Dinner buffet, music entertainment, soft drinks"],
+    ],
+    notes: "Shared cruise booking. Check with lead operator for compliance.",
+  },
+  {
+    id: "booking-mason-reed",
+    guestName: "Mason Reed",
+    boatId: 2,
+    boatName: "Backwater Pearl",
+    bookingId: "#SC-2025-0051",
+    details: [
+      ["Cruise type", "Day cruise"],
+      ["Date & time", `12 ${currentMonthStr} ${currentYear} · 11:00 AM - 5:00 PM`],
+      ["Configuration", "Standard · Private · 3 adults"],
+      ["Total agreed price", "INR 10,800"],
+      ["Inclusions", "Basic meals, sound system access"],
+    ],
+    notes: "Standard package booking.",
+  },
+  {
+    id: "booking-ava-stone",
+    guestName: "Ava Stone",
+    boatId: 2,
+    boatName: "Backwater Pearl",
+    bookingId: "#SC-2025-0052",
+    details: [
+      ["Cruise type", "Night stay"],
+      ["Date & time", `20 ${currentMonthStr} ${currentYear} · 5:00 PM - 10:00 PM`],
+      ["Configuration", "Premium · Shared · 5 guests"],
+      ["Total agreed price", "INR 12,000"],
+      ["Inclusions", "Dinner, deck lights setup"],
+    ],
+    notes: "Shared night stay.",
+  },
+  {
+    id: "booking-noah-patel",
+    guestName: "Noah Patel",
+    boatId: 3,
+    boatName: "Kerala Dream",
+    bookingId: "#SC-2025-0060",
+    details: [
+      ["Cruise type", "Overnight stay"],
+      ["Date & time", `16 ${currentMonthStr} ${currentYear} · 3:00 PM - Next day 11:00 AM`],
+      ["Configuration", "Luxury · Private · 4 adults"],
+      ["Total agreed price", "INR 28,000"],
+      ["Inclusions", "Premium meals, premium rooms, sundeck access"],
+    ],
+    notes: "Luxury private stay.",
+  },
+  {
+    id: "booking-liam-carter",
+    guestName: "Liam Carter",
+    boatId: 3,
+    boatName: "Kerala Dream",
+    bookingId: "#SC-2025-0061",
+    details: [
+      ["Cruise type", "Day cruise"],
+      ["Date & time", `23 ${currentMonthStr} ${currentYear} · 11:00 AM - 5:00 PM`],
+      ["Configuration", "Premium · Private · 2 adults"],
+      ["Total agreed price", "INR 12,500"],
+      ["Inclusions", "Meals, welcome drinks, soft drinks"],
+    ],
+    notes: "Premium day outing.",
+  },
 ];
 
 const mockRequests: BookingRequest[] = [
@@ -114,6 +189,85 @@ function getDateKey(year: number, month: number, day: number): string {
 
 function normalizeBooking(booking: DayBooking): DayBooking {
   const normalized = { ...booking };
+  normalized.isClosed = normalized.isClosed || false;
+  normalized.dayCruiseClosed = normalized.dayCruiseClosed || false;
+  normalized.overnightCruiseClosed = normalized.overnightCruiseClosed || false;
+  normalized.nightCruiseClosed = normalized.nightCruiseClosed || false;
+  
+  if (!normalized.configs) {
+    normalized.configs = {};
+  }
+  
+  const configNames = ["1BH", "2BH", "3BH", "4BH"];
+  configNames.forEach((configName, index) => {
+    if (!normalized.configs![configName]) {
+      const factor = 1 + index * 0.2; // 1BH = 1.0x, 2BH = 1.2x, 3BH = 1.4x, 4BH = 1.6x
+      
+      const dayBase = normalized.dayCruisePrice || 12000;
+      const overnightBase = normalized.overnightCruisePrice || 22000;
+      const nightBase = normalized.nightCruisePrice || 14000;
+      
+      normalized.configs![configName] = {
+        dayCruisePrice: Math.round(dayBase * factor),
+        dayCruiseExtraGuest: normalized.dayCruiseExtraGuest ?? 1500,
+        dayCruiseExtraRoom: normalized.dayCruiseExtraRoom ?? 2500,
+        dayCruiseClosed: normalized.dayCruiseClosed || false,
+        
+        overnightCruisePrice: Math.round(overnightBase * factor),
+        overnightExtraBed: normalized.overnightExtraBed ?? 2000,
+        overnightExtraCot: normalized.overnightExtraCot ?? 1500,
+        overnightExtraGuest: normalized.overnightExtraGuest ?? 1800,
+        overnightExtraRoom: normalized.overnightExtraRoom ?? 3000,
+        overnightCruiseClosed: normalized.overnightCruiseClosed || false,
+        
+        nightCruisePrice: Math.round(nightBase * factor),
+        nightCruiseExtraGuest: normalized.nightCruiseExtraGuest ?? 1500,
+        nightCruiseExtraRoom: normalized.nightCruiseExtraRoom ?? 2500,
+        nightExtraBed: normalized.nightExtraBed ?? 2000,
+        nightExtraCot: normalized.nightExtraCot ?? 1500,
+        nightCruiseClosed: normalized.nightCruiseClosed || false,
+      };
+    } else {
+      // Ensure closed fields are initialized if config exists but they are missing
+      const c = normalized.configs![configName];
+      c.dayCruiseClosed = c.dayCruiseClosed || false;
+      c.overnightCruiseClosed = c.overnightCruiseClosed || false;
+      c.nightCruiseClosed = c.nightCruiseClosed || false;
+    }
+  });
+
+  // Default booked configs to 1BH if not set but booked is true
+  if (normalized.dayCruise && !normalized.dayCruiseBookedConfig) {
+    normalized.dayCruiseBookedConfig = "1BH";
+  }
+  if (normalized.overnightCruise && !normalized.overnightCruiseBookedConfig) {
+    normalized.overnightCruiseBookedConfig = "1BH";
+  }
+  if (normalized.nightCruise && !normalized.nightCruiseBookedConfig) {
+    normalized.nightCruiseBookedConfig = "1BH";
+  }
+
+  // Sync 1BH config values to top-level fields for backward compatibility
+  const c1 = normalized.configs!["1BH"];
+  if (c1) {
+    normalized.dayCruisePrice = c1.dayCruisePrice;
+    normalized.dayCruiseExtraGuest = c1.dayCruiseExtraGuest;
+    normalized.dayCruiseExtraRoom = c1.dayCruiseExtraRoom;
+    normalized.dayCruiseClosed = c1.dayCruiseClosed;
+    normalized.overnightCruisePrice = c1.overnightCruisePrice;
+    normalized.overnightExtraBed = c1.overnightExtraBed;
+    normalized.overnightExtraCot = c1.overnightExtraCot;
+    normalized.overnightExtraGuest = c1.overnightExtraGuest;
+    normalized.overnightExtraRoom = c1.overnightExtraRoom;
+    normalized.overnightCruiseClosed = c1.overnightCruiseClosed;
+    normalized.nightCruisePrice = c1.nightCruisePrice;
+    normalized.nightCruiseExtraGuest = c1.nightCruiseExtraGuest;
+    normalized.nightCruiseExtraRoom = c1.nightCruiseExtraRoom;
+    normalized.nightExtraBed = c1.nightExtraBed;
+    normalized.nightExtraCot = c1.nightExtraCot;
+    normalized.nightCruiseClosed = c1.nightCruiseClosed;
+  }
+
   if (normalized.overnightCruise && normalized.nightCruise) {
     normalized.nightCruise = false;
   }
@@ -149,11 +303,23 @@ function normalizeBooking(booking: DayBooking): DayBooking {
   if (normalized.overnightExtraCot !== undefined && normalized.overnightExtraCotQty === undefined) {
     normalized.overnightExtraCotQty = 1;
   }
+  if (normalized.overnightExtraGuest !== undefined && normalized.overnightExtraGuestQty === undefined) {
+    normalized.overnightExtraGuestQty = 1;
+  }
+  if (normalized.overnightExtraRoom !== undefined && normalized.overnightExtraRoomQty === undefined) {
+    normalized.overnightExtraRoomQty = 1;
+  }
   if (normalized.nightCruiseExtraGuest !== undefined && normalized.nightCruiseExtraGuestQty === undefined) {
     normalized.nightCruiseExtraGuestQty = 1;
   }
   if (normalized.nightCruiseExtraRoom !== undefined && normalized.nightCruiseExtraRoomQty === undefined) {
     normalized.nightCruiseExtraRoomQty = 1;
+  }
+  if (normalized.nightExtraBed !== undefined && normalized.nightExtraBedQty === undefined) {
+    normalized.nightExtraBedQty = 1;
+  }
+  if (normalized.nightExtraCot !== undefined && normalized.nightExtraCotQty === undefined) {
+    normalized.nightExtraCotQty = 1;
   }
   return normalized;
 }
@@ -324,3 +490,28 @@ export async function saveAllCalendarBookings(
   mockCalendarBookings[boatId] = bookings;
   return { data: null, error: null };
 }
+
+export async function fetchBookingDetail(bookingId: string): Promise<ApiResponse<BookingRecord>> {
+  await delay(400);
+  const found = mockBookings.find((b) => b.id === bookingId);
+  if (found) {
+    return { data: found, error: null };
+  }
+  return {
+    data: null,
+    error: { message: `Booking not found for ID: ${bookingId}`, code: "NOT_FOUND" },
+  };
+}
+
+export async function fetchRequestDetail(requestName: string, boatId: number): Promise<ApiResponse<BookingRequest>> {
+  await delay(400);
+  const found = mockRequests.find((r) => r.name === requestName && r.boatId === boatId);
+  if (found) {
+    return { data: found, error: null };
+  }
+  return {
+    data: null,
+    error: { message: `Request not found for ${requestName}`, code: "NOT_FOUND" },
+  };
+}
+

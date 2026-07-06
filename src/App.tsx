@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { NavigationContainer, useNavigationContainerRef } from "@react-navigation/native";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
@@ -13,13 +13,7 @@ export default function App() {
   const navigationRef = useNavigationContainerRef();
   const [currentRouteName, setCurrentRouteName] = useState<string | null>(null);
 
-  useEffect(() => {
-    const unsubscribe = navigationRef.addListener("state", () => {
-      const route = navigationRef.getCurrentRoute() as { name: string } | undefined;
-      setCurrentRouteName(route ? route.name : null);
-    });
-    return unsubscribe;
-  }, [navigationRef]);
+
 
   return (
     <AuthProvider>
@@ -27,7 +21,13 @@ export default function App() {
         <NotificationProvider>
           <SafeAreaProvider>
             <SafeAreaView style={styles.safeArea}>
-              <NavigationContainer ref={navigationRef}>
+              <NavigationContainer
+                ref={navigationRef}
+                onStateChange={() => {
+                  const route = navigationRef.getCurrentRoute() as { name: string } | undefined;
+                  setCurrentRouteName(route ? route.name : null);
+                }}
+              >
                 <AppHeader currentRouteName={currentRouteName} />
                 <StatusBar style="dark" />
                 <AppNavigator />

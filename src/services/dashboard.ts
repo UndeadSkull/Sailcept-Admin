@@ -13,6 +13,7 @@ export type UpcomingCruise = {
   dateLine: string;
   status: string;
   config: string;
+  bookingId: string;
 };
 
 const now = new Date();
@@ -97,18 +98,21 @@ const cruisesByBoatId: Record<number, UpcomingCruise[]> = {
       dateLine: `Day cruise · 15 ${currentMonthStr} ${currentYear}`,
       status: "Confirmed",
       config: "Premium · Private · 2 adults",
+      bookingId: "booking-1",
     },
     {
       name: "Olivia Bennett",
       dateLine: `Overnight stay · 18 ${currentMonthStr} ${currentYear}`,
       status: "Confirmed",
       config: "Luxury · Private · 4 adults",
+      bookingId: "booking-2",
     },
     {
       name: "Lucas Martin",
       dateLine: `Night stay · 22 ${currentMonthStr} ${currentYear}`,
       status: "Confirmed",
       config: "Premium · Shared · 6 guests",
+      bookingId: "booking-lucas-martin",
     },
   ],
   2: [
@@ -117,12 +121,14 @@ const cruisesByBoatId: Record<number, UpcomingCruise[]> = {
       dateLine: `Day cruise · 12 ${currentMonthStr} ${currentYear}`,
       status: "Confirmed",
       config: "Standard · Private · 3 adults",
+      bookingId: "booking-mason-reed",
     },
     {
       name: "Ava Stone",
       dateLine: `Night stay · 20 ${currentMonthStr} ${currentYear}`,
       status: "Confirmed",
       config: "Premium · Shared · 5 guests",
+      bookingId: "booking-ava-stone",
     },
   ],
   3: [
@@ -131,12 +137,14 @@ const cruisesByBoatId: Record<number, UpcomingCruise[]> = {
       dateLine: `Overnight stay · 16 ${currentMonthStr} ${currentYear}`,
       status: "Confirmed",
       config: "Luxury · Private · 4 adults",
+      bookingId: "booking-noah-patel",
     },
     {
       name: "Liam Carter",
       dateLine: `Day cruise · 23 ${currentMonthStr} ${currentYear}`,
       status: "Confirmed",
       config: "Premium · Private · 2 adults",
+      bookingId: "booking-liam-carter",
     },
   ],
 };

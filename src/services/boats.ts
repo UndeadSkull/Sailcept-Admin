@@ -1,7 +1,7 @@
 import { ApiResponse } from "../data/auth";
 import { Boat, BoatListItem } from "../data/boats";
 
-const mockBoats: Record<number, Boat> = {
+export const mockBoats: Record<number, Boat> = {
   1: {
     id: 1,
     name: "Vembanad Crest",

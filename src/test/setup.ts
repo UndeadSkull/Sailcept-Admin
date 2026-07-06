@@ -11,23 +11,7 @@ jest.mock("@expo/vector-icons", () => ({
 	FontAwesome5: () => null,
 }));
 
-jest.mock("@gorhom/bottom-sheet", () => {
-  const React = require("react");
-  const { View, ScrollView } = require("react-native");
-  const BottomSheet = React.forwardRef(({ children }: { children?: React.ReactNode }, ref: React.Ref<unknown>) => {
-    React.useImperativeHandle(ref, () => ({
-      snapToIndex: jest.fn(),
-      close: jest.fn(),
-    }));
-    return React.createElement(View, { testID: "mock-bottom-sheet" }, children);
-  });
-  return {
-    __esModule: true,
-    default: BottomSheet,
-    BottomSheetScrollView: ({ children, contentContainerStyle }: { children?: React.ReactNode; contentContainerStyle?: unknown }) =>
-      React.createElement(ScrollView, { contentContainerStyle }, children),
-  };
-});
+
 
 
 jest.mock("@react-navigation/native-stack", () => {
@@ -37,11 +21,7 @@ jest.mock("@react-navigation/native-stack", () => {
 	};
 });
 
-jest.mock("react-native-reanimated", () => {
-	const Reanimated = jest.requireActual("react-native-reanimated/mock");
-	Reanimated.default.call = () => {};
-	return Reanimated;
-});
+
 
 jest.mock("react-native-safe-area-context", () => {
 	const React = require("react");
