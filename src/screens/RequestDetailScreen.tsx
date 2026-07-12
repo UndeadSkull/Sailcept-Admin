@@ -9,7 +9,7 @@ import {
   XCircle,
 } from "lucide-react-native";
 import { PageHeader } from "../components";
-import { fetchRequestDetail, submitRequestOutcome, Booking, formatDateRange, getWaitingHours, getWaitingColor } from "../services/bookings";
+import { fetchRequestDetail, submitRequestOutcome, Booking, formatDateRange, getWaitingHours, getWaitingColor, safeParseDate } from "../services/bookings";
 import type { RootStackScreenProps } from "../navigation/types";
 import { COLORS } from "../styles";
 
@@ -116,7 +116,7 @@ export default function RequestDetailScreen({ route, navigation }: Props) {
                       {(() => {
                         const hours = getWaitingHours(request.requestedAt);
                         const deadlineColor = getWaitingColor(hours);
-                        const deadlineDate = new Date(new Date(request.requestedAt).getTime() + 12 * 60 * 60 * 1000);
+                        const deadlineDate = new Date(safeParseDate(request.requestedAt).getTime() + 12 * 60 * 60 * 1000);
                         const deadlineStr = deadlineDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
                         return (
                           <Text style={{ fontSize: 13, fontWeight: "600", color: deadlineColor, marginTop: 2 }}>

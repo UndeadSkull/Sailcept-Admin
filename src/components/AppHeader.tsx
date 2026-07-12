@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { Pressable, Text, View, TextInput, Modal, StyleSheet } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Bell, Search, X, ChevronDown } from "lucide-react-native";
 import { useBoat } from "../context/BoatContext";
 import { useAuth } from "../context/AuthContext";
@@ -17,6 +18,7 @@ export default function AppHeader({ currentRouteName }: { currentRouteName: stri
   const { boats, selectedBoat, setSelectedBoat, searchQuery, setSearchQuery, searchOpen, setSearchOpen } = useBoat();
   const { isAuthenticated } = useAuth();
   const { unreadCount } = useNotification();
+  const insets = useSafeAreaInsets();
   const [boatDropdownOpen, setBoatDropdownOpen] = useState(false);
 
   if (!isAuthenticated) {
@@ -29,11 +31,11 @@ export default function AppHeader({ currentRouteName }: { currentRouteName: stri
   return (
     <View style={{ zIndex: 100 }}>
       <LinearGradient
-        colors={["#1a0533", "#4a1060", "#c2185b", "#e57c3a", "#1a0533"]}
-        locations={[0, 0.3, 0.6, 0.85, 1.0]}
-        start={{ x: 0.1, y: 0.1 }}
-        end={{ x: 0.9, y: 0.9 }}
-        style={{ paddingHorizontal: 18, paddingVertical: 14 }}
+        colors={["#4a1060", "#c2185b", "#e57c3a"]}
+        locations={[0, 0.5, 1.0]}
+        start={{ x: 0, y: 0.5 }}
+        end={{ x: 1, y: 0.5 }}
+        style={{ paddingHorizontal: 18, paddingTop: insets.top + 14, paddingBottom: 14 }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           {/* Logo Title */}

@@ -20,7 +20,7 @@ export const COLORS = {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.white,
+    backgroundColor: "#4a1060",
   },
   appRoot: {
     flex: 1,

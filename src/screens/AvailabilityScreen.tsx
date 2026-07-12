@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, TextInput, Switch, StyleSheet } from "react-native";
 import { ArrowLeft, Calendar, ChevronDown, ChevronUp, ArrowRight, Sun, Moon, Sunrise, Pencil, Trash, X, CheckCircle, Info, Ship } from "lucide-react-native";
 import { useBoat } from "../context/BoatContext";
-import { fetchBookings, saveDirectBooking, deleteBooking, Booking, DietEntry, MONTHS, BOAT_BH_CONFIGS, BOAT_TOTAL_BH, SHARED_BOATS, SHARED_BOAT_TOTAL_UNITS, TRIP_TYPES, AVAILABILITY_TYPE_ICONS, getAvailabilityStatus, buildDefaultPricing, toISODate, fromISODate, formatDateRange, getMinimumRooms, getCotsMattresses, isContactUnlocked, dateOpenState as initialDateOpenState, blockedDates as initialBlockedDates } from "../services/bookings";
+import { fetchBookings, saveDirectBooking, deleteBooking, Booking, DietEntry, MONTHS, BOAT_BH_CONFIGS, BOAT_TOTAL_BH, SHARED_BOATS, SHARED_BOAT_TOTAL_UNITS, TRIP_TYPES, AVAILABILITY_TYPE_ICONS, getAvailabilityStatus, buildDefaultPricing, toISODate, fromISODate, formatDateRange, getMinimumRooms, getCotsMattresses, isContactUnlocked, dateOpenState as initialDateOpenState, blockedDates as initialBlockedDates, safeParseDate } from "../services/bookings";
 import { COLORS } from "../styles";
 
 // Freeze reference date to June 18, 2026
@@ -349,8 +349,8 @@ export default function AvailabilityScreen() {
       return;
     }
 
-    const firstDate = new Date(addBookingForm.checkIn);
-    const secondDate = new Date(addBookingForm.checkOut);
+    const firstDate = safeParseDate(addBookingForm.checkIn);
+    const secondDate = safeParseDate(addBookingForm.checkOut);
     if (addBookingForm.type === "Overnight Stay" && secondDate <= firstDate) {
       Alert.alert("Date Error", "Check-out date must be after check-in date");
       return;

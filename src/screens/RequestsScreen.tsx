@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, Sty
 import { Inbox, ChevronDown, ChevronUp, Bell } from "lucide-react-native";
 import { BookingCard } from "../components";
 import { useBoat } from "../context/BoatContext";
-import { fetchRequests, fetchRequestHistory, submitRequestOutcome, Booking, MONTHS, getWaitingHours, getWaitingColor, formatWaitingTime } from "../services/bookings";
+import { fetchRequests, fetchRequestHistory, submitRequestOutcome, Booking, MONTHS, getWaitingHours, getWaitingColor, formatWaitingTime, safeParseDate } from "../services/bookings";
 import { COLORS } from "../styles";
 
 export default function RequestsScreen() {
@@ -66,7 +66,7 @@ export default function RequestsScreen() {
   const filteredHistory = allHistory.filter((h) => {
     const boatMatch = selectedBoat === 0 || h.boat === selectedBoatName;
     const dateMatch = h.decidedAt
-      ? new Date(h.decidedAt).getMonth() === historyMonth && new Date(h.decidedAt).getFullYear() === historyYear
+      ? safeParseDate(h.decidedAt).getMonth() === historyMonth && safeParseDate(h.decidedAt).getFullYear() === historyYear
       : true; // fallback
     return boatMatch && dateMatch && matchesSearch(h);
   });
@@ -218,23 +218,23 @@ export default function RequestsScreen() {
                   </View>
                 ) : (
                   [...filteredRequests]
-                    .sort((a, b) => new Date(a.requestedAt ?? 0).getTime() - new Date(b.requestedAt ?? 0).getTime())
+                    .sort((a, b) => safeParseDate(a.requestedAt ?? 0).getTime() - safeParseDate(b.requestedAt ?? 0).getTime())
                     .map((r) => {
                       const hours = r.requestedAt ? getWaitingHours(r.requestedAt) : 0;
                       const dateLabel = r.requestedAt
-                        ? new Date(r.requestedAt)
+                        ? safeParseDate(r.requestedAt)
                             .toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
                             .replace(",", "")
                         : "";
 
                       // Deadline = requestedAt + 12h
                       const deadlineDate = r.requestedAt
-                        ? new Date(new Date(r.requestedAt).getTime() + 12 * 60 * 60 * 1000)
+                        ? new Date(safeParseDate(r.requestedAt).getTime() + 12 * 60 * 60 * 1000)
                         : new Date();
                       const deadlineColor = getWaitingColor(hours);
                       const deadlineStr = deadlineDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
                       const deadlineIsNextDay = r.requestedAt
-                        ? deadlineDate.toDateString() !== new Date(r.requestedAt).toDateString()
+                        ? deadlineDate.toDateString() !== safeParseDate(r.requestedAt).toDateString()
                         : false;
                       const deadlineLabel = `Respond by ${deadlineStr}${deadlineIsNextDay ? " (next day)" : ""}`;
 
@@ -286,15 +286,15 @@ export default function RequestsScreen() {
                   </View>
                 ) : (
                   [...filteredHistory]
-                    .sort((a, b) => new Date(b.decidedAt ?? 0).getTime() - new Date(a.decidedAt ?? 0).getTime())
+                    .sort((a, b) => safeParseDate(b.decidedAt ?? 0).getTime() - safeParseDate(a.decidedAt ?? 0).getTime())
                     .map((h) => {
                       const decDateLabel = h.decidedAt
-                        ? new Date(h.decidedAt)
+                        ? safeParseDate(h.decidedAt)
                             .toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
                             .replace(",", "")
                         : "";
                       const decTimeLabel = h.decidedAt
-                        ? new Date(h.decidedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+                        ? safeParseDate(h.decidedAt).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
                         : "";
 
                       return (

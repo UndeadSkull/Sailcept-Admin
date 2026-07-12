@@ -3,7 +3,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Pressable, ScrollView, Text, View, ActivityIndicator } from "react-native";
 import { BookingCard } from "../components";
 import { useBoat } from "../context/BoatContext";
-import { fetchBookings, fetchRequests, fetchRequestHistory, Booking, formatToday } from "../services/bookings";
+import { fetchBookings, fetchRequests, fetchRequestHistory, Booking, formatToday, safeParseDate } from "../services/bookings";
 import { COLORS } from "../styles";
 
 // Freeze now to June 18, 2026 to match mockup data
@@ -90,14 +90,14 @@ export default function DashboardScreen() {
 
   // Filter upcoming cruises: date >= June 18, 2026 and not cancelled/deleted
   const upcomingCruises = filteredBookings.filter((b) => {
-    const bookingDate = new Date(b.date);
+    const bookingDate = safeParseDate(b.date);
     const todayStart = new Date(2026, 5, 18); // June 18
     return bookingDate >= todayStart && b.status !== "cancelled" && b.status !== "deleted";
   });
 
   // Sort and group upcoming cruises by date
   const sortedCruises = [...upcomingCruises].sort(
-    (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+    (a, b) => safeParseDate(a.date).getTime() - safeParseDate(b.date).getTime()
   );
 
   const groupedCruises = sortedCruises.reduce<Record<string, Booking[]>>((groups, b) => {
@@ -194,7 +194,7 @@ export default function DashboardScreen() {
                 </View>
               ) : (
                 Object.entries(groupedCruises).map(([dateKey, group]) => {
-                  const dateLabel = new Date(dateKey)
+                  const dateLabel = safeParseDate(dateKey)
                     .toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" })
                     .replace(",", "");
                   return (

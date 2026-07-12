@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View, ActivityIndicator, Modal, StyleSheet
 import { Calendar, ChevronDown, ChevronUp, ArrowLeft, ArrowRight, ClipboardList } from "lucide-react-native";
 import { BookingCard } from "../components";
 import { useBoat } from "../context/BoatContext";
-import { fetchBookings, Booking, MONTHS } from "../services/bookings";
+import { fetchBookings, Booking, MONTHS, safeParseDate } from "../services/bookings";
 import { COLORS } from "../styles";
 
 // Freeze reference point to June 18, 2026
@@ -71,14 +71,14 @@ export default function BookingsScreen() {
 
   // Month filtered bookings
   const monthFilteredBookings = searchFilteredBookings.filter((b) => {
-    const d = new Date(b.date);
+    const d = safeParseDate(b.date);
     return d.getMonth() === calendarMonth.month && d.getFullYear() === calendarMonth.year;
   });
 
   // Date filtered bookings
   const dateFilteredBookings = searchFilteredBookings.filter((b) => {
     if (!selectedCalendarDate) return false;
-    const d = new Date(b.date);
+    const d = safeParseDate(b.date);
     return (
       d.getDate() === selectedCalendarDate.day &&
       d.getMonth() === selectedCalendarDate.month &&
@@ -124,7 +124,7 @@ export default function BookingsScreen() {
     monthFilteredBookings
       .filter((b) => b.status !== "cancelled" && b.status !== "deleted")
       .map((b) => {
-        const d = new Date(b.date);
+        const d = safeParseDate(b.date);
         return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
       })
   );

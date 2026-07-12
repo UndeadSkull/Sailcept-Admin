@@ -191,23 +191,62 @@ bookings.forEach(b => {
 });
 
 // Helper utilities
+export function safeParseDate(dateVal: any): Date {
+  if (!dateVal) return new Date(NaN);
+  if (dateVal instanceof Date) return dateVal;
+  
+  const dateStr = String(dateVal).trim();
+  
+  // 1. Check if it matches "D MMM YYYY" or "DD MMM YYYY" (e.g. "3 Jun 2026" or "25 Jun 2026")
+  const matchDmy = dateStr.match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/);
+  if (matchDmy) {
+    const day = parseInt(matchDmy[1], 10);
+    const monthStr = matchDmy[2].toLowerCase().substring(0, 3);
+    const year = parseInt(matchDmy[3], 10);
+    
+    const months: Record<string, number> = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+    };
+    const month = months[monthStr];
+    if (month !== undefined) {
+      return new Date(year, month, day);
+    }
+  }
+  
+  // 2. Check if it matches ISO-like format "YYYY-MM-DD"
+  const matchYmd = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2}))?/);
+  if (matchYmd) {
+    const year = parseInt(matchYmd[1], 10);
+    const month = parseInt(matchYmd[2], 10) - 1;
+    const day = parseInt(matchYmd[3], 10);
+    const hour = matchYmd[4] ? parseInt(matchYmd[4], 10) : 0;
+    const minute = matchYmd[5] ? parseInt(matchYmd[5], 10) : 0;
+    const second = matchYmd[6] ? parseInt(matchYmd[6], 10) : 0;
+    return new Date(year, month, day, hour, minute, second);
+  }
+
+  // 3. Fallback to standard parsing
+  return new Date(dateStr);
+}
+
 export function toISODate(dateStr: string) {
   if (!dateStr) return "";
-  const d = new Date(dateStr);
+  const d = safeParseDate(dateStr);
   if (isNaN(d.getTime())) return "";
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 export function fromISODate(isoStr: string) {
   if (!isoStr) return "";
-  const d = new Date(isoStr + "T00:00:00");
+  const d = safeParseDate(isoStr + (isoStr.includes("T") ? "" : "T00:00:00"));
   if (isNaN(d.getTime())) return "";
   return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }).replace(/,/g, "");
 }
 
 export function formatDateRange(start: string, end: string) {
-  const startDate = new Date(start);
-  const endDate = new Date(end);
+  const startDate = safeParseDate(start);
+  const endDate = safeParseDate(end);
   const fullFmt: Intl.DateTimeFormatOptions = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
   const startDisplay = startDate.toLocaleDateString("en-GB", fullFmt).replace(",", "");
   const endDisplay = endDate.toLocaleDateString("en-GB", fullFmt).replace(",", "");
@@ -220,7 +259,7 @@ export function formatToday() {
 }
 
 export function getWaitingHours(requestedAt: Date) {
-  const diffMs = new Date().getTime() - new Date(requestedAt).getTime();
+  const diffMs = new Date().getTime() - safeParseDate(requestedAt).getTime();
   return diffMs / (1000 * 60 * 60);
 }
 

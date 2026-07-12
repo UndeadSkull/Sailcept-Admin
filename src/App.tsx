@@ -20,7 +20,7 @@ export default function App() {
       <BoatProvider>
         <NotificationProvider>
           <SafeAreaProvider>
-            <SafeAreaView style={styles.safeArea}>
+            <SafeAreaView style={styles.safeArea} edges={["bottom", "left", "right"]}>
               <NavigationContainer
                 ref={navigationRef}
                 onStateChange={() => {
@@ -29,7 +29,7 @@ export default function App() {
                 }}
               >
                 <AppHeader currentRouteName={currentRouteName} />
-                <StatusBar style="dark" />
+                <StatusBar style="light" />
                 <AppNavigator />
               </NavigationContainer>
             </SafeAreaView>
