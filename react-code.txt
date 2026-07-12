@@ -68,7 +68,6 @@ function Icon({ name, size = 16, color = "currentColor", strokeWidth = 2 }) {
   );
 }
 
-// Reusable centered boat dropdown list
 function BoatDropdownList({ options, currentValue, onSelect }) {
   return (
     <div style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 14, boxShadow: "0 8px 24px rgba(15,23,42,0.15)", overflow: "hidden", zIndex: 20, minWidth: 170 }}>
@@ -357,6 +356,13 @@ const initialBookings = [
   { id: 28, bookingId: "ALP-12072026-0202", guest: "Priya Sharma", phone: "+91 99001 55678", boat: "Floating Dreams", type: "Night stay", date: "12 Jul 2026", dateEnd: "13 Jul 2026", adults: 6, children: 2, kids: 0, rooms: 3, cots: 1, dietBreakdown: [{ type: "Non-veg", count: 6 }, { type: "Vegetarian", count: 2 }], accessibility: "None", specialRequests: [], price: 45000, ghat: "Punnamada Jetty, Alappuzha", checkIn: "17:30", checkOut: "09:00", meal: "Mixed", paymentStatus: "Captured", status: "confirmed", isDirect: false, bookingSource: "Sailcept" },
   { id: 29, bookingId: "ALP-18072026-0203", guest: "Tom Hughes", phone: "+44 7700 900123", boat: "Lake Royale", type: "Overnight stay", date: "18 Jul 2026", dateEnd: "19 Jul 2026", adults: 2, children: 0, kids: 0, rooms: 1, cots: 0, dietBreakdown: [{ type: "Non-veg", count: 2 }], accessibility: "None", specialRequests: [], price: 18500, ghat: "Punnamada Jetty, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Non-veg", paymentStatus: "Captured", status: "confirmed", isDirect: false, bookingSource: "Sailcept" },
   { id: 30, bookingId: "ALP-25072026-0204", guest: "Meera Nair", phone: "+91 94470 11223", boat: "Lake Ripples", type: "Day cruise", date: "25 Jul 2026", dateEnd: "25 Jul 2026", adults: 2, children: 1, kids: 0, rooms: 1, cots: 0, dietBreakdown: [{ type: "Vegetarian", count: 3 }], accessibility: "None", specialRequests: [], price: 12000, ghat: "Punnamada Jetty, Alappuzha", checkIn: "11:30", checkOut: "17:00", meal: "Veg", paymentStatus: "Captured", status: "confirmed", isDirect: false, bookingSource: "Sailcept" },
+  { id: 31, bookingId: "ALP-08072026-0205", guest: "Lena Fischer", phone: "+49 170 9876543", boat: "Lake Royale", type: "Overnight stay", date: "8 Jul 2026", dateEnd: "9 Jul 2026", adults: 2, children: 0, kids: 0, rooms: 1, cots: 0, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: [], price: 18500, ghat: "Punnamada Jetty, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Veg only", paymentStatus: "Refunded", status: "cancelled", cancelledAt: new Date(2026, 6, 2, 10, 30), isDirect: false, bookingSource: "Sailcept" },
+  { id: 32, bookingId: "AB-14072026-5521", guest: "Rajesh Nambiar", phone: "+91 98400 77612", boat: "Floating Dreams", type: "Overnight stay", date: "14 Jul 2026", dateEnd: "15 Jul 2026", adults: 4, children: 1, kids: 0, rooms: 3, cots: 0, dietBreakdown: [{ type: "Non-veg", count: 3 }, { type: "Veg", count: 2 }], accessibility: "None", specialRequests: ["Extra dishes"], price: 38000, ghat: "Punnamada Jetty, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Mixed", paymentStatus: "Captured", status: "confirmed", isDirect: true, bookingSource: "Make My Trip" },
+  { id: 38, bookingId: "AB-21062026-6634", guest: "Karim Benali", phone: "+33 6 22 33 44 55", boat: "Lake Ripples", type: "Night stay", date: "21 Jun 2026", dateEnd: "22 Jun 2026", adults: 2, children: 0, kids: 0, rooms: 1, cots: 0, dietBreakdown: [{ type: "Non-veg", count: 2 }], accessibility: "None", specialRequests: [], price: 24500, ghat: "Finishing Point, Alappuzha", checkIn: "17:30", checkOut: "09:00", meal: "Non-veg", paymentStatus: "Captured", status: "confirmed", isDirect: true, isEdited: true, bookingSource: "Airbnb" },
+  { id: 33, bookingId: "ALP-09062026-0210", guest: "Clara Dubois", phone: "+33 6 45 67 89 01", boat: "Lake Riviera", type: "Day cruise", date: "9 Jun 2026", dateEnd: "9 Jun 2026", adults: 2, children: 0, kids: 0, rooms: 2, cots: 0, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: ["Kayaking"], updatedSpecialRequests: ["Kayaking"], price: 17500, ghat: "Finishing Point, Alappuzha", checkIn: "09:00", checkOut: "16:00", meal: "Veg only", paymentStatus: "Captured", isUpdated: true },
+  { id: 34, bookingId: "ALP-11062026-0211", guest: "Samuel Okonkwo", phone: "+234 803 123 4567", boat: "Lake Royale", type: "Day cruise", date: "11 Jun 2026", dateEnd: "11 Jun 2026", adults: 2, children: 1, kids: 0, rooms: 1, cots: 0, dietBreakdown: [{ type: "Non-veg", count: 3 }], accessibility: "None", specialRequests: [], price: 16000, ghat: "Punnamada Jetty, Alappuzha", checkIn: "09:00", checkOut: "16:00", meal: "Non-veg", paymentStatus: "Refunded", status: "cancelled", cancelledAt: new Date(2026, 5, 8, 14, 0) },
+  { id: 35, bookingId: "AB-14062026-0212", guest: "Yuki Tanaka", phone: "+81 90 1234 5678", boat: "Lake Ripples", type: "Overnight stay", date: "14 Jun 2026", dateEnd: "15 Jun 2026", adults: 2, children: 0, kids: 0, rooms: 1, cots: 0, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: [], price: 22000, ghat: "Finishing Point, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Veg only", paymentStatus: "Captured", status: "deleted", isDirect: true, bookingSource: "Direct Booking" },
+  { id: 36, bookingId: "AB-20062026-0213", guest: "Marco Ferretti", phone: "+39 333 987 6543", boat: "Floating Dreams", type: "Day cruise", date: "20 Jun 2026", dateEnd: "20 Jun 2026", adults: 3, children: 0, kids: 0, rooms: 3, cots: 0, dietBreakdown: [{ type: "Non-veg", count: 3 }], accessibility: "None", specialRequests: ["Speedboat"], price: 21000, ghat: "Finishing Point, Alappuzha", checkIn: "11:00", checkOut: "17:00", meal: "Non-veg", paymentStatus: "Captured", status: "deleted", isDirect: true, bookingSource: "Booking.com" },
 ];
 
 const BOAT_PROFILES = {
@@ -393,6 +399,7 @@ const initialRequestHistory = [
   { id: 5, bookingId: "ALP-12062026-0140", guest: "Layla Haddad", phone: "+971 50 987 6543", boat: "Lake Royale", type: "Overnight stay", date: "12 Jun 2026", dateEnd: "13 Jun 2026", comfort: "Deluxe", mode: "Shared", adults: 3, children: 1, kids: 0, rooms: 2, dietBreakdown: [{ type: "Jain", count: 2 }, { type: "Veg", count: 2 }], accessibility: "None", specialRequests: ["Birthday cake", "Massage"], price: 21500, outcome: "declined", requestedAt: new Date(2026, 5, 10, 20, 0), decidedAt: new Date(2026, 5, 11, 9, 30) },
   { id: 6, bookingId: "ALP-13062026-0141", guest: "Marco Rossi", phone: "+39 339 123 4567", boat: "Lake Riviera", type: "Night stay", date: "13 Jun 2026", dateEnd: "14 Jun 2026", comfort: "Luxury", mode: "Private", adults: 2, children: 0, kids: 0, rooms: 1, dietBreakdown: [{ type: "Non-veg", count: 2 }], accessibility: "None", specialRequests: ["Honeymoon cake"], price: 28000, outcome: "accepted", requestedAt: new Date(2026, 5, 12, 8, 15), decidedAt: new Date(2026, 5, 12, 18, 45) },
   { id: 7, bookingId: "ALP-16062026-0144", guest: "Hannah Müller", phone: "+49 170 1234567", boat: "Floating Dreams", type: "Day cruise", date: "16 Jun 2026", dateEnd: "16 Jun 2026", comfort: "Premium", mode: "Shared", adults: 4, children: 0, kids: 0, rooms: 2, dietBreakdown: [{ type: "Vegan", count: 1 }, { type: "Veg", count: 3 }], accessibility: "Wheelchair", specialRequests: ["Parking needed", "Country boat"], price: 19800, outcome: "declined", requestedAt: new Date(2026, 5, 14, 19, 30), decidedAt: new Date(2026, 5, 15, 11, 0) },
+  { id: 8, bookingId: "ALP-08062026-0209", guest: "Pierre Moreau", phone: "+33 6 11 22 33 44", boat: "Lake Riviera", type: "Day cruise", date: "8 Jun 2026", dateEnd: "8 Jun 2026", comfort: "Luxury", mode: "Private", adults: 2, children: 0, kids: 0, rooms: 2, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: [], price: 17000, outcome: "accepted", requestedAt: new Date(2026, 5, 7, 8, 0), decidedAt: new Date(2026, 5, 7, 15, 30) },
 ];
 
 function Badge({ label, color, bg }) {
@@ -414,35 +421,45 @@ function StatCardRow({ label, value, isAccentMetric, onClick, stacked }) {
   );
 }
 
+function BookingCardHeader({ b }) {
+  const hasTag = b.status === "deleted" || b.status === "cancelled" || b.isUpdated || b.isDirect || b.isEdited;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 6 }}>
+      {hasTag && (
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+          {b.status === "deleted" && <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.white, background: COLORS.muted, borderRadius: 999, padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Deleted</span>}
+          {b.isEdited && <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.white, background: COLORS.navy, borderRadius: 999, padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Edited</span>}
+          {b.isDirect && <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.navy, background: COLORS.tealLight, borderRadius: 999, padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.03em" }}>{b.bookingSource || "Direct Booking"}</span>}
+          {b.status === "cancelled" && <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.white, background: COLORS.red, borderRadius: 999, padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Cancelled</span>}
+          {b.isUpdated && <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.white, background: COLORS.amber, borderRadius: 999, padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.03em" }}>Updated</span>}
+        </div>
+      )}
+      <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.navy }}>{b.guest}</div>
+      <div style={{ fontSize: 12, fontWeight: 600, color: COLORS.navy }}>{b.boat}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ fontSize: 12, color: COLORS.navy }}>{formatDateRange(b.date, b.dateEnd)}</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, flexShrink: 0 }}>
+          <Icon name={TYPE_ICONS[b.type]} size={14} color={COLORS.muted} />
+          <span style={{ fontSize: 12, fontWeight: 500, color: COLORS.muted, whiteSpace: "nowrap" }}>{b.type}</span>
+        </div>
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: COLORS.muted }}>
+          <Icon name="users" size={13} color={COLORS.muted} />
+          <span>{b.adults} adult{b.adults !== 1 ? "s" : ""} · {b.children} child{b.children !== 1 ? "ren" : ""} · {b.kids || 0} kid{(b.kids || 0) !== 1 ? "s" : ""}</span>
+        </div>
+        <div style={{ fontSize: 11, fontWeight: 600, color: COLORS.muted, flexShrink: 0 }}>{b.rooms}BH</div>
+      </div>
+    </div>
+  );
+}
+
 function BookingCard({ b, expanded, onToggle, isRequest, onDecision, historyOutcome, highlighted }) {
   const phoneDigits = b.phone.replace(/[^\d+]/g, "");
   return (
     <div style={{ background: highlighted ? COLORS.tealLight : COLORS.white, border: `1px solid ${highlighted ? COLORS.teal : COLORS.border}`, borderLeft: `3px solid ${b.status === "cancelled" ? COLORS.red : b.status === "deleted" ? COLORS.muted : b.isUpdated ? COLORS.amber : b.isDirect ? "#000000" : historyOutcome ? (historyOutcome.outcome === "accepted" ? COLORS.teal : COLORS.red) : COLORS.teal}`, borderRadius: 16, overflow: "hidden", cursor: "pointer", transition: "background 0.3s ease, border-color 0.3s ease" }} onClick={onToggle}>
       <div style={{ padding: "18px 18px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
-              <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.navy }}>{b.guest}</div>
-              {b.status === "deleted" && <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.white, background: COLORS.muted, borderRadius: 999, padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.03em", flexShrink: 0 }}>Deleted</span>}
-              {b.isDirect && <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.navy, background: COLORS.tealLight, borderRadius: 999, padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.03em", flexShrink: 0 }}>{b.bookingSource || "Direct Booking"}</span>}
-              {b.status === "cancelled" && <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.white, background: COLORS.red, borderRadius: 999, padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.03em", flexShrink: 0 }}>Cancelled</span>}
-              {b.isUpdated && <span style={{ fontSize: 10, fontWeight: 700, color: COLORS.white, background: COLORS.amber, borderRadius: 999, padding: "2px 8px", textTransform: "uppercase", letterSpacing: "0.03em", flexShrink: 0 }}>Updated</span>}
-            </div>
-            <div style={{ fontSize: 12, color: COLORS.navy, marginBottom: 6 }}>{formatDateRange(b.date, b.dateEnd)}</div>
-            <div style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, color: COLORS.muted }}>
-              <Icon name="users" size={13} color={COLORS.muted} />
-              <span>{b.adults} adult{b.adults !== 1 ? "s" : ""} · {b.children} child{b.children !== 1 ? "ren" : ""} · {b.kids || 0} kid{(b.kids || 0) !== 1 ? "s" : ""}</span>
-            </div>
-          </div>
-          <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6 }}>
-              <Icon name={TYPE_ICONS[b.type]} size={15} color={COLORS.muted} />
-              <span style={{ fontSize: 13, fontWeight: 400, color: COLORS.muted, whiteSpace: "nowrap" }}>{b.type}</span>
-            </div>
-            <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.navy, marginTop: 6, whiteSpace: "nowrap" }}>{b.boat}</div>
-            <div style={{ fontSize: 11, color: COLORS.muted, marginTop: 2, whiteSpace: "nowrap" }}>{b.rooms}BH</div>
-          </div>
-        </div>
+        <BookingCardHeader b={b} />
       </div>
       {expanded && (
         <div style={{ borderTop: `1px solid ${COLORS.border}`, padding: "14px 18px", background: COLORS.bg }}>
@@ -516,7 +533,7 @@ function LoginScreen({ onLogin, COLORS }) {
   const [showForgotPass, setShowForgotPass] = React.useState(false);
   const [showForgotConfirm, setShowForgotConfirm] = React.useState(false);
 
-  const bgStyle = { fontFamily: "'Plus Jakarta Sans', sans-serif", background: "linear-gradient(160deg, #1a0533 0%, #4a1060 30%, #c2185b 60%, #e57c3a 85%, #1a0533 100%)", minHeight: "100vh", maxWidth: 393, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px" };
+  const bgStyle = { fontFamily: "'Plus Jakarta Sans', sans-serif", background: "linear-gradient(90deg, #4a1060 0%, #c2185b 50%, #e57c3a 100%)", minHeight: "100vh", maxWidth: 393, margin: "0 auto", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "0 24px" };
   const inputBox = { width: "100%", fontSize: 14, color: COLORS.navy, border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "13px 16px", boxSizing: "border-box", outline: "none", background: COLORS.bg };
   const pwBox = { display: "flex", alignItems: "center", border: `1px solid ${COLORS.border}`, borderRadius: 12, padding: "13px 16px", gap: 8, background: COLORS.bg };
 
@@ -742,7 +759,7 @@ export default function OperatorDashboard() {
   const [expandedTripType, setExpandedTripType] = useState(null);
   const [priceDrafts, setPriceDrafts] = useState({});
   const [confirmRatesError, setConfirmRatesError] = useState(null);
-  const [confirmRatesSuccess, setConfirmRatesSuccess] = useState(null); // trip type that just got confirmed
+  const [confirmRatesSuccess, setConfirmRatesSuccess] = useState(null);
   const [addBookingFormOpen, setAddBookingFormOpen] = useState(false);
   const [addBookingForm, setAddBookingForm] = useState(null);
   const [modifyBookingListOpen, setModifyBookingListOpen] = useState(false);
@@ -763,6 +780,14 @@ export default function OperatorDashboard() {
     { id: "n12", type: "pending_orange", title: "Pending Booking Request", message: "Request from Tom Hughes for Lake Ripples on 28 Jun 2026 has been pending for over 6 hours and requires attention.", timestamp: new Date(2026, 5, 22, 9, 30), read: false },
     { id: "n13", type: "pending_red", title: "Urgent Booking Request", message: "Request from Layla Haddad for Lake Royale on 12 Jun 2026 has been pending for over 11 hours and is now urgent.", timestamp: new Date(2026, 5, 21, 6, 0), read: false },
     { id: "n14", type: "declined", title: "Declined Booking Request", message: "Request from Tom Hughes for Lake Ripples on 28 Jun 2026 has been declined.", timestamp: new Date(2026, 5, 21, 20, 0), read: true },
+    { id: "n16", type: "updated", title: "Updated Booking Details", message: "Booking ALP-09062026-0210 for Clara Dubois on Lake Riviera for 9 Jun 2026 was updated: special request Kayaking added.", timestamp: new Date(2026, 5, 8, 10, 0), read: false },
+    { id: "n17", type: "cancelled", title: "Booking Cancelled", message: "Samuel Okonkwo cancelled booking ALP-11062026-0211 for Lake Royale on 11 Jun 2026.", timestamp: new Date(2026, 5, 8, 14, 0), read: false },
+    { id: "n18", type: "added", title: "New Added Booking", message: "New added booking AB-14062026-0212 for Yuki Tanaka on Lake Ripples for 14 Jun 2026.", timestamp: new Date(2026, 5, 12, 9, 0), read: true },
+    { id: "n19", type: "deleted_added", title: "Added Booking Deleted", message: "Added booking AB-14062026-0212 for Yuki Tanaka on Lake Ripples for 14 Jun 2026 was deleted.", timestamp: new Date(2026, 5, 13, 11, 0), read: true },
+    { id: "n20", type: "added", title: "New Added Booking", message: "New added booking AB-20062026-0213 for Marco Ferretti on Floating Dreams for 20 Jun 2026.", timestamp: new Date(2026, 5, 18, 16, 0), read: true },
+    { id: "n21", type: "deleted_added", title: "Added Booking Deleted", message: "Added booking AB-20062026-0213 for Marco Ferretti on Floating Dreams for 20 Jun 2026 was deleted.", timestamp: new Date(2026, 5, 19, 9, 30), read: true },
+    { id: "n22", type: "added", title: "New Added Booking", message: "New added booking AB-21062026-6634 for Karim Benali on Lake Ripples for 21 Jun 2026.", timestamp: new Date(2026, 5, 19, 10, 0), read: true },
+    { id: "n23", type: "edited_added", title: "Added Booking Edited", message: "Added booking AB-21062026-6634 for Karim Benali on Lake Ripples for 21 Jun 2026 was edited: cruise type changed from Overnight Stay to Night Stay.", timestamp: new Date(2026, 5, 20, 9, 15), read: false },
     { id: "n15", type: "review_added", title: "New Review", message: "Hannah Müller left a 5★ review for Floating Dreams. Go to the Reviews page to read the full comments.", timestamp: new Date(2026, 5, 22, 7, 30), read: false },
   ]);
 
@@ -856,7 +881,6 @@ export default function OperatorDashboard() {
 
   const anyDropdownOpen = boatDropdownOpen || searchOpen || bookingsStatusDropdownOpen || notifHistoryMonthOpen || notifHistoryYearOpen || reviewsFilterDropdownOpen || reviewsMonthOpen || reviewsYearOpen || boatProfilesDropdownOpen || financeInvoiceYearOpen || financeEarningsBoatOpen || financeTransactionsBoatOpen || calendarMonthPickerOpen || calendarYearPickerOpen || availabilityMonthPickerOpen || availabilityYearPickerOpen;
 
-  // Shared compact boat selector pill (used in page headers across multiple tabs)
   const BoatSelectorPill = ({ onlyBoats = false }) => (
     <div style={{ position: "relative" }}>
       <button onClick={() => { setBoatDropdownOpen(p => !p); setSearchOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 6, background: selectedBoat === "All" ? COLORS.bg : COLORS.tealLight, border: `1px solid ${selectedBoat === "All" ? COLORS.border : COLORS.teal}`, borderRadius: 999, padding: "6px 12px", fontSize: 12, fontWeight: 700, color: selectedBoat === "All" ? COLORS.muted : COLORS.teal, cursor: "pointer", maxWidth: 140 }}>
@@ -885,8 +909,7 @@ export default function OperatorDashboard() {
         .scroll-content:hover { scrollbar-color: rgba(13, 148, 136, 0.35) transparent; }
       `}</style>
 
-      {/* Header */}
-      <div style={{ background: "linear-gradient(160deg, #1a0533 0%, #4a1060 30%, #c2185b 60%, #e57c3a 85%, #1a0533 100%)", padding: "10px 20px 14px" }}>
+      <div style={{ background: "linear-gradient(90deg, #4a1060 0%, #c2185b 50%, #e57c3a 100%)", padding: "10px 20px 14px" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: COLORS.white }}>9:41</div>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -901,20 +924,15 @@ export default function OperatorDashboard() {
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
           <div onClick={() => setActiveTab("overview")} style={{ fontSize: 22, color: COLORS.white, fontWeight: 900, letterSpacing: "-0.02em", flexShrink: 0, cursor: "pointer" }}>Sailcept</div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, position: "relative", flex: 1, justifyContent: "flex-end" }}>
-
-
-            {/* Search */}
             <div onClick={() => { setSearchOpen(!searchOpen); setBoatDropdownOpen(false); }} style={{ width: 36, height: 36, background: COLORS.white, border: "2px solid white", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, cursor: "pointer", flexShrink: 0, marginRight: 16 }}>
               <Icon name="search" size={16} color={COLORS.teal} />
             </div>
 
-            {/* Bell */}
             <div onClick={() => setActiveTab("notifications")} style={{ position: "relative", width: 36, height: 36, background: COLORS.white, border: "2px solid white", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0, cursor: "pointer" }}>
               <Icon name="bell" size={16} color={COLORS.teal} />
               {unreadNotifications > 0 && <div style={{ position: "absolute", top: 4, right: 4, width: 8, height: 8, background: COLORS.red, borderRadius: "50%" }} />}
             </div>
 
-            {/* Search dropdown */}
             {searchOpen && (
               <div style={{ position: "absolute", top: "calc(100% + 6px)", left: 0, right: 0, background: COLORS.white, borderRadius: 14, boxShadow: "0 8px 24px rgba(15,23,42,0.25)", padding: 12, zIndex: 20 }}>
                 <input autoFocus value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search name, surname or booking ID" style={{ width: "100%", border: `1px solid ${COLORS.border}`, borderRadius: 10, padding: "9px 12px", fontSize: 13, color: COLORS.navy, outline: "none", boxSizing: "border-box" }} />
@@ -946,10 +964,8 @@ export default function OperatorDashboard() {
 
       {anyDropdownOpen && <div onClick={closeAllDropdowns} style={{ position: "fixed", inset: 0, zIndex: 10 }} />}
 
-      {/* Content */}
       <div className="scroll-content" style={{ flex: 1, overflowY: "auto", padding: "20px 16px 100px" }}>
 
-        {/* ── OVERVIEW ── */}
         {activeTab === "overview" && (
           <>
             <div style={{ marginBottom: 20 }}>
@@ -985,7 +1001,6 @@ export default function OperatorDashboard() {
           </>
         )}
 
-        {/* ── REQUESTS ── */}
         {activeTab === "requests" && (
           <>
             <div style={{ marginBottom: 16 }}>
@@ -1038,7 +1053,6 @@ export default function OperatorDashboard() {
                 ) : [...filteredRequests].sort((a, b) => new Date(a.requestedAt) - new Date(b.requestedAt)).map(r => {
                   const hours = getWaitingHours(r.requestedAt);
                   const dateLabel = new Date(r.requestedAt).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" }).replace(",", "");
-                  // Deadline = requestedAt + 12h
                   const deadlineDate = new Date(new Date(r.requestedAt).getTime() + 12 * 60 * 60 * 1000);
                   const deadlineColor = getWaitingColor(hours);
                   const deadlineStr = deadlineDate.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
@@ -1087,7 +1101,6 @@ export default function OperatorDashboard() {
           </>
         )}
 
-        {/* ── BOOKINGS ── */}
         {activeTab === "bookings" && (
           <>
             <div style={{ marginBottom: 20 }}>
@@ -1117,7 +1130,6 @@ export default function OperatorDashboard() {
               </div>
             </div>
 
-            {/* Calendar */}
             {(() => {
               const bookedDates = new Set(bookings.filter(b => selectedBoat === "All" || b.boat === selectedBoat).map(b => { const d = new Date(b.date); return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }));
               const firstOfMonth = new Date(calendarMonth.year, calendarMonth.month, 1);
@@ -1196,7 +1208,6 @@ export default function OperatorDashboard() {
           </>
         )}
 
-        {/* ── NOTIFICATIONS ── */}
         {activeTab === "notifications" && (
           <>
             <div style={{ marginBottom: 16 }}>
@@ -1281,7 +1292,6 @@ export default function OperatorDashboard() {
           </>
         )}
 
-        {/* ── AVAILABILITY ── */}
         {activeTab === "availability" && !availabilityBoat && (
           <>
             <div style={{ marginBottom: 20 }}>
@@ -1327,7 +1337,6 @@ export default function OperatorDashboard() {
                 <div style={{ fontSize: 22, fontWeight: 800, color: COLORS.navy }}>{boat}</div>
               </div>
 
-              {/* Availability calendar */}
               <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 24, padding: "16px 14px", marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, position: "relative" }}>
                   <div onClick={() => { if (!isAtFloor) goToMonth(-1); }} style={{ width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: isAtFloor ? "default" : "pointer", opacity: isAtFloor ? 0.3 : 1 }}><Icon name="arrowLeft" size={16} color={COLORS.navy} /></div>
@@ -1396,7 +1405,6 @@ export default function OperatorDashboard() {
                 {selectedDateLabel && <div style={{ textAlign: "center", marginTop: 12, fontSize: 12, fontWeight: 600, color: COLORS.teal }}>{availabilitySelection.length === 1 ? selectedDateLabel : `From ${selectedDateLabel}`}</div>}
               </div>
 
-              {/* Date controls panel */}
               {availabilitySelection.length > 0 && (() => {
                 const selectedDates = availabilitySelection.length === 1 ? [dateStrFor(availabilitySelection[0])] : (() => { const min = Math.min(...availabilitySelection); const max = Math.max(...availabilitySelection); const arr = []; for (let d = min; d <= max; d++) arr.push(dateStrFor(d)); return arr; })();
                 const firstDateStr = selectedDates[0];
@@ -1405,7 +1413,6 @@ export default function OperatorDashboard() {
 
                 return (
                   <div style={{ background: COLORS.white, border: `1px solid ${COLORS.border}`, borderRadius: 24, padding: "20px 18px", marginBottom: 16 }}>
-                    {/* Open/Close Date toggle */}
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18, paddingBottom: 16, borderBottom: `1px solid ${COLORS.border}` }}>
                       <div>
                         <div style={{ fontSize: 15, fontWeight: 700, color: COLORS.navy }}>Date Status</div>
@@ -1457,8 +1464,6 @@ export default function OperatorDashboard() {
                         const isExpanded = expandedTripType === type;
                         const bhTiers = BOAT_BH_CONFIGS[boat] || [BOAT_TOTAL_BH[boat]];
                         const confirmedEntry = dateTripPricing[firstKey];
-                        // Check draft state first — if operator has toggled tiers in the current
-                        // editing session, reflect that immediately rather than waiting for Confirm Rates.
                         const isTypeOpen = bhTiers.some(bh => {
                           const dk = `${type}|${bh}`;
                           if (priceDrafts[dk] !== undefined) return priceDrafts[dk].open;
@@ -1558,7 +1563,6 @@ export default function OperatorDashboard() {
                       })}
                     </div>
 
-                    {/* Modify / Add Booking */}
                     {(() => {
                       const modifiableBookings = bookings.filter(b => b.boat === boat && b.isDirect && b.status !== "cancelled" && b.status !== "deleted" && selectedDates.includes(b.date));
                       return (
@@ -1605,7 +1609,6 @@ export default function OperatorDashboard() {
           );
         })()}
 
-        {/* ── REVIEWS ── */}
         {activeTab === "reviews" && (() => {
           const Stars = ({ rating, size = 14 }) => <div style={{ display: "flex", gap: 2 }}>{[1,2,3,4,5].map(s => <svg key={s} width={size} height={size} viewBox="0 0 24 24" fill={s <= rating ? COLORS.amber : COLORS.border} stroke="none"><path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" /></svg>)}</div>;
           const parseDate = (str) => { const [day, mon, year] = str.split(" "); const mo = { Jan:0,Feb:1,Mar:2,Apr:3,May:4,Jun:5,Jul:6,Aug:7,Sep:8,Oct:9,Nov:10,Dec:11 }; return new Date(Number(year), mo[mon], Number(day)); };
@@ -1712,7 +1715,6 @@ export default function OperatorDashboard() {
           );
         })()}
 
-        {/* ── BOAT PROFILES ── */}
         {activeTab === "boatprofiles" && (
           <>
             <div style={{ marginBottom: 20 }}>
@@ -1780,7 +1782,6 @@ export default function OperatorDashboard() {
           </>
         )}
 
-        {/* ── GET HELP ── */}
         {activeTab === "gethelp" && (
           <>
             <div style={{ marginBottom: 20 }}>
@@ -1802,7 +1803,6 @@ export default function OperatorDashboard() {
           </>
         )}
 
-        {/* ── FINANCE ── */}
         {activeTab === "finance" && (() => {
           const financeTabs = [
             { id: "earnings", label: "Earnings", icon: "sparkles" },
@@ -1934,7 +1934,6 @@ export default function OperatorDashboard() {
           );
         })()}
 
-        {/* ── SETTINGS ── */}
         {activeTab === "settings" && (() => {
           const Toggle = ({ value, onChange }) => <div onClick={() => onChange(!value)} style={{ width: 44, height: 24, borderRadius: 999, cursor: "pointer", flexShrink: 0, background: value ? COLORS.teal : COLORS.border, position: "relative", transition: "background 0.2s" }}><div style={{ position: "absolute", top: 3, left: value ? 23 : 3, width: 18, height: 18, borderRadius: "50%", background: COLORS.white, transition: "left 0.2s" }} /></div>;
           const toggleRow = (label, key) => <div key={key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "11px 18px", borderTop: `1px solid ${COLORS.border}` }}><div style={{ fontSize: 13, color: COLORS.navy }}>{label}</div><Toggle value={notifToggles[key]} onChange={v => setNotifToggles(p => ({ ...p, [key]: v }))} /></div>;
@@ -2072,7 +2071,6 @@ export default function OperatorDashboard() {
           );
         })()}
 
-        {/* ── LEGAL ── */}
         {activeTab === "legal" && (() => {
           if (legalDoc) {
             const docContent = {
@@ -2148,7 +2146,6 @@ export default function OperatorDashboard() {
           );
         })()}
 
-        {/* ── PROFILE ── */}
         {activeTab === "profile" && (
           <>
             <div style={{ marginBottom: 20 }}><div style={{ display: "flex", alignItems: "center", gap: 10 }}><div onClick={() => setActiveTab("more")} style={{ cursor: "pointer", display: "flex", alignItems: "center" }}><Icon name="arrowLeft" size={20} color={COLORS.navy} /></div><div style={{ fontSize: 22, fontWeight: 800, color: COLORS.navy }}>Profile</div></div></div>
@@ -2167,7 +2164,6 @@ export default function OperatorDashboard() {
           </>
         )}
 
-        {/* ── MORE ── */}
         {activeTab === "more" && (
           <>
             <div style={{ marginBottom: 20 }}><div style={{ fontSize: 22, fontWeight: 800, color: COLORS.navy }}>More</div></div>
@@ -2190,7 +2186,6 @@ export default function OperatorDashboard() {
         )}
       </div>
 
-      {/* Bottom nav */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 393, background: COLORS.white, borderTop: `1px solid ${COLORS.border}`, display: "flex", padding: "8px 0 16px" }}>
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => { if (tab.id === "bookings") { setBookingsFilter("all"); setSelectedCalendarDate(null); } if (tab.id === "more") setBoatDropdownOpen(false); setSelectedBoat("All"); setAvailabilityBoat(null); setActiveTab(tab.id); }} style={{ flex: 1, background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "6px 0", position: "relative" }}>
@@ -2204,7 +2199,6 @@ export default function OperatorDashboard() {
         ))}
       </div>
 
-      {/* Submit confirm modal */}
       {showSubmitConfirm && (
         <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
           <div style={{ background: COLORS.white, borderRadius: 24, padding: "28px 24px", width: "100%", maxWidth: 360, boxShadow: "0 8px 32px rgba(15,23,42,0.2)", textAlign: "center" }}>
@@ -2218,7 +2212,6 @@ export default function OperatorDashboard() {
         </div>
       )}
 
-      {/* Logout confirm modal */}
       {showLogoutConfirm && (
         <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(15,23,42,0.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: "0 24px" }}>
           <div style={{ background: COLORS.white, borderRadius: 24, padding: "28px 24px", width: "100%", maxWidth: 360, boxShadow: "0 8px 32px rgba(15,23,42,0.2)", textAlign: "center" }}>
@@ -2233,7 +2226,6 @@ export default function OperatorDashboard() {
         </div>
       )}
 
-      {/* Add Booking modal */}
       {addBookingFormOpen && addBookingForm && (() => {
         const form = addBookingForm;
         const bhTiers = BOAT_BH_CONFIGS[form.boat] || [BOAT_TOTAL_BH[form.boat]];
@@ -2333,7 +2325,6 @@ export default function OperatorDashboard() {
         );
       })()}
 
-      {/* Modify Booking modal */}
       {modifyBookingListOpen && (() => {
         const modifiableBookings = bookings.filter(b => b.boat === availabilityBoat && b.isDirect && b.status !== "cancelled" && b.status !== "deleted" && availabilitySelection.length > 0 && (() => { const sel = [...availabilitySelection].sort((a, b2) => a - b2); const min = sel[0], max = sel[sel.length - 1]; const dateStrFor = (day) => new Date(availabilityMonth.year, availabilityMonth.month, day).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }).replace(/,/g, ""); const selectedDates = []; for (let d = min; d <= max; d++) selectedDates.push(dateStrFor(d)); return selectedDates.includes(b.date); })());
         const selectedBooking = modifiableBookings.find(b => b.id === modifySelectedBookingId) || null;
@@ -2357,8 +2348,7 @@ export default function OperatorDashboard() {
           const availabilityType = selectedBooking.type === "Day cruise" ? "Day Cruise" : selectedBooking.type === "Overnight stay" ? "Overnight Stay" : "Night Stay";
           const datesToFree = [];
           if (availabilityType === "Overnight Stay") { let cursor = new Date(selectedBooking.date); const lastBlockedDate = new Date(selectedBooking.dateEnd); lastBlockedDate.setDate(lastBlockedDate.getDate() - 1); while (cursor <= lastBlockedDate) { datesToFree.push(cursor.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }).replace(/,/g, "")); cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000); } } else { datesToFree.push(selectedBooking.date); }
-          setBlockedDates(prev => prev.filter(bd =
-> !(bd.boat === selectedBooking.boat && datesToFree.includes(bd.date) && bd.reason === "direct" && bd.tripType === availabilityType)));
+          setBlockedDates(prev => prev.filter(bd => !(bd.boat === selectedBooking.boat && datesToFree.includes(bd.date) && bd.reason === "direct" && bd.tripType === availabilityType)));
           closeModal();
         };
 
