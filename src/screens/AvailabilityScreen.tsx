@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, TextInput, Switch, StyleSheet } from "react-native";
-import { ArrowLeft, Calendar, ChevronDown, ChevronUp, ArrowRight, Sun, Moon, Sunrise, Pencil, Trash, X, CheckCircle, Info } from "lucide-react-native";
+import { ArrowLeft, Calendar, ChevronDown, ChevronUp, ArrowRight, Sun, Moon, Sunrise, Pencil, Trash, X, CheckCircle, Info, Ship } from "lucide-react-native";
 import { useBoat } from "../context/BoatContext";
 import { fetchBookings, saveDirectBooking, deleteBooking, Booking, DietEntry, MONTHS, BOAT_BH_CONFIGS, BOAT_TOTAL_BH, SHARED_BOATS, SHARED_BOAT_TOTAL_UNITS, TRIP_TYPES, AVAILABILITY_TYPE_ICONS, getAvailabilityStatus, toISODate, fromISODate, formatDateRange, getMinimumRooms, getCotsMattresses, isContactUnlocked, dateOpenState as initialDateOpenState, blockedDates as initialBlockedDates } from "../services/bookings";
 import { COLORS } from "../styles";
@@ -121,30 +121,43 @@ export default function AvailabilityScreen() {
             Select a houseboat to manage open dates, pricing, and direct bookings.
           </Text>
 
-          <View style={{ gap: 12 }}>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", marginHorizontal: -6 }}>
             {boats.map((b) => (
-              <Pressable
-                key={b.id}
-                onPress={() => setLocalBoatName(b.name)}
-                style={{
-                  backgroundColor: COLORS.white,
-                  borderWidth: 1,
-                  borderColor: COLORS.border,
-                  borderRadius: 16,
-                  padding: 16,
-                  flexDirection: "row",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <View>
-                  <Text style={{ fontSize: 16, fontWeight: "700", color: COLORS.navy }}>{b.name}</Text>
-                  <Text style={{ fontSize: 12, color: COLORS.muted, marginTop: 4 }}>
-                    {BOAT_TOTAL_BH[b.name] || 1} Bedroom Houseboat
+              <View key={b.id} style={{ width: "50%", padding: 6 }}>
+                <Pressable
+                  onPress={() => setLocalBoatName(b.name)}
+                  style={{
+                    backgroundColor: COLORS.white,
+                    borderWidth: 1,
+                    borderColor: COLORS.border,
+                    borderRadius: 16,
+                    aspectRatio: 1,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    padding: 12,
+                  }}
+                >
+                  <View
+                    style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 24,
+                      backgroundColor: COLORS.tealLight,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      marginBottom: 10,
+                    }}
+                  >
+                    <Ship size={20} color={COLORS.teal} />
+                  </View>
+                  <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy, textAlign: "center" }}>
+                    {b.name}
                   </Text>
-                </View>
-                <ArrowRight size={16} color={COLORS.teal} />
-              </Pressable>
+                  <Text style={{ fontSize: 10, fontWeight: "600", color: COLORS.muted, marginTop: 4, textAlign: "center" }}>
+                    {BOAT_BH_CONFIGS[b.name]?.map(bh => `${bh}BH`).join(" / ") || `${BOAT_TOTAL_BH[b.name] || 1}BH`}
+                  </Text>
+                </Pressable>
+              </View>
             ))}
           </View>
         </ScrollView>
