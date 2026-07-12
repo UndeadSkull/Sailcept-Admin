@@ -177,6 +177,9 @@ export default function AvailabilityScreen() {
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstWeekday; i++) cells.push(null);
   for (let day = 1; day <= daysInMonth; day++) cells.push(day);
+  while (cells.length % 7 !== 0) {
+    cells.push(null);
+  }
 
   // Group cells into rows of 7
   const rows: (number | null)[][] = [];
