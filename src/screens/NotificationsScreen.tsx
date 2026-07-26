@@ -1,10 +1,105 @@
-import React, { useState } from "react";
-import { ScrollView, Text, View, Pressable } from "react-native";
+import React, { useState, useRef } from "react";
+import { ScrollView, Text, View, Pressable, Animated } from "react-native";
 import { useNavigation, type NavigationProp, type ParamListBase } from "@react-navigation/native";
-import { ArrowLeft, Check, CheckCircle2, XCircle, Sparkles } from "lucide-react-native";
+import { ArrowLeft, Check, CheckCircle2, XCircle } from "lucide-react-native";
 import { useNotification } from "../context/NotificationContext";
 import { Notification } from "../data/notifications";
 import { COLORS } from "../styles";
+
+// Animated Card Component with touch scale and opacity spring transitions
+function AnimatedNotificationCard({
+  children,
+  onPress,
+  style,
+}: {
+  children: React.ReactNode;
+  onPress: () => void;
+  style?: any;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 0.97,
+        useNativeDriver: true,
+        speed: 25,
+        bounciness: 4,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0.88,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 20,
+        bounciness: 6,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  return (
+    <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
+      <Animated.View style={[style, { transform: [{ scale }], opacity }]}>
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+// Animated Action Button Component with spring bounce
+function AnimatedActionButton({
+  onPress,
+  children,
+  style,
+  testID,
+}: {
+  onPress: (e: any) => void;
+  children: React.ReactNode;
+  style?: any;
+  testID?: string;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.82,
+      useNativeDriver: true,
+      speed: 30,
+      bounciness: 4,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 24,
+      bounciness: 8,
+    }).start();
+  };
+
+  return (
+    <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut} testID={testID}>
+      <Animated.View style={[style, { transform: [{ scale }] }]}>
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export default function NotificationsScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
@@ -79,7 +174,7 @@ export default function NotificationsScreen() {
           </View>
 
           {unreadCount > 0 && (
-            <Pressable
+            <AnimatedActionButton
               onPress={markAllAsRead}
               style={{
                 borderWidth: 1.5,
@@ -92,7 +187,7 @@ export default function NotificationsScreen() {
               testID="mark-all-read-btn"
             >
               <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.teal }}>Mark all as read</Text>
-            </Pressable>
+            </AnimatedActionButton>
           )}
         </View>
 
@@ -174,10 +269,10 @@ export default function NotificationsScreen() {
                   const IconComponent = config.icon;
 
                   return (
-                    <Pressable
+                    <AnimatedNotificationCard
                       key={item.id}
                       onPress={() => handleNotificationPress(item)}
-                      style={({ pressed }) => ({
+                      style={{
                         backgroundColor: COLORS.white,
                         borderRadius: 20,
                         borderWidth: 1,
@@ -189,8 +284,7 @@ export default function NotificationsScreen() {
                         flexDirection: "row",
                         alignItems: "center",
                         gap: 14,
-                        opacity: pressed ? 0.9 : 1,
-                      })}
+                      }}
                     >
                       {/* Left Icon Badge */}
                       <View
@@ -236,7 +330,7 @@ export default function NotificationsScreen() {
                       </View>
 
                       {/* Right Action Button (Checkmark to mark read/unread) */}
-                      <Pressable
+                      <AnimatedActionButton
                         onPress={(e) => {
                           e.stopPropagation();
                           if (item.read) {
@@ -256,8 +350,8 @@ export default function NotificationsScreen() {
                         testID={`mark-toggle-${item.id}`}
                       >
                         <Check size={16} color={COLORS.teal} strokeWidth={3} />
-                      </Pressable>
-                    </Pressable>
+                      </AnimatedActionButton>
+                    </AnimatedNotificationCard>
                   );
                 })}
               </View>
