@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { Pressable, ScrollView, Text, View, ActivityIndicator, Modal, StyleSheet } from "react-native";
 import { Calendar, ChevronDown, ChevronUp, ArrowLeft, ArrowRight, ClipboardList } from "lucide-react-native";
-import { BookingCard } from "../components";
+import { BookingCard, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
-import { fetchBookings, Booking, MONTHS, safeParseDate } from "../services/bookings";
+import { fetchBookings, Booking, MONTHS, safeParseDate, BOAT_ID_MAP } from "../services/bookings";
+import type { MainTabScreenProps } from "../navigation/types";
 import { COLORS } from "../styles";
 
 // Freeze reference point to June 18, 2026
 const now = new Date("2026-06-18T10:00:00");
 
-export default function BookingsScreen() {
-  const { selectedBoat, boats, searchQuery } = useBoat();
+export default function BookingsScreen({ route, navigation }: MainTabScreenProps<"Bookings">) {
+  const { selectedBoat, setSelectedBoat, boats, searchQuery } = useBoat();
 
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,6 +45,37 @@ export default function BookingsScreen() {
   useEffect(() => {
     loadBookings();
   }, [selectedBoat]); // Reload when boat selection changes
+
+  // Automatically focus, select boat/date, and expand booking when target booking param changes
+  useEffect(() => {
+    if (allBookings.length > 0 && route.params?.focusBookingId) {
+      const targetId = route.params.focusBookingId;
+      const b = allBookings.find((x) => x.bookingId === targetId);
+      if (b) {
+        // 1. Select the corresponding boat
+        const boatId = BOAT_ID_MAP[b.boat];
+        if (boatId !== undefined) {
+          setSelectedBoat(boatId);
+        }
+
+        // 2. Parse date and select it
+        const bookingDate = safeParseDate(b.date);
+        const day = bookingDate.getDate();
+        const month = bookingDate.getMonth();
+        const year = bookingDate.getFullYear();
+
+        setCalendarMonth({ month, year });
+        setSelectedCalendarDate({ day, month, year });
+        setBookingsFilter("date");
+
+        // 3. Expand the booking card
+        setExpandedBooking(b.id);
+
+        // Clear route params so it doesn't trigger again on navigation change
+        navigation.setParams({ focusBookingId: undefined });
+      }
+    }
+  }, [allBookings, route.params?.focusBookingId, setSelectedBoat, navigation]);
 
   // Resolve boat name
   const selectedBoatName = selectedBoat === 0 ? "All" : boats.find((b) => b.id === selectedBoat)?.name || "";
@@ -182,11 +214,14 @@ export default function BookingsScreen() {
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
         {/* Page Header */}
-        <View style={{ marginBottom: 18 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Bookings</Text>
-          <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>
-            Track confirmed guest check-ins and history.
-          </Text>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18 }}>
+          <View style={{ flex: 1, marginRight: 8 }}>
+            <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Bookings</Text>
+            <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>
+              Track confirmed guest check-ins and history.
+            </Text>
+          </View>
+          <BoatSelector />
         </View>
 
         {isLoading ? (

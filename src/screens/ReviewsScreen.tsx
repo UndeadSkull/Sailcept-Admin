@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Pressable, ScrollView, Text, View, ActivityIndicator } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { ArrowLeft, Star, Calendar } from "lucide-react-native";
-import { Card, PageHeader } from "../components";
+import { ArrowLeft, Star } from "lucide-react-native";
+import { Card, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
-import { fetchReviews, reviews as mockReviewsList } from "../services/bookings";
+import { fetchReviews } from "../services/bookings";
 import { COLORS } from "../styles";
 
 export default function ReviewsScreen() {
   const navigation = useNavigation();
-  const { selectedBoat, boats, searchQuery } = useBoat();
+  const { selectedBoat, searchQuery } = useBoat();
 
   const [reviewsList, setReviewsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -82,16 +82,18 @@ export default function ReviewsScreen() {
     );
   };
 
-  const selectedBoatName = selectedBoat === 0 ? "All" : boats.find(b => b.id === selectedBoat)?.name || "All";
 
   return (
     <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
       {/* Header */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 18 }}>
-        <Pressable onPress={() => navigation.goBack()} style={{ padding: 4 }}>
-          <ArrowLeft size={20} color={COLORS.navy} />
-        </Pressable>
-        <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Reviews</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>
+          <Pressable onPress={() => navigation.goBack()} style={{ padding: 4 }}>
+            <ArrowLeft size={20} color={COLORS.navy} />
+          </Pressable>
+          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Reviews</Text>
+        </View>
+        <BoatSelector />
       </View>
 
       {isLoading ? (

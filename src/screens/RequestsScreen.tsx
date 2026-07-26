@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, StyleSheet } from "react-native";
-import { Inbox, ChevronDown, ChevronUp, Bell } from "lucide-react-native";
-import { BookingCard } from "../components";
+import { Inbox, ChevronDown, ChevronUp } from "lucide-react-native";
+import { BookingCard, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
-import { fetchRequests, fetchRequestHistory, submitRequestOutcome, Booking, MONTHS, getWaitingHours, getWaitingColor, formatWaitingTime, safeParseDate } from "../services/bookings";
+import { fetchRequests, fetchRequestHistory, submitRequestOutcome, Booking, MONTHS, getWaitingHours, getWaitingColor, safeParseDate } from "../services/bookings";
 import { COLORS } from "../styles";
 
 export default function RequestsScreen() {
@@ -97,8 +97,9 @@ export default function RequestsScreen() {
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
         {/* Title */}
-        <View style={{ marginBottom: 16 }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Requests</Text>
+          <BoatSelector />
         </View>
 
         {/* Tab row */}

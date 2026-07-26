@@ -1,35 +1,89 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigation } from "@react-navigation/native";
-import { Pressable, Text, View, TextInput, Modal, StyleSheet } from "react-native";
+import { Pressable, Text, View, TextInput, ActivityIndicator, ScrollView } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Bell, Search, X, ChevronDown } from "lucide-react-native";
+import { Bell, Search, X } from "lucide-react-native";
 import { useBoat } from "../context/BoatContext";
 import { useAuth } from "../context/AuthContext";
 import { useNotification } from "../context/NotificationContext";
 import type { RootStackParamList } from "../navigation/types";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { COLORS } from "../styles";
+import { searchBookingsApi } from "../services/search";
+import { Booking } from "../data/bookings";
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
-export default function AppHeader({ currentRouteName }: { currentRouteName: string | null }) {
+export default function AppHeader({ currentRouteName }: { currentRouteName?: string | null }) {
   const navigation = useNavigation<RootNav>();
-  const { boats, selectedBoat, setSelectedBoat, searchQuery, setSearchQuery, searchOpen, setSearchOpen } = useBoat();
+  const { searchQuery, setSearchQuery, searchOpen, setSearchOpen } = useBoat();
   const { isAuthenticated } = useAuth();
   const { unreadCount } = useNotification();
   const insets = useSafeAreaInsets();
-  const [boatDropdownOpen, setBoatDropdownOpen] = useState(false);
+
+  const [localQuery, setLocalQuery] = useState(searchQuery);
+  const [debouncedQuery, setDebouncedQuery] = useState(searchQuery);
+  const [searchResults, setSearchResults] = useState<Booking[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  // Debounce the local search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedQuery(localQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [localQuery]);
+
+  // Synchronize debouncedQuery to BoatContext searchQuery so screens filter as well
+  useEffect(() => {
+    setSearchQuery(debouncedQuery);
+  }, [debouncedQuery, setSearchQuery]);
+
+  // Fetch search results from dummy API on debounced query change
+  useEffect(() => {
+    let active = true;
+    if (!debouncedQuery || debouncedQuery.trim() === "") {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    searchBookingsApi(debouncedQuery)
+      .then((res) => {
+        if (!active) return;
+        if (res.data) {
+          setSearchResults(res.data);
+        }
+      })
+      .catch((err) => {
+        console.error("Search API failed:", err);
+      })
+      .finally(() => {
+        if (active) setIsSearching(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [debouncedQuery]);
+
+  // Reset local state when search is closed
+  useEffect(() => {
+    if (!searchOpen) {
+      setLocalQuery("");
+      setDebouncedQuery("");
+      setSearchResults([]);
+    }
+  }, [searchOpen]);
 
   if (!isAuthenticated) {
     return null;
   }
 
-  // Define selected boat display text
-  const selectedBoatName = selectedBoat === 0 ? "All Houseboats" : boats.find((b) => b.id === selectedBoat)?.name || "";
-
   return (
-    <View style={{ zIndex: 100 }}>
+    <View style={{ zIndex: 9999, overflow: "visible" }}>
       <LinearGradient
         colors={["#4a1060", "#c2185b", "#e57c3a"]}
         locations={[0, 0.5, 1.0]}
@@ -50,7 +104,6 @@ export default function AppHeader({ currentRouteName }: { currentRouteName: stri
             <Pressable
               onPress={() => {
                 setSearchOpen(!searchOpen);
-                setBoatDropdownOpen(false);
               }}
               style={{
                 width: 36,
@@ -62,20 +115,6 @@ export default function AppHeader({ currentRouteName }: { currentRouteName: stri
               }}
             >
               <Search size={16} color={COLORS.teal} strokeWidth={2.5} />
-            </Pressable>
-
-            {/* Boat Dropdown Selector */}
-            <Pressable
-              onPress={() => {
-                setBoatDropdownOpen(!boatDropdownOpen);
-                setSearchOpen(false);
-              }}
-              style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingVertical: 4 }}
-            >
-              <Text style={{ fontSize: 13, fontWeight: "800", color: COLORS.white }}>
-                {selectedBoatName}
-              </Text>
-              <ChevronDown size={14} color={COLORS.white} strokeWidth={2.5} />
             </Pressable>
 
             {/* Notification Bell */}
@@ -108,126 +147,142 @@ export default function AppHeader({ currentRouteName }: { currentRouteName: stri
             </Pressable>
           </View>
         </View>
+      </LinearGradient>
 
-        {/* Search Input field */}
-        {searchOpen && (
+      {/* Absolute Search Input and Dropdown */}
+      {searchOpen && (
+        <View
+          style={{
+            position: "absolute",
+            top: insets.top + 64,
+            right: 12,
+            width: "85%",
+            zIndex: 10000,
+            overflow: "visible",
+          }}
+        >
+          {/* Absolute Input Field */}
           <View
             style={{
-              marginTop: 12,
               flexDirection: "row",
               alignItems: "center",
-              backgroundColor: "rgba(255, 255, 255, 0.15)",
-              borderRadius: 12,
+              backgroundColor: "#FFFFFF",
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: "#E2E8F0",
               paddingHorizontal: 12,
-              paddingVertical: 8,
+              height: 44,
+              shadowColor: "#000000",
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+              elevation: 4,
             }}
           >
-            <Search size={16} color={COLORS.white} />
+            <Search size={18} color="#000000" />
             <TextInput
               style={{
                 marginLeft: 8,
                 flex: 1,
-                color: COLORS.white,
-                fontSize: 13,
+                color: "#000000",
+                fontSize: 14,
                 fontWeight: "500",
                 padding: 0,
               }}
-              placeholder="Search guest name or booking ID..."
-              placeholderTextColor="rgba(255, 255, 255, 0.6)"
-              value={searchQuery}
-              onChangeText={setSearchQuery}
+              placeholder="Search guest or booking ID..."
+              placeholderTextColor="#94A3B8"
+              value={localQuery}
+              onChangeText={setLocalQuery}
               autoCapitalize="none"
               autoCorrect={false}
+              autoFocus={true}
             />
-            {searchQuery.length > 0 && (
-              <Pressable onPress={() => setSearchQuery("")} style={{ padding: 4 }}>
-                <X size={14} color={COLORS.white} />
-              </Pressable>
-            )}
-          </View>
-        )}
-      </LinearGradient>
-
-      {/* Boat Selection Dropdown List Modal Overlay */}
-      {boatDropdownOpen && (
-        <Modal
-          transparent
-          visible={boatDropdownOpen}
-          animationType="none"
-          onRequestClose={() => setBoatDropdownOpen(false)}
-        >
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setBoatDropdownOpen(false)}
-          />
-          <View
-            style={{
-              position: "absolute",
-              top: 56, // below the header elements
-              right: 18,
-              backgroundColor: COLORS.white,
-              borderWidth: 1,
-              borderColor: COLORS.border,
-              borderRadius: 12,
-              paddingVertical: 6,
-              zIndex: 100,
-              minWidth: 160,
-              shadowColor: COLORS.navy,
-              shadowOffset: { width: 0, height: 4 },
-              shadowOpacity: 0.08,
-              shadowRadius: 12,
-              elevation: 5,
-            }}
-          >
             <Pressable
               onPress={() => {
-                setSelectedBoat(0);
-                setBoatDropdownOpen(false);
+                if (localQuery.length > 0) {
+                  setLocalQuery("");
+                } else {
+                  setSearchOpen(false);
+                }
               }}
+              style={{ padding: 4 }}
+            >
+              <X size={18} color="#000000" />
+            </Pressable>
+          </View>
+
+          {/* Autocomplete Dropdown */}
+          {(isSearching || searchResults.length > 0 || (debouncedQuery.trim().length > 0)) && (
+            <View
               style={{
-                paddingHorizontal: 16,
-                paddingVertical: 8,
-                backgroundColor: selectedBoat === 0 ? COLORS.tealLight : "transparent",
+                marginTop: 6,
+                backgroundColor: "#FFFFFF",
+                borderRadius: 8,
+                borderWidth: 1,
+                borderColor: "#E2E8F0",
+                maxHeight: 280,
+                shadowColor: "#000000",
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+                elevation: 5,
               }}
             >
-              <Text
-                style={{
-                  fontSize: 13,
-                  fontWeight: selectedBoat === 0 ? "700" : "500",
-                  color: selectedBoat === 0 ? COLORS.teal : COLORS.navy,
-                }}
-              >
-                All Houseboats
-              </Text>
-            </Pressable>
-            {boats.map((b) => (
-              <Pressable
-                key={b.id}
-                onPress={() => {
-                  setSelectedBoat(b.id);
-                  setBoatDropdownOpen(false);
-                }}
-                style={{
-                  paddingHorizontal: 16,
-                  paddingVertical: 8,
-                  backgroundColor: selectedBoat === b.id ? COLORS.tealLight : "transparent",
-                  borderTopWidth: 1,
-                  borderTopColor: COLORS.border,
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 13,
-                    fontWeight: selectedBoat === b.id ? "700" : "500",
-                    color: selectedBoat === b.id ? COLORS.teal : COLORS.navy,
-                  }}
+              {isSearching ? (
+                <View style={{ paddingVertical: 20, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 }}>
+                  <ActivityIndicator size="small" color="#000000" />
+                  <Text style={{ color: "#000000", fontSize: 13, fontWeight: "500" }}>Searching...</Text>
+                </View>
+              ) : searchResults.length > 0 ? (
+                <ScrollView
+                  keyboardShouldPersistTaps="handled"
+                  style={{ maxHeight: 270 }}
+                  contentContainerStyle={{ paddingVertical: 4 }}
+                  nestedScrollEnabled={true}
                 >
-                  {b.name}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-        </Modal>
+                  {searchResults.map((item) => (
+                    <Pressable
+                      key={item.id}
+                      onPress={() => {
+                        setSearchOpen(false);
+                        setLocalQuery("");
+                        navigation.navigate("MainTabs", { screen: "Bookings", params: { focusBookingId: item.bookingId } });
+                      }}
+                      style={({ pressed }) => ({
+                        paddingVertical: 10,
+                        paddingHorizontal: 14,
+                        borderBottomWidth: 1,
+                        borderBottomColor: "#F1F5F9",
+                        backgroundColor: pressed ? "#F8FAFC" : "#FFFFFF",
+                      })}
+                    >
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                        <Text style={{ fontWeight: "600", fontSize: 14, color: "#000000" }}>
+                          {item.guest}
+                        </Text>
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: "#64748B", textTransform: "uppercase" }}>
+                          {item.boat}
+                        </Text>
+                      </View>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <Text style={{ fontSize: 12, color: "#475569" }}>
+                          ID: {item.bookingId}
+                        </Text>
+                        <Text style={{ fontSize: 12, color: "#475569" }}>
+                          {item.date}
+                        </Text>
+                      </View>
+                    </Pressable>
+                  ))}
+                </ScrollView>
+              ) : (
+                <View style={{ paddingVertical: 20, alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ color: "#64748B", fontSize: 13 }}>No results found</Text>
+                </View>
+              )}
+            </View>
+          )}
+        </View>
       )}
     </View>
   );

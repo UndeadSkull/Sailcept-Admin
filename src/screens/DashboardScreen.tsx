@@ -1,16 +1,17 @@
 import React, { useEffect, useState } from "react";
 import { useNavigation } from "@react-navigation/native";
 import { Pressable, ScrollView, Text, View, ActivityIndicator } from "react-native";
-import { BookingCard } from "../components";
+import { BookingCard, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
 import { fetchBookings, fetchRequests, fetchRequestHistory, Booking, formatToday, safeParseDate } from "../services/bookings";
 import { COLORS } from "../styles";
 
-// Freeze now to June 18, 2026 to match mockup data
-const now = new Date("2026-06-18T10:00:00");
+import type { MainTabScreenProps } from "../navigation/types";
+
+type NavigationProp = MainTabScreenProps<"Overview">["navigation"];
 
 export default function DashboardScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NavigationProp>();
   const { selectedBoat, boats, searchQuery } = useBoat();
 
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
@@ -155,9 +156,12 @@ export default function DashboardScreen() {
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
         {/* Header information */}
-        <View style={{ marginBottom: 18 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Overview</Text>
-          <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>{formatToday()}</Text>
+        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18 }}>
+          <View>
+            <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Overview</Text>
+            <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>{formatToday()}</Text>
+          </View>
+          <BoatSelector />
         </View>
 
         {isLoading ? (
