@@ -8,7 +8,14 @@ import { COLORS } from "../styles";
 
 export default function FinanceScreen() {
   const navigation = useNavigation();
-  const { selectedBoat, boats } = useBoat();
+  const { selectedBoat, setSelectedBoat, boats } = useBoat();
+
+  React.useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      setSelectedBoat(0);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // Local tabs: earnings, payouts, transactions, invoices, tax, finsettings
   const [financeTab, setFinanceTab] = useState<string>("earnings");

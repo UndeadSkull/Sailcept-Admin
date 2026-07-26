@@ -49,9 +49,6 @@ export function BoatProvider({ children }: { children: ReactNode }) {
       const response = await fetchBoats();
       if (response.data && !response.error) {
         setBoats(response.data);
-        if (response.data.length > 0) {
-          setSelectedBoat((current) => current || (response.data ? response.data[0].id : 0));
-        }
       }
     } catch (error) {
       console.error("Failed to load boats in BoatContext:", error);

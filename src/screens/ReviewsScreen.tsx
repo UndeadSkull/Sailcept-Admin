@@ -9,7 +9,7 @@ import { COLORS } from "../styles";
 
 export default function ReviewsScreen() {
   const navigation = useNavigation();
-  const { selectedBoat, searchQuery } = useBoat();
+  const { selectedBoat, setSelectedBoat, searchQuery } = useBoat();
 
   const [reviewsList, setReviewsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,6 +28,13 @@ export default function ReviewsScreen() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      setSelectedBoat(0);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     loadReviews();

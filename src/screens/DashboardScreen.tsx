@@ -12,7 +12,7 @@ type NavigationProp = MainTabScreenProps<"Overview">["navigation"];
 
 export default function DashboardScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { selectedBoat, boats, searchQuery } = useBoat();
+  const { selectedBoat, setSelectedBoat, boats, searchQuery } = useBoat();
 
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [allRequests, setAllRequests] = useState<Booking[]>([]);
@@ -39,6 +39,13 @@ export default function DashboardScreen() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      setSelectedBoat(0);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     loadData();

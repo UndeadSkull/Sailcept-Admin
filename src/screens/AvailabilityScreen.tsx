@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, TextInput, Switch, StyleSheet } from "react-native";
 import { ArrowLeft, Calendar, ChevronDown, ChevronUp, ArrowRight, Sun, Moon, Sunrise, Pencil, Trash, X, CheckCircle, Info, Ship } from "lucide-react-native";
 import { useBoat } from "../context/BoatContext";
+import { useNavigation } from "@react-navigation/native";
 import { fetchBookings, saveDirectBooking, deleteBooking, Booking, DietEntry, MONTHS, BOAT_BH_CONFIGS, BOAT_TOTAL_BH, SHARED_BOATS, SHARED_BOAT_TOTAL_UNITS, TRIP_TYPES, AVAILABILITY_TYPE_ICONS, getAvailabilityStatus, buildDefaultPricing, toISODate, fromISODate, formatDateRange, getMinimumRooms, getCotsMattresses, isContactUnlocked, dateOpenState as initialDateOpenState, blockedDates as initialBlockedDates, safeParseDate } from "../services/bookings";
 import { COLORS } from "../styles";
 
@@ -9,8 +10,17 @@ import { COLORS } from "../styles";
 const now = new Date("2026-06-18T10:00:00");
 
 export default function AvailabilityScreen() {
-  const { selectedBoat, boats } = useBoat();
+  const navigation = useNavigation();
+  const { selectedBoat, setSelectedBoat, boats } = useBoat();
   const [localBoatName, setLocalBoatName] = useState<string | null>(null);
+
+  // Reset boat context on focus
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      setSelectedBoat(0);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   // Sync with global boat context
   useEffect(() => {

@@ -3,11 +3,13 @@ import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, Sty
 import { Inbox, ChevronDown, ChevronUp } from "lucide-react-native";
 import { BookingCard, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
+import { useNavigation } from "@react-navigation/native";
 import { fetchRequests, fetchRequestHistory, submitRequestOutcome, Booking, MONTHS, getWaitingHours, getWaitingColor, safeParseDate } from "../services/bookings";
 import { COLORS } from "../styles";
 
 export default function RequestsScreen() {
-  const { selectedBoat, boats, searchQuery, refreshRequestsCount } = useBoat();
+  const navigation = useNavigation();
+  const { selectedBoat, setSelectedBoat, boats, searchQuery, refreshRequestsCount } = useBoat();
   const [requestsView, setRequestsView] = useState<"pending" | "history">("pending");
 
   const [allRequests, setAllRequests] = useState<Booking[]>([]);
@@ -41,6 +43,13 @@ export default function RequestsScreen() {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      setSelectedBoat(0);
+    });
+    return unsubscribe;
+  }, [navigation]);
 
   useEffect(() => {
     loadRequestsData();

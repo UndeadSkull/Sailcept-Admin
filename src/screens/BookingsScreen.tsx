@@ -43,6 +43,15 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
   };
 
   useEffect(() => {
+    const unsubscribe = navigation.addListener("focus", () => {
+      if (!route.params?.focusBookingId) {
+        setSelectedBoat(0);
+      }
+    });
+    return unsubscribe;
+  }, [navigation, route.params?.focusBookingId]);
+
+  useEffect(() => {
     loadBookings();
   }, [selectedBoat]); // Reload when boat selection changes
 
