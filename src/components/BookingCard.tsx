@@ -87,33 +87,52 @@ export default function BookingCard({
       }}
     >
       <View style={{ padding: 18 }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-          <View style={{ flex: 1, marginRight: 8 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
-              <Text style={{ fontWeight: "700", fontSize: 15, color: COLORS.navy }}>{b.guest}</Text>
-              {b.status === "deleted" && (
-                <View style={{ backgroundColor: COLORS.muted, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: COLORS.white, textTransform: "uppercase" }}>Deleted</Text>
-                </View>
-              )}
-              {b.isDirect && (
-                <View style={{ backgroundColor: COLORS.tealLight, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: COLORS.navy, textTransform: "uppercase" }}>{b.bookingSource || "Direct"}</Text>
-                </View>
-              )}
-              {b.status === "cancelled" && (
-                <View style={{ backgroundColor: COLORS.red, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: COLORS.white, textTransform: "uppercase" }}>Cancelled</Text>
-                </View>
-              )}
-              {b.isUpdated && (
-                <View style={{ backgroundColor: COLORS.amber, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2 }}>
-                  <Text style={{ fontSize: 10, fontWeight: "700", color: COLORS.white, textTransform: "uppercase" }}>Updated</Text>
-                </View>
-              )}
-            </View>
-            <Text style={{ fontSize: 12, color: COLORS.navy, marginBottom: 6, fontWeight: "500" }}>{formatDateRange(b.date, b.dateEnd)}</Text>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "stretch" }}>
+          {/* Left Column */}
+          <View style={{ flex: 1, marginRight: 16 }}>
+            {/* Badges inside top-left */}
+            {(b.status === "deleted" || b.isDirect || b.status === "cancelled" || b.isUpdated) && (
+              <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginBottom: 2 }}>
+                {b.status === "deleted" && (
+                  <View style={{ backgroundColor: COLORS.muted, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+                    <Text style={{ fontSize: 9, fontWeight: "800", color: COLORS.white, letterSpacing: 0.5 }}>DELETED</Text>
+                  </View>
+                )}
+                {b.isDirect && (
+                  <View style={{ backgroundColor: COLORS.tealLight, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+                    <Text style={{ fontSize: 9, fontWeight: "800", color: COLORS.teal, letterSpacing: 0.5 }}>{(b.bookingSource || "DIRECT").toUpperCase()}</Text>
+                  </View>
+                )}
+                {b.status === "cancelled" && (
+                  <View style={{ backgroundColor: COLORS.red, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+                    <Text style={{ fontSize: 9, fontWeight: "800", color: COLORS.white, letterSpacing: 0.5 }}>CANCELLED</Text>
+                  </View>
+                )}
+                {b.isUpdated && (
+                  <View style={{ backgroundColor: COLORS.amber, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+                    <Text style={{ fontSize: 9, fontWeight: "800", color: COLORS.white, letterSpacing: 0.5 }}>UPDATED</Text>
+                  </View>
+                )}
+              </View>
+            )}
+
+            {/* Guest Name */}
+            <Text style={{ fontWeight: "700", fontSize: 16, color: COLORS.navy, marginBottom: 4 }}>
+              {b.guest}
+            </Text>
+
+            {/* Houseboat Name */}
+            <Text style={{ fontSize: 13, fontWeight: "600", color: COLORS.navyLight, marginBottom: 6 }}>
+              {b.boat}
+            </Text>
+
+            {/* Date Range */}
+            <Text style={{ fontSize: 12, color: COLORS.muted, marginBottom: 6, fontWeight: "500" }}>
+              {formatDateRange(b.date, b.dateEnd)}
+            </Text>
+
+            {/* Guest Config */}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               <Users size={13} color={COLORS.muted} />
               <Text style={{ fontSize: 12, color: COLORS.muted }}>
                 {b.adults} adult{b.adults !== 1 ? "s" : ""} · {b.children} child{b.children !== 1 ? "ren" : ""} · {b.kids || 0} kid{(b.kids || 0) !== 1 ? "s" : ""}
@@ -121,13 +140,16 @@ export default function BookingCard({
             </View>
           </View>
 
-          <View style={{ alignItems: "flex-end", minWidth: 90 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          {/* Right Column */}
+          <View style={{ alignItems: "flex-end", justifyContent: "flex-end", minWidth: 100, paddingVertical: 2 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 }}>
               <IconComp size={14} color={COLORS.muted} />
               <Text style={{ fontSize: 13, color: COLORS.muted }}>{b.type}</Text>
             </View>
-            <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy, marginTop: 6 }}>{b.boat}</Text>
-            <Text style={{ fontSize: 11, color: COLORS.muted, marginTop: 2 }}>{b.rooms}BH</Text>
+            
+            <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.muted }}>
+              {b.rooms}BH
+            </Text>
           </View>
         </View>
       </View>
