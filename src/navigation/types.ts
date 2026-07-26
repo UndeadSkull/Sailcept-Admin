@@ -4,7 +4,7 @@ import type { CompositeScreenProps } from "@react-navigation/native";
 
 export type RootStackParamList = {
   Login: undefined;
-  MainTabs: undefined;
+  MainTabs: { screen?: keyof MainTabParamList; params?: any } | undefined;
   BoatAssetModal: { boatId: number };
   UserProfileModal: undefined;
   Notifications: undefined;
@@ -16,7 +16,7 @@ export type MainTabParamList = {
   Overview: undefined;
   Availability: { selectBoatId?: number } | undefined;
   Requests: undefined;
-  Bookings: { focusGuest?: string; focusToken?: number } | undefined;
+  Bookings: { focusBookingId?: string; focusGuest?: string; focusToken?: number } | undefined;
   More: undefined;
 };
 
@@ -26,8 +26,11 @@ export type MoreStackParamList = {
   BoatProfilesList: undefined;
   BoatProfileDetail: { boatId: number };
   Reviews: undefined;
-  Invoices: undefined;
+  Invoices: undefined; // keep for compatibility
+  Finance: undefined;
   Settings: undefined;
+  Legal: undefined;
+  GetHelp: undefined;
 };
 
 export type RootStackScreenProps<T extends keyof RootStackParamList> =

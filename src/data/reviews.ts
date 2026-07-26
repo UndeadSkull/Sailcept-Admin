@@ -1,8 +1,9 @@
 export type Review = {
   id: string;
-  boatName: string;
-  guestName: string;
+  boat: string;
+  guest: string;
   rating: number;
-  comment: string;
+  cruiseType: string;
   date: string;
+  text: string;
 };

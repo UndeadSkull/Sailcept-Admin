@@ -1,517 +1,600 @@
 import { ApiResponse } from "../data/auth";
-import { BookingRecord, BookingRequest, DayBooking } from "../data/bookings";
+import { Booking, BlockedDate, BookingRequest, DayBooking, DietEntry } from "../data/bookings";
+export type { Booking, BlockedDate, BookingRequest, DayBooking, DietEntry };
+import { mockBoats } from "./boats";
+export { reviews, fetchReviews, initialReviews } from "./reviews";
 
-// Mock data initialization
-const now = new Date();
-const currentYear = now.getFullYear();
-const currentMonthIndex = now.getMonth();
-const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const currentMonthStr = months[currentMonthIndex];
+export const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-const mockBookings: BookingRecord[] = [
-  {
-    id: "booking-1",
-    guestName: "Ethan Walker",
-    boatId: 1,
-    boatName: "Vembanad Crest",
-    bookingId: "#SC-2025-0041",
-    details: [
-      ["Cruise type", "Day cruise"],
-      ["Date & time", `15 ${currentMonthStr} ${currentYear} · 11:00 AM - 5:00 PM`],
-      ["Configuration", "2 adults · 1 room · Private · Premium"],
-      ["Total agreed price", "INR 12,500"],
-      ["Inclusions", "Meals, water, A/C, fishing equipment"],
-      ["Pickup arranged", "Taxi confirmed · Alleppey Jetty"],
-      ["Meal preference", "Vegetarian · Anniversary decoration"],
-    ],
-    notes: "Sailcept commitments: cruise-time support, check-in coordination, taxi pickup, operator compliance enforcement, backup boat if required.",
-  },
-  {
-    id: "booking-2",
-    guestName: "Olivia Bennett",
-    boatId: 1,
-    boatName: "Vembanad Crest",
-    bookingId: "#SC-2025-0042",
-    details: [
-      ["Cruise type", "Overnight stay"],
-      ["Date & time", `18 ${currentMonthStr} ${currentYear} · 3:00 PM - Next day 11:00 AM`],
-      ["Configuration", "4 adults · 2 rooms · Private · Luxury"],
-      ["Total agreed price", "INR 28,000"],
-      ["Inclusions", "All meals, spa, sunset deck access"],
-      ["Pickup arranged", "Hotel pickup confirmed"],
-      ["Special requests", "Champagne breakfast on day 2"],
-    ],
-    notes: "Premium service package. Guest is VIP. Ensure extra staff on board.",
-  },
-  {
-    id: "booking-3",
-    guestName: "Nora Ali",
-    boatId: 2,
-    boatName: "Backwater Pearl",
-    bookingId: "#SC-2025-0050",
-    details: [
-      ["Cruise type", "Day cruise"],
-      ["Date & time", `21 ${currentMonthStr} ${currentYear} · 10:00 AM - 4:00 PM`],
-      ["Configuration", "3 adults · 1 room · Private · Standard"],
-      ["Total agreed price", "INR 10,800"],
-      ["Inclusions", "Meals, tea service, local guide"],
-    ],
-    notes: "Local experience focus. Wants traditional Kerala style lunch.",
-  },
-  {
-    id: "booking-lucas-martin",
-    guestName: "Lucas Martin",
-    boatId: 1,
-    boatName: "Vembanad Crest",
-    bookingId: "#SC-2025-0043",
-    details: [
-      ["Cruise type", "Night stay"],
-      ["Date & time", `22 ${currentMonthStr} ${currentYear} · 5:00 PM - 10:00 PM`],
-      ["Configuration", "Premium · Shared · 6 guests"],
-      ["Total agreed price", "INR 14,500"],
-      ["Inclusions", "Dinner buffet, music entertainment, soft drinks"],
-    ],
-    notes: "Shared cruise booking. Check with lead operator for compliance.",
-  },
-  {
-    id: "booking-mason-reed",
-    guestName: "Mason Reed",
-    boatId: 2,
-    boatName: "Backwater Pearl",
-    bookingId: "#SC-2025-0051",
-    details: [
-      ["Cruise type", "Day cruise"],
-      ["Date & time", `12 ${currentMonthStr} ${currentYear} · 11:00 AM - 5:00 PM`],
-      ["Configuration", "Standard · Private · 3 adults"],
-      ["Total agreed price", "INR 10,800"],
-      ["Inclusions", "Basic meals, sound system access"],
-    ],
-    notes: "Standard package booking.",
-  },
-  {
-    id: "booking-ava-stone",
-    guestName: "Ava Stone",
-    boatId: 2,
-    boatName: "Backwater Pearl",
-    bookingId: "#SC-2025-0052",
-    details: [
-      ["Cruise type", "Night stay"],
-      ["Date & time", `20 ${currentMonthStr} ${currentYear} · 5:00 PM - 10:00 PM`],
-      ["Configuration", "Premium · Shared · 5 guests"],
-      ["Total agreed price", "INR 12,000"],
-      ["Inclusions", "Dinner, deck lights setup"],
-    ],
-    notes: "Shared night stay.",
-  },
-  {
-    id: "booking-noah-patel",
-    guestName: "Noah Patel",
-    boatId: 3,
-    boatName: "Kerala Dream",
-    bookingId: "#SC-2025-0060",
-    details: [
-      ["Cruise type", "Overnight stay"],
-      ["Date & time", `16 ${currentMonthStr} ${currentYear} · 3:00 PM - Next day 11:00 AM`],
-      ["Configuration", "Luxury · Private · 4 adults"],
-      ["Total agreed price", "INR 28,000"],
-      ["Inclusions", "Premium meals, premium rooms, sundeck access"],
-    ],
-    notes: "Luxury private stay.",
-  },
-  {
-    id: "booking-liam-carter",
-    guestName: "Liam Carter",
-    boatId: 3,
-    boatName: "Kerala Dream",
-    bookingId: "#SC-2025-0061",
-    details: [
-      ["Cruise type", "Day cruise"],
-      ["Date & time", `23 ${currentMonthStr} ${currentYear} · 11:00 AM - 5:00 PM`],
-      ["Configuration", "Premium · Private · 2 adults"],
-      ["Total agreed price", "INR 12,500"],
-      ["Inclusions", "Meals, welcome drinks, soft drinks"],
-    ],
-    notes: "Premium day outing.",
-  },
-];
-
-const mockRequests: BookingRequest[] = [
-  {
-    name: "Ethan Walker",
-    boatId: 1,
-    boatName: "Vembanad Crest",
-    dateLine: "Received 2 hrs ago - Date held until 6 PM today",
-    subtitle: "Day cruise · 15 Jan 2025",
-    status: "Date locked",
-    config: "Price shown to guest: INR 12,500",
-    details: "Premium · Private · 2 adults, 0 children · 1 room · 2 guests per room · No extra bed",
-    request: "Special request: Vegetarian meals preferred. Celebrating anniversary.",
-  },
-  {
-    name: "Emma Collins",
-    boatId: 3,
-    boatName: "Kerala Dream",
-    dateLine: "Received yesterday - Overnight stay · 22 Jan",
-    subtitle: "Overnight stay · 22 Jan 2025",
-    status: "Pending",
-    config: "Price shown to guest: INR 21,000",
-    details: "Premium · Private · 4 adults, 1 child · 2 rooms · Room 1: 2 guests · Room 2: 2 guests + 1 extra bed",
-  },
-  {
-    name: "Sofia Turner",
-    boatId: 1,
-    boatName: "Vembanad Crest",
-    dateLine: "Handled 3 days ago - Day cruise · 10 Jan",
-    subtitle: "Day cruise · 10 Jan 2025",
-    status: "Confirmed",
-    config: "Final booking value: INR 13,000",
-    details: "Deluxe · Private · 2 adults, 1 child · 1 room · Extra bed included",
-    outcome: "accepted",
-    actedOn: "Accepted by admin on 08 Jan, 4:42 PM",
-  },
-  {
-    name: "Noah Parker",
-    boatId: 2,
-    boatName: "Backwater Pearl",
-    dateLine: "Handled 4 days ago - Night cruise · 09 Jan",
-    subtitle: "Night cruise · 09 Jan 2025",
-    status: "Rejected",
-    config: "Quoted value: INR 18,500",
-    details: "Premium · Shared · 3 adults · 2 rooms",
-    outcome: "rejected",
-    actedOn: "Rejected by admin on 07 Jan, 6:10 PM",
-  },
-];
-
-function getDateKey(year: number, month: number, day: number): string {
-  return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-}
-
-function normalizeBooking(booking: DayBooking): DayBooking {
-  const normalized = { ...booking };
-  normalized.isClosed = normalized.isClosed || false;
-  normalized.dayCruiseClosed = normalized.dayCruiseClosed || false;
-  normalized.overnightCruiseClosed = normalized.overnightCruiseClosed || false;
-  normalized.nightCruiseClosed = normalized.nightCruiseClosed || false;
-  
-  if (!normalized.configs) {
-    normalized.configs = {};
-  }
-  
-  const configNames = ["1BH", "2BH", "3BH", "4BH"];
-  configNames.forEach((configName, index) => {
-    if (!normalized.configs![configName]) {
-      const factor = 1 + index * 0.2; // 1BH = 1.0x, 2BH = 1.2x, 3BH = 1.4x, 4BH = 1.6x
-      
-      const dayBase = normalized.dayCruisePrice || 12000;
-      const overnightBase = normalized.overnightCruisePrice || 22000;
-      const nightBase = normalized.nightCruisePrice || 14000;
-      
-      normalized.configs![configName] = {
-        dayCruisePrice: Math.round(dayBase * factor),
-        dayCruiseExtraGuest: normalized.dayCruiseExtraGuest ?? 1500,
-        dayCruiseExtraRoom: normalized.dayCruiseExtraRoom ?? 2500,
-        dayCruiseClosed: normalized.dayCruiseClosed || false,
-        
-        overnightCruisePrice: Math.round(overnightBase * factor),
-        overnightExtraBed: normalized.overnightExtraBed ?? 2000,
-        overnightExtraCot: normalized.overnightExtraCot ?? 1500,
-        overnightExtraGuest: normalized.overnightExtraGuest ?? 1800,
-        overnightExtraRoom: normalized.overnightExtraRoom ?? 3000,
-        overnightCruiseClosed: normalized.overnightCruiseClosed || false,
-        
-        nightCruisePrice: Math.round(nightBase * factor),
-        nightCruiseExtraGuest: normalized.nightCruiseExtraGuest ?? 1500,
-        nightCruiseExtraRoom: normalized.nightCruiseExtraRoom ?? 2500,
-        nightExtraBed: normalized.nightExtraBed ?? 2000,
-        nightExtraCot: normalized.nightExtraCot ?? 1500,
-        nightCruiseClosed: normalized.nightCruiseClosed || false,
-      };
-    } else {
-      // Ensure closed fields are initialized if config exists but they are missing
-      const c = normalized.configs![configName];
-      c.dayCruiseClosed = c.dayCruiseClosed || false;
-      c.overnightCruiseClosed = c.overnightCruiseClosed || false;
-      c.nightCruiseClosed = c.nightCruiseClosed || false;
-    }
-  });
-
-  // Default booked configs to 1BH if not set but booked is true
-  if (normalized.dayCruise && !normalized.dayCruiseBookedConfig) {
-    normalized.dayCruiseBookedConfig = "1BH";
-  }
-  if (normalized.overnightCruise && !normalized.overnightCruiseBookedConfig) {
-    normalized.overnightCruiseBookedConfig = "1BH";
-  }
-  if (normalized.nightCruise && !normalized.nightCruiseBookedConfig) {
-    normalized.nightCruiseBookedConfig = "1BH";
-  }
-
-  // Sync 1BH config values to top-level fields for backward compatibility
-  const c1 = normalized.configs!["1BH"];
-  if (c1) {
-    normalized.dayCruisePrice = c1.dayCruisePrice;
-    normalized.dayCruiseExtraGuest = c1.dayCruiseExtraGuest;
-    normalized.dayCruiseExtraRoom = c1.dayCruiseExtraRoom;
-    normalized.dayCruiseClosed = c1.dayCruiseClosed;
-    normalized.overnightCruisePrice = c1.overnightCruisePrice;
-    normalized.overnightExtraBed = c1.overnightExtraBed;
-    normalized.overnightExtraCot = c1.overnightExtraCot;
-    normalized.overnightExtraGuest = c1.overnightExtraGuest;
-    normalized.overnightExtraRoom = c1.overnightExtraRoom;
-    normalized.overnightCruiseClosed = c1.overnightCruiseClosed;
-    normalized.nightCruisePrice = c1.nightCruisePrice;
-    normalized.nightCruiseExtraGuest = c1.nightCruiseExtraGuest;
-    normalized.nightCruiseExtraRoom = c1.nightCruiseExtraRoom;
-    normalized.nightExtraBed = c1.nightExtraBed;
-    normalized.nightExtraCot = c1.nightExtraCot;
-    normalized.nightCruiseClosed = c1.nightCruiseClosed;
-  }
-
-  if (normalized.overnightCruise && normalized.nightCruise) {
-    normalized.nightCruise = false;
-  }
-  if (normalized.details) {
-    if (normalized.dayCruise && !normalized.dayCruiseDetails) {
-      normalized.dayCruiseDetails = normalized.details;
-    }
-    if (normalized.overnightCruise && !normalized.overnightCruiseDetails) {
-      normalized.overnightCruiseDetails = normalized.details;
-    }
-    if (normalized.nightCruise && !normalized.nightCruiseDetails) {
-      normalized.nightCruiseDetails = normalized.details;
-    }
-  }
-  if (normalized.dayCruise && normalized.dayCruiseBookedAmount === undefined) {
-    normalized.dayCruiseBookedAmount = normalized.dayCruisePrice;
-  }
-  if (normalized.overnightCruise && normalized.overnightCruiseBookedAmount === undefined) {
-    normalized.overnightCruiseBookedAmount = normalized.overnightCruisePrice;
-  }
-  if (normalized.nightCruise && normalized.nightCruiseBookedAmount === undefined) {
-    normalized.nightCruiseBookedAmount = normalized.nightCruisePrice;
-  }
-  if (normalized.dayCruiseExtraGuest !== undefined && normalized.dayCruiseExtraGuestQty === undefined) {
-    normalized.dayCruiseExtraGuestQty = 1;
-  }
-  if (normalized.dayCruiseExtraRoom !== undefined && normalized.dayCruiseExtraRoomQty === undefined) {
-    normalized.dayCruiseExtraRoomQty = 1;
-  }
-  if (normalized.overnightExtraBed !== undefined && normalized.overnightExtraBedQty === undefined) {
-    normalized.overnightExtraBedQty = 1;
-  }
-  if (normalized.overnightExtraCot !== undefined && normalized.overnightExtraCotQty === undefined) {
-    normalized.overnightExtraCotQty = 1;
-  }
-  if (normalized.overnightExtraGuest !== undefined && normalized.overnightExtraGuestQty === undefined) {
-    normalized.overnightExtraGuestQty = 1;
-  }
-  if (normalized.overnightExtraRoom !== undefined && normalized.overnightExtraRoomQty === undefined) {
-    normalized.overnightExtraRoomQty = 1;
-  }
-  if (normalized.nightCruiseExtraGuest !== undefined && normalized.nightCruiseExtraGuestQty === undefined) {
-    normalized.nightCruiseExtraGuestQty = 1;
-  }
-  if (normalized.nightCruiseExtraRoom !== undefined && normalized.nightCruiseExtraRoomQty === undefined) {
-    normalized.nightCruiseExtraRoomQty = 1;
-  }
-  if (normalized.nightExtraBed !== undefined && normalized.nightExtraBedQty === undefined) {
-    normalized.nightExtraBedQty = 1;
-  }
-  if (normalized.nightExtraCot !== undefined && normalized.nightExtraCotQty === undefined) {
-    normalized.nightExtraCotQty = 1;
-  }
-  return normalized;
-}
-
-const mockCalendarBookings: Record<number, Record<string, DayBooking>> = {
-  1: {
-    [getDateKey(currentYear, currentMonthIndex, 2)]: normalizeBooking({
-      dayCruise: true,
-      overnightCruise: false,
-      nightCruise: false,
-      details: "Corporate day outing for 8 guests.",
-      dayCruisePrice: 12500,
-    }),
-    [getDateKey(currentYear, currentMonthIndex, 5)]: normalizeBooking({
-      dayCruise: true,
-      overnightCruise: true,
-      nightCruise: false,
-      details: "Wedding group full-day charter with overnight extension.",
-      dayCruisePrice: 14000,
-      overnightCruisePrice: 14000,
-    }),
-    [getDateKey(currentYear, currentMonthIndex, 9)]: normalizeBooking({
-      dayCruise: false,
-      overnightCruise: true,
-      nightCruise: false,
-      details: "Family overnight package.",
-      overnightCruisePrice: 21000,
-    }),
-    [getDateKey(currentYear, currentMonthIndex, 13)]: normalizeBooking({
-      dayCruise: true,
-      overnightCruise: false,
-      nightCruise: true,
-      details: "Festival special day and night package booking.",
-      dayCruisePrice: 11500,
-      nightCruisePrice: 12000,
-    }),
-    [getDateKey(currentYear, currentMonthIndex, 18)]: normalizeBooking({
-      dayCruise: false,
-      overnightCruise: false,
-      nightCruise: true,
-      details: "Couple moonlight cruise with dinner.",
-      nightCruisePrice: 14500,
-    }),
-    [getDateKey(currentYear, currentMonthIndex, 24)]: normalizeBooking({
-      dayCruise: true,
-      overnightCruise: false,
-      nightCruise: true,
-      details: "Private anniversary plan with sunset and night ride.",
-      dayCruisePrice: 12000,
-      nightCruisePrice: 14000,
-    }),
-  },
-  2: {
-    [getDateKey(currentYear, currentMonthIndex, 3)]: normalizeBooking({
-      dayCruise: true,
-      overnightCruise: false,
-      nightCruise: false,
-      details: "Corporate retreat.",
-      dayCruisePrice: 10800,
-    }),
-  },
-  3: {
-    [getDateKey(currentYear, currentMonthIndex, 10)]: normalizeBooking({
-      dayCruise: true,
-      overnightCruise: true,
-      nightCruise: true,
-      details: "Grand celebration booking.",
-      dayCruisePrice: 18000,
-      overnightCruisePrice: 28000,
-      nightCruisePrice: 20000,
-    }),
-  },
+export const BOAT_ID_MAP: Record<string, number> = {
+  "Lake Ripples": 1,
+  "Lake Royale": 2,
+  "Lake Riviera": 3,
+  "Floating Dreams": 4,
+  "Whale Cruise": 5,
 };
 
+export const BOAT_NAME_MAP: Record<number, string> = {
+  1: "Lake Ripples",
+  2: "Lake Royale",
+  3: "Lake Riviera",
+  4: "Floating Dreams",
+  5: "Whale Cruise",
+};
+
+export const TRIP_TYPES = ["Day Cruise", "Overnight Stay", "Night Stay"];
+
+export const COMFORT_COLORS = {
+  Luxury: "#0F172A",
+  Premium: "#F97316",
+  Deluxe: "#EC4899",
+};
+
+export const TYPE_ICONS = {
+  "Day cruise": "sun",
+  "Overnight stay": "moonStar",
+  "Night stay": "sunrise",
+};
+
+export const AVAILABILITY_TYPE_ICONS = {
+  "Day Cruise": "sun",
+  "Overnight Stay": "moonStar",
+  "Night Stay": "sunrise",
+};
+
+export const CHECK_IN_TIMES = {
+  "Day cruise": "11:00AM",
+  "Overnight stay": "12:00PM",
+  "Night stay": "05:30PM",
+};
+
+// Mock data from mockup
+export const initialBookings: Booking[] = [
+  { id: 10, bookingId: "ALP-03062026-0130", guest: "Daniel Foster", phone: "+44 7700 900130", boat: "Lake Ripples", type: "Overnight stay", date: "3 Jun 2026", dateEnd: "4 Jun 2026", comfort: "Luxury", mode: "Private", adults: 2, children: 0, rooms: 1, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: ["Parking needed"], price: 22500, ghat: "Finishing Point, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Veg only", paymentStatus: "Captured" },
+  { id: 11, bookingId: "ALP-10062026-0136", guest: "Maria Santos", phone: "+34 612 345 678", boat: "Lake Royale", type: "Day cruise", date: "10 Jun 2026", dateEnd: "10 Jun 2026", comfort: "Premium", mode: "Shared", adults: 3, children: 1, rooms: 2, dietBreakdown: [{ type: "Non-veg", count: 3 }, { type: "Veg", count: 1 }], accessibility: "None", specialRequests: ["Extra dishes"], price: 19800, ghat: "Punnamada Jetty, Alappuzha", checkIn: "09:00", checkOut: "16:00", meal: "Non-veg", paymentStatus: "Captured" },
+  { id: 1, bookingId: "ALP-15062026-0142", guest: "Ethan Walker", phone: "+44 7700 900142", boat: "Lake Ripples", type: "Day cruise", date: "15 Jun 2026", dateEnd: "15 Jun 2026", comfort: "Premium", mode: "Private", adults: 2, children: 0, rooms: 1, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: [], price: 15800, ghat: "Finishing Point, Alappuzha", checkIn: "08:30", checkOut: "17:00", meal: "Veg only", paymentStatus: "Captured" },
+  { id: 12, bookingId: "ALP-17062026-0145", guest: "Sara Kim", phone: "+82 10 1234 5678", boat: "Lake Riviera", type: "Day cruise", date: "17 Jun 2026", dateEnd: "17 Jun 2026", comfort: "Deluxe", mode: "Private", adults: 2, children: 0, rooms: 1, dietBreakdown: [{ type: "Jain", count: 1 }, { type: "Veg", count: 1 }], accessibility: "None", specialRequests: ["Speedboat"], price: 17200, ghat: "Finishing Point, Alappuzha", checkIn: "09:00", checkOut: "16:00", meal: "Veg only", paymentStatus: "Captured" },
+  { id: 2, bookingId: "ALP-18062026-0149", guest: "Olivia Bennett", phone: "+33 6 12 34 56 78", boat: "Lake Royale", type: "Overnight stay", date: "18 Jun 2026", dateEnd: "19 Jun 2026", comfort: "Luxury", mode: "Private", adults: 2, children: 2, kids: 1, rooms: 2, dietBreakdown: [{ type: "Non-veg", count: 2 }, { type: "Halal", count: 2 }], accessibility: "None", specialRequests: ["Birthday cake", "Country boat"], price: 26500, ghat: "Punnamada Jetty, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Non-veg, no shellfish", paymentStatus: "Captured" },
+  { id: 3, bookingId: "ALP-22062026-0151", guest: "Lucas Martin", phone: "+1 415 555 0151", boat: "Lake Riviera", type: "Night stay", date: "22 Jun 2026", dateEnd: "23 Jun 2026", comfort: "Premium", mode: "Shared", adults: 4, children: 2, rooms: 3, dietBreakdown: [{ type: "Non-veg", count: 4 }, { type: "Veg", count: 2 }], accessibility: "Reduced mobility", specialRequests: ["Parking needed", "Massage"], price: 31000, ghat: "Finishing Point, Alappuzha", checkIn: "17:00", checkOut: "08:00", meal: "No restrictions noted", paymentStatus: "Pending" },
+  { id: 13, bookingId: "ALP-19062026-0162", guest: "Noah Bennett", phone: "+44 7700 900162", boat: "Lake Riviera", type: "Day cruise", date: "19 Jun 2026", dateEnd: "19 Jun 2026", comfort: "Premium", mode: "Private", adults: 2, children: 0, rooms: 1, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: ["Kayaking"], price: 16500, ghat: "Finishing Point, Alappuzha", checkIn: "09:00", checkOut: "16:00", meal: "Veg only", paymentStatus: "Captured" },
+  { id: 14, bookingId: "ALP-24062026-0163", guest: "Isabella Cruz", phone: "+34 612 987 654", boat: "Lake Riviera", type: "Overnight stay", date: "24 Jun 2026", dateEnd: "25 Jun 2026", comfort: "Luxury", mode: "Private", adults: 2, children: 1, rooms: 1, dietBreakdown: [{ type: "Non-veg", count: 3 }], accessibility: "None", specialRequests: ["Honeymoon cake"], price: 24000, ghat: "Finishing Point, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Non-veg", paymentStatus: "Captured" },
+  { id: 15, bookingId: "ALP-27062026-0164", guest: "Ravi Shankar", phone: "+91 98201 23456", boat: "Lake Riviera", type: "Day cruise", date: "27 Jun 2026", dateEnd: "27 Jun 2026", comfort: "Deluxe", mode: "Shared", adults: 3, children: 0, rooms: 1, dietBreakdown: [{ type: "Veg", count: 3 }], accessibility: "None", specialRequests: ["Country boat"], price: 18900, ghat: "Finishing Point, Alappuzha", checkIn: "09:00", checkOut: "16:00", meal: "Veg only", paymentStatus: "Captured" },
+  { id: 20, bookingId: "ALP-05082026-0171", guest: "Karan Mehta", phone: "+91 98111 22334", boat: "Lake Royale", type: "Day cruise", date: "5 Aug 2026", dateEnd: "5 Aug 2026", comfort: "Premium", mode: "Private", adults: 2, children: 0, rooms: 1, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: [], price: 17500, ghat: "Punnamada Jetty, Alappuzha", checkIn: "09:00", checkOut: "16:00", meal: "Veg only", paymentStatus: "Refunded", status: "cancelled", cancelledAt: new Date(2026, 6, 30, 11, 15) },
+  { id: 21, bookingId: "ALP-12082026-0173", guest: "Sophie Laurent", phone: "+33 6 98 76 54 32", boat: "Lake Riviera", type: "Overnight stay", date: "12 Aug 2026", dateEnd: "13 Aug 2026", comfort: "Luxury", mode: "Private", adults: 2, children: 1, rooms: 1, dietBreakdown: [{ type: "Non-veg", count: 3 }], accessibility: "None", specialRequests: ["Honeymoon cake"], price: 29500, ghat: "Finishing Point, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Non-veg", paymentStatus: "Refunded", status: "cancelled", cancelledAt: new Date(2026, 7, 2, 16, 40) },
+  { id: 22, bookingId: "ALP-22062026-0175", guest: "Rohan Desai", phone: "+91 98450 11223", boat: "Lake Riviera", type: "Day cruise", date: "22 Jun 2026", dateEnd: "22 Jun 2026", comfort: "Premium", mode: "Private", adults: 2, children: 0, rooms: 1, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: [], price: 15500, ghat: "Finishing Point, Alappuzha", checkIn: "09:00", checkOut: "16:00", meal: "Veg only", paymentStatus: "Captured" },
+  { id: 23, bookingId: "AB-28062026-4471", guest: "Neha Kapoor", phone: "+91 98220 55671", boat: "Lake Royale", type: "Overnight stay", date: "28 Jun 2026", dateEnd: "30 Jun 2026", comfort: "Premium", mode: "Private", adults: 2, children: 1, rooms: 2, dietBreakdown: [{ type: "Veg", count: 3 }], accessibility: "None", specialRequests: [], price: 31500, ghat: "Punnamada Jetty, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Veg only", paymentStatus: "Captured", isDirect: true, bookingSource: "Make My Trip" },
+  { id: 24, bookingId: "AB-25062026-8302", guest: "Vikram Shah", phone: "+91 99876 54321", boat: "Floating Dreams", type: "Day cruise", date: "25 Jun 2026", dateEnd: "25 Jun 2026", comfort: "Deluxe", mode: "Private", adults: 4, children: 0, rooms: 3, dietBreakdown: [{ type: "Non-veg", count: 4 }], accessibility: "None", specialRequests: [], price: 19500, ghat: "Finishing Point, Alappuzha", checkIn: "11:00", checkOut: "17:00", meal: "Non-veg", paymentStatus: "Captured", isDirect: true, bookingSource: "Direct Booking" },
+  { id: 25, bookingId: "ALP-30062026-0182", guest: "Priyanka Reddy", phone: "+91 98123 45678", boat: "Lake Ripples", type: "Day cruise", date: "30 Jun 2026", dateEnd: "30 Jun 2026", comfort: "Premium", mode: "Private", adults: 2, children: 1, rooms: 1, dietBreakdown: [{ type: "Veg", count: 3 }], accessibility: "None", specialRequests: ["Massage"], updatedSpecialRequests: ["Massage"], price: 16500, ghat: "Punnamada Jetty, Alappuzha", checkIn: "09:00", checkOut: "16:00", meal: "Veg only", paymentStatus: "Captured", isUpdated: true },
+  { id: 26, bookingId: "AB-23062026-7741", guest: "Fatima Al Zaabi", phone: "+971 50 123 4567", boat: "Whale Cruise", type: "Day cruise", date: "23 Jun 2026", dateEnd: "23 Jun 2026", comfort: "Deluxe", mode: "Shared", adults: 8, children: 2, rooms: 5, dietBreakdown: [{ type: "Halal", count: 10 }], accessibility: "None", specialRequests: [], price: 32500, ghat: "Punnamada Jetty, Alappuzha", checkIn: "11:00", checkOut: "17:00", meal: "Non-veg", paymentStatus: "Captured", isDirect: true, bookingSource: "Direct Booking" },
+  { id: 27, bookingId: "ALP-05072026-0201", guest: "Arjun Mehta", phone: "+91 98100 22334", boat: "Lake Riviera", type: "Overnight stay", date: "5 Jul 2026", dateEnd: "6 Jul 2026", adults: 4, children: 0, kids: 0, rooms: 2, cots: 0, dietBreakdown: [{ type: "Vegetarian", count: 4 }], accessibility: "None", specialRequests: [], price: 28000, ghat: "Punnamada Jetty, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Veg", paymentStatus: "Captured", status: "confirmed", isDirect: false, bookingSource: "Sailcept" },
+  { id: 28, bookingId: "ALP-12072026-0202", guest: "Priya Sharma", phone: "+91 99001 55678", boat: "Floating Dreams", type: "Night stay", date: "12 Jul 2026", dateEnd: "13 Jul 2026", adults: 6, children: 2, kids: 0, rooms: 3, cots: 1, dietBreakdown: [{ type: "Non-veg", count: 6 }, { type: "Vegetarian", count: 2 }], accessibility: "None", specialRequests: [], price: 45000, ghat: "Punnamada Jetty, Alappuzha", checkIn: "17:30", checkOut: "09:00", meal: "Mixed", paymentStatus: "Captured", status: "confirmed", isDirect: false, bookingSource: "Sailcept" },
+  { id: 29, bookingId: "ALP-18072026-0203", guest: "Tom Hughes", phone: "+44 7700 900123", boat: "Lake Royale", type: "Overnight stay", date: "18 Jul 2026", dateEnd: "19 Jul 2026", adults: 2, children: 0, kids: 0, rooms: 1, cots: 0, dietBreakdown: [{ type: "Non-veg", count: 2 }], accessibility: "None", specialRequests: [], price: 18500, ghat: "Punnamada Jetty, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Non-veg", paymentStatus: "Captured", status: "confirmed", isDirect: false, bookingSource: "Sailcept" },
+  { id: 30, bookingId: "ALP-25072026-0204", guest: "Meera Nair", phone: "+91 94470 11223", boat: "Lake Ripples", type: "Day cruise", date: "25 Jul 2026", dateEnd: "25 Jul 2026", adults: 2, children: 1, kids: 0, rooms: 1, cots: 0, dietBreakdown: [{ type: "Vegetarian", count: 3 }], accessibility: "None", specialRequests: [], price: 12000, ghat: "Punnamada Jetty, Alappuzha", checkIn: "11:30", checkOut: "17:00", meal: "Veg", paymentStatus: "Captured", status: "confirmed", isDirect: false, bookingSource: "Sailcept" },
+  { id: 31, bookingId: "ALP-08072026-0205", guest: "Lena Fischer", phone: "+49 170 9876543", boat: "Lake Royale", type: "Overnight stay", date: "8 Jul 2026", dateEnd: "9 Jul 2026", adults: 2, children: 0, kids: 0, rooms: 1, cots: 0, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: [], price: 18500, ghat: "Punnamada Jetty, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Veg only", paymentStatus: "Refunded", status: "cancelled", cancelledAt: new Date(2026, 6, 2, 10, 30), isDirect: false, bookingSource: "Sailcept" },
+  { id: 32, bookingId: "AB-14072026-5521", guest: "Rajesh Nambiar", phone: "+91 98400 77612", boat: "Floating Dreams", type: "Overnight stay", date: "14 Jul 2026", dateEnd: "15 Jul 2026", adults: 4, children: 1, kids: 0, rooms: 3, cots: 0, dietBreakdown: [{ type: "Non-veg", count: 3 }, { type: "Veg", count: 2 }], accessibility: "None", specialRequests: ["Extra dishes"], price: 38000, ghat: "Punnamada Jetty, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Mixed", paymentStatus: "Captured", status: "confirmed", isDirect: true, bookingSource: "Make My Trip" },
+  { id: 33, bookingId: "ALP-09062026-0210", guest: "Clara Dubois", phone: "+33 6 45 67 89 01", boat: "Lake Riviera", type: "Day cruise", date: "9 Jun 2026", dateEnd: "9 Jun 2026", adults: 2, children: 0, kids: 0, rooms: 2, cots: 0, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: ["Kayaking"], updatedSpecialRequests: ["Kayaking"], price: 17500, ghat: "Finishing Point, Alappuzha", checkIn: "09:00", checkOut: "16:00", meal: "Veg only", paymentStatus: "Captured", isUpdated: true },
+  { id: 34, bookingId: "ALP-11062026-0211", guest: "Samuel Okonkwo", phone: "+234 803 123 4567", boat: "Lake Royale", type: "Day cruise", date: "11 Jun 2026", dateEnd: "11 Jun 2026", adults: 2, children: 1, kids: 0, rooms: 1, cots: 0, dietBreakdown: [{ type: "Non-veg", count: 3 }], accessibility: "None", specialRequests: [], price: 16000, ghat: "Punnamada Jetty, Alappuzha", checkIn: "09:00", checkOut: "16:00", meal: "Non-veg", paymentStatus: "Refunded", status: "cancelled", cancelledAt: new Date(2026, 5, 8, 14, 0) },
+  { id: 35, bookingId: "AB-14062026-0212", guest: "Yuki Tanaka", phone: "+81 90 1234 5678", boat: "Lake Ripples", type: "Overnight stay", date: "14 Jun 2026", dateEnd: "15 Jun 2026", adults: 2, children: 0, kids: 0, rooms: 1, cots: 0, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: [], price: 22000, ghat: "Finishing Point, Alappuzha", checkIn: "12:00", checkOut: "09:00", meal: "Veg only", paymentStatus: "Captured", status: "deleted", isDirect: true, bookingSource: "Direct Booking" },
+  { id: 36, bookingId: "AB-20062026-0213", guest: "Marco Ferretti", phone: "+39 333 987 6543", boat: "Floating Dreams", type: "Day cruise", date: "20 Jun 2026", dateEnd: "20 Jun 2026", adults: 3, children: 0, kids: 0, rooms: 3, cots: 0, dietBreakdown: [{ type: "Non-veg", count: 3 }], accessibility: "None", specialRequests: ["Speedboat"], price: 21000, ghat: "Finishing Point, Alappuzha", checkIn: "11:00", checkOut: "17:00", meal: "Non-veg", paymentStatus: "Captured", status: "deleted", isDirect: true, bookingSource: "Booking.com" },
+  { id: 38, bookingId: "AB-21062026-6634", guest: "Karim Benali", phone: "+33 6 22 33 44 55", boat: "Lake Ripples", type: "Night stay", date: "21 Jun 2026", dateEnd: "22 Jun 2026", adults: 2, children: 0, kids: 0, rooms: 1, cots: 0, dietBreakdown: [{ type: "Non-veg", count: 2 }], accessibility: "None", specialRequests: [], price: 24500, ghat: "Finishing Point, Alappuzha", checkIn: "17:30", checkOut: "09:00", meal: "Non-veg", paymentStatus: "Captured", status: "confirmed", isDirect: true, isEdited: true, bookingSource: "Airbnb" },
+];
+
+export const initialRequests: Booking[] = [
+  { id: 1, bookingId: "ALP-25062026-0156", guest: "Priya Nair", phone: "+91 98765 43210", boat: "Lake Riviera", type: "Overnight stay", date: "25 Jun 2026", dateEnd: "26 Jun 2026", comfort: "Deluxe", mode: "Private", adults: 2, children: 0, kids: 0, rooms: 1, dietBreakdown: [{ type: "Vegan", count: 1 }, { type: "Veg", count: 1 }], accessibility: "None", specialRequests: ["Honeymoon cake", "Kayaking"], price: 18500, requestedAt: new Date("2026-06-18T09:00:00") },
+  { id: 2, bookingId: "ALP-28062026-0158", guest: "Tom Hughes", phone: "+44 7700 900158", boat: "Lake Ripples", type: "Day cruise", date: "28 Jun 2026", dateEnd: "28 Jun 2026", comfort: "Premium", mode: "Private", adults: 2, children: 0, kids: 0, rooms: 1, dietBreakdown: [{ type: "Non-veg", count: 2 }], accessibility: "Wheelchair", specialRequests: ["Parking needed", "Speedboat"], price: 16800, requestedAt: new Date(Date.now() - 2 * 60 * 60 * 1000 - 15 * 60 * 1000) },
+  { id: 3, bookingId: "ALP-01072026-0160", guest: "Aisha Khan", phone: "+971 50 123 4567", boat: "Lake Royale", type: "Overnight stay", date: "1 Jul 2026", dateEnd: "2 Jul 2026", comfort: "Luxury", mode: "Private", adults: 4, children: 0, kids: 0, rooms: 2, dietBreakdown: [{ type: "Halal", count: 3 }, { type: "Veg", count: 1 }], accessibility: "Reduced mobility", specialRequests: ["Extra dishes", "Massage", "Country boat"], price: 32000, requestedAt: new Date(Date.now() - 8 * 60 * 60 * 1000) },
+];
+
+export const initialRequestHistory: Booking[] = [
+  { id: 4, bookingId: "ALP-10062026-0138", guest: "James Carter", phone: "+1 212 555 0190", boat: "Lake Ripples", type: "Day cruise", date: "10 Jun 2026", dateEnd: "10 Jun 2026", comfort: "Premium", mode: "Private", adults: 2, children: 0, kids: 0, rooms: 1, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: ["Parking needed"], price: 16200, outcome: "accepted", requestedAt: new Date("2026-06-09T09:00:00"), decidedAt: new Date("2026-06-09T16:00:00") },
+  { id: 5, bookingId: "ALP-12062026-0140", guest: "Layla Haddad", phone: "+971 50 987 6543", boat: "Lake Royale", type: "Overnight stay", date: "12 Jun 2026", dateEnd: "13 Jun 2026", comfort: "Deluxe", mode: "Shared", adults: 3, children: 1, kids: 0, rooms: 2, dietBreakdown: [{ type: "Jain", count: 2 }, { type: "Veg", count: 2 }], accessibility: "None", specialRequests: ["Birthday cake", "Massage"], price: 21500, outcome: "declined", requestedAt: new Date("2026-06-10T20:00:00"), decidedAt: new Date("2026-06-11T09:30:00") },
+  { id: 6, bookingId: "ALP-13062026-0141", guest: "Marco Rossi", phone: "+39 339 123 4567", boat: "Lake Riviera", type: "Night stay", date: "13 Jun 2026", dateEnd: "14 Jun 2026", comfort: "Luxury", mode: "Private", adults: 2, children: 0, kids: 0, rooms: 1, dietBreakdown: [{ type: "Non-veg", count: 2 }], accessibility: "None", specialRequests: ["Honeymoon cake"], price: 28000, outcome: "accepted", requestedAt: new Date("2026-06-12T08:15:00"), decidedAt: new Date("2026-06-12T18:45:00") },
+  { id: 7, bookingId: "ALP-16062026-0144", guest: "Hannah Müller", phone: "+49 170 1234567", boat: "Floating Dreams", type: "Day cruise", date: "16 Jun 2026", dateEnd: "16 Jun 2026", comfort: "Premium", mode: "Shared", adults: 4, children: 0, kids: 0, rooms: 2, dietBreakdown: [{ type: "Vegan", count: 1 }, { type: "Veg", count: 3 }], accessibility: "Wheelchair", specialRequests: ["Parking needed", "Country boat"], price: 19800, outcome: "declined", requestedAt: new Date("2026-06-14T19:30:00"), decidedAt: new Date("2026-06-15T11:00:00") },
+  { id: 8, bookingId: "ALP-08062026-0209", guest: "Pierre Moreau", phone: "+33 6 11 22 33 44", boat: "Lake Riviera", type: "Day cruise", date: "8 Jun 2026", dateEnd: "8 Jun 2026", comfort: "Luxury", mode: "Private", adults: 2, children: 0, kids: 0, rooms: 2, dietBreakdown: [{ type: "Veg", count: 2 }], accessibility: "None", specialRequests: [], price: 17000, outcome: "accepted", requestedAt: new Date("2026-06-07T08:00:00"), decidedAt: new Date("2026-06-07T15:30:00") },
+];
+
+export const initialBlockedDates = [
+  { boat: "Lake Ripples", date: "26 Jun 2026", reason: "direct", tripType: "Day Cruise" },
+  { boat: "Lake Royale", date: "28 Jun 2026", reason: "direct", tripType: "Overnight Stay" },
+  { boat: "Lake Royale", date: "29 Jun 2026", reason: "direct", tripType: "Overnight Stay" },
+  { boat: "Floating Dreams", date: "25 Jun 2026", reason: "direct", tripType: "Day Cruise" },
+];
+
+export const initialDateOpenState: Record<string, boolean> = {
+  "Lake Royale|29 Jun 2026": true,
+};
+
+// In-memory databases
+export let bookings = [...initialBookings];
+export let requests = [...initialRequests];
+export let requestHistory = [...initialRequestHistory];
+export let blockedDates = [...initialBlockedDates];
+export let dateOpenState = { ...initialDateOpenState };
+export let sharedUnitsState: Record<string, number> = {};
+
+export const SHARED_BOATS = new Set(["Whale Cruise"]);
+export const SHARED_BOAT_TOTAL_UNITS: Record<string, number> = { "Whale Cruise": 14 };
+
+export const BOAT_TOTAL_BH: Record<string, number> = {
+  "Lake Ripples": 1,
+  "Lake Royale": 2,
+  "Lake Riviera": 4,
+  "Floating Dreams": 5,
+  "Whale Cruise": 1,
+};
+
+export const BOAT_BH_CONFIGS: Record<string, number[]> = {
+  "Lake Ripples": [1],
+  "Lake Royale": [1, 2],
+  "Lake Riviera": [2, 3, 4],
+  "Floating Dreams": [3, 4, 5],
+  "Whale Cruise": [1],
+};
+
+// Functions to build databases on the fly
+export function buildDefaultPricing(boatName: string) {
+  const bhTiers = BOAT_BH_CONFIGS[boatName] || [BOAT_TOTAL_BH[boatName]];
+  const pricing: Record<string, { open: boolean; tiers: Record<number, any> }> = {};
+  TRIP_TYPES.forEach((type, typeIndex) => {
+    const tiers: Record<number, any> = {};
+    bhTiers.forEach(bh => {
+      const basePerBH = 6000 + typeIndex * 2000;
+      tiers[bh] = {
+        base: basePerBH * bh,
+        extraAdult: 700 + typeIndex * 100,
+        extraChild: 350 + typeIndex * 50,
+      };
+    });
+    pricing[type] = { open: true, tiers };
+  });
+  return pricing;
+}
+
+export const BOOKING_TYPE_TO_AVAILABILITY_TYPE: Record<string, string> = {
+  "Day cruise": "Day Cruise",
+  "Overnight stay": "Overnight Stay",
+  "Night stay": "Night Stay",
+};
+
+export function buildBackfilledPricing(allBookings: Booking[]) {
+  const seeded: Record<string, { tiers: Record<number, any> }> = {};
+  allBookings.forEach(b => {
+    const availabilityType = BOOKING_TYPE_TO_AVAILABILITY_TYPE[b.type];
+    if (!availabilityType) return;
+    const defaults = buildDefaultPricing(b.boat);
+    const bhTiers = BOAT_BH_CONFIGS[b.boat] || [BOAT_TOTAL_BH[b.boat]];
+    const bookedBH = defaults[availabilityType]?.tiers?.[b.rooms] ? b.rooms : bhTiers[0];
+    const key = `${b.boat}|${b.date}|${availabilityType}`;
+    const tiers: Record<number, any> = {};
+    bhTiers.forEach(bh => {
+      const base = defaults[availabilityType]?.tiers?.[bh];
+      tiers[bh] = { ...base, open: bh === bookedBH };
+    });
+    seeded[key] = { tiers };
+  });
+  return seeded;
+}
+
+export function buildBackfilledOpenState(allBookings: Booking[]) {
+  const seeded: Record<string, boolean> = {};
+  allBookings.forEach(b => {
+    seeded[`${b.boat}|${b.date}`] = true;
+  });
+  return seeded;
+}
+
+// Initial pricing state
+export let dateTripPricing: Record<string, { tiers: Record<number, any> }> = buildBackfilledPricing(bookings);
+// In case dateOpenState is empty, backfill it from bookings
+bookings.forEach(b => {
+  dateOpenState[`${b.boat}|${b.date}`] = true;
+});
+
+// Helper utilities
+export function safeParseDate(dateVal: any): Date {
+  if (!dateVal) return new Date(NaN);
+  if (dateVal instanceof Date) return dateVal;
+  
+  const dateStr = String(dateVal).trim();
+  
+  // 1. Check if it matches "D MMM YYYY" or "DD MMM YYYY" (e.g. "3 Jun 2026" or "25 Jun 2026")
+  const matchDmy = dateStr.match(/^(\d{1,2})\s+([A-Za-z]{3,9})\s+(\d{4})$/);
+  if (matchDmy) {
+    const day = parseInt(matchDmy[1], 10);
+    const monthStr = matchDmy[2].toLowerCase().substring(0, 3);
+    const year = parseInt(matchDmy[3], 10);
+    
+    const months: Record<string, number> = {
+      jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+      jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+    };
+    const month = months[monthStr];
+    if (month !== undefined) {
+      return new Date(year, month, day);
+    }
+  }
+  
+  // 2. Check if it matches ISO-like format "YYYY-MM-DD"
+  const matchYmd = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}):(\d{2}))?/);
+  if (matchYmd) {
+    const year = parseInt(matchYmd[1], 10);
+    const month = parseInt(matchYmd[2], 10) - 1;
+    const day = parseInt(matchYmd[3], 10);
+    const hour = matchYmd[4] ? parseInt(matchYmd[4], 10) : 0;
+    const minute = matchYmd[5] ? parseInt(matchYmd[5], 10) : 0;
+    const second = matchYmd[6] ? parseInt(matchYmd[6], 10) : 0;
+    return new Date(year, month, day, hour, minute, second);
+  }
+
+  // 3. Fallback to standard parsing
+  return new Date(dateStr);
+}
+
+export function isBookingCoveringDate(b: Booking, dateStr: string): boolean {
+  if (b.status === "cancelled" || b.status === "deleted") return false;
+  const targetDate = safeParseDate(dateStr);
+  if (isNaN(targetDate.getTime())) return false;
+
+  const startDate = safeParseDate(b.date);
+  if (isNaN(startDate.getTime())) return false;
+
+  if (b.type === "Overnight stay" || b.type === "Overnight Stay") {
+    const endDate = safeParseDate(b.dateEnd);
+    if (!isNaN(endDate.getTime()) && endDate > startDate) {
+      const t = targetDate.getTime();
+      const s = startDate.getTime();
+      const e = endDate.getTime();
+      return t >= s && t < e;
+    }
+  }
+  return targetDate.getTime() === startDate.getTime();
+}
+
+export function formatABBookingId(dateStr: string): string {
+  const d = safeParseDate(dateStr);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = String(d.getFullYear());
+  const random4 = Math.floor(1000 + Math.random() * 9000);
+  return `AB-${day}${month}${year}-${random4}`;
+}
+
+
+export function toISODate(dateStr: string) {
+  if (!dateStr) return "";
+  const d = safeParseDate(dateStr);
+  if (isNaN(d.getTime())) return "";
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export function fromISODate(isoStr: string) {
+  if (!isoStr) return "";
+  const d = safeParseDate(isoStr + (isoStr.includes("T") ? "" : "T00:00:00"));
+  if (isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }).replace(/,/g, "");
+}
+
+export function formatDateRange(start: string, end: string) {
+  const startDate = safeParseDate(start);
+  const endDate = safeParseDate(end);
+  const fullFmt: Intl.DateTimeFormatOptions = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
+  const startDisplay = startDate.toLocaleDateString("en-GB", fullFmt).replace(",", "");
+  const endDisplay = endDate.toLocaleDateString("en-GB", fullFmt).replace(",", "");
+  return `${startDisplay} | ${endDisplay}`;
+}
+
+export function formatToday() {
+  const fullFmt: Intl.DateTimeFormatOptions = { weekday: "short", day: "numeric", month: "short", year: "numeric" };
+  return new Date().toLocaleDateString("en-GB", fullFmt).replace(",", "");
+}
+
+export function getWaitingHours(requestedAt: Date) {
+  const diffMs = new Date().getTime() - safeParseDate(requestedAt).getTime();
+  return diffMs / (1000 * 60 * 60);
+}
+
+export function getWaitingColor(hours: number) {
+  if (hours < 6) return "#10B981"; // green
+  if (hours < 11) return "#F59E0B"; // amber
+  return "#EF4444"; // red
+}
+
+export function formatWaitingTime(hours: number) {
+  const wholeHours = Math.floor(hours);
+  const minutes = Math.round((hours - wholeHours) * 60);
+  return minutes > 0 ? `${wholeHours}h${String(minutes).padStart(2, "0")}min` : `${wholeHours}h`;
+}
+
+export function getCotsMattresses(b: Booking) {
+  if (typeof b.cots === "number") return b.cots;
+  const countableGuests = b.adults + b.children;
+  return Math.max(0, countableGuests - b.rooms * 2);
+}
+
+export function getMinimumRooms(b: { adults: number; children: number }) {
+  const countableGuests = b.adults + b.children;
+  return Math.max(1, Math.ceil(countableGuests / 3));
+}
+
+export function isContactUnlocked(tripDate: string) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const trip = new Date(tripDate);
+  trip.setHours(0, 0, 0, 0);
+  const daysUntilTrip = (trip.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+  return daysUntilTrip <= 4;
+}
+
+export function isUnderRoomed(b: { adults: number; children: number; rooms: number }) {
+  return b.rooms < getMinimumRooms(b);
+}
+
+export function getAvailabilityStatus(
+  boat: string,
+  dateStr: string,
+  allBookings: Booking[],
+  allBlockedDates: typeof blockedDates,
+  allDateOpenState: typeof dateOpenState,
+  allDateTripPricing: typeof dateTripPricing
+) {
+  const isDateOpen = allDateOpenState[`${boat}|${dateStr}`] === true;
+  if (!isDateOpen) return { status: "closed" };
+
+  const isTripTypeOpenAndPriced = (type: string) => {
+    const entry = allDateTripPricing[`${boat}|${dateStr}|${type}`];
+    if (!entry?.tiers) return false;
+    return Object.values(entry.tiers).some((tier: any) => tier.open);
+  };
+  const openTypes = {
+    "Day Cruise": isTripTypeOpenAndPriced("Day Cruise"),
+    "Overnight Stay": isTripTypeOpenAndPriced("Overnight Stay"),
+    "Night Stay": isTripTypeOpenAndPriced("Night Stay"),
+  };
+
+  const sameDayBookings = allBookings.filter(
+    b => b.boat === boat && isBookingCoveringDate(b, dateStr)
+  );
+  const sameDayDirectBookings = allBlockedDates.filter(
+    b => b.boat === boat && b.date === dateStr && b.reason === "direct"
+  );
+  const hasDirectBooking = sameDayDirectBookings.length > 0 || sameDayBookings.some(b => b.isDirect);
+
+  const isBooked = (type: string) => {
+    const bookingTypeMap: Record<string, string> = { "Day Cruise": "Day cruise", "Overnight Stay": "Overnight stay", "Night Stay": "Night stay" };
+    const targetType = bookingTypeMap[type] || type;
+    const realBooked = sameDayBookings.some(b => b.type === targetType || b.type === type);
+    const directBooked = sameDayDirectBookings.some(b => b.tripType === type);
+    return realBooked || directBooked;
+  };
+
+  const dayBooked = isBooked("Day Cruise");
+  const overnightBooked = isBooked("Overnight Stay");
+  const nightBooked = isBooked("Night Stay");
+
+  const isVisible = {
+    "Day Cruise": openTypes["Day Cruise"] || dayBooked || overnightBooked,
+    "Overnight Stay": openTypes["Overnight Stay"] || overnightBooked || dayBooked || nightBooked,
+    "Night Stay": openTypes["Night Stay"] || nightBooked || overnightBooked,
+  };
+
+  const circles = {
+    "Day Cruise": isVisible["Day Cruise"] ? ((dayBooked || overnightBooked) ? "red" : "green") : null,
+    "Overnight Stay": isVisible["Overnight Stay"] ? ((overnightBooked || dayBooked || nightBooked) ? "red" : "green") : null,
+    "Night Stay": isVisible["Night Stay"] ? ((nightBooked || overnightBooked) ? "red" : "green") : null,
+  };
+
+  const openCircleColors = Object.values(circles).filter(c => c !== null);
+
+  if (openCircleColors.length === 0) {
+    return { status: "empty", circles, hasDirectBooking };
+  }
+
+  const allRed = openCircleColors.every(c => c === "red");
+  const someRed = openCircleColors.some(c => c === "red");
+  const background = allRed ? "red" : someRed ? "amber" : "green";
+
+  return { status: "open", circles, background, hasDirectBooking };
+}
+
+// Service APIs
 const delay = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, process.env.NODE_ENV === "test" ? 0 : ms));
 
-export async function fetchBookings(boatId: number): Promise<ApiResponse<BookingRecord[]>> {
-  await delay(500);
-  const filtered = mockBookings.filter((b) => b.boatId === boatId);
+export async function fetchBookings(boatId: number): Promise<ApiResponse<Booking[]>> {
+  await delay(400);
+  const boatName = BOAT_NAME_MAP[boatId];
+  if (boatId === 0 || !boatName) {
+    return { data: bookings, error: null };
+  }
+  const filtered = bookings.filter((b) => b.boat === boatName);
   return { data: filtered, error: null };
 }
 
-export async function fetchRequests(boatId: number): Promise<ApiResponse<BookingRequest[]>> {
-  await delay(500);
-  const filtered = mockRequests.filter((r) => r.boatId === boatId);
+export async function fetchRequests(boatId: number): Promise<ApiResponse<Booking[]>> {
+  await delay(400);
+  const boatName = BOAT_NAME_MAP[boatId];
+  if (boatId === 0 || !boatName) {
+    return { data: requests, error: null };
+  }
+  const filtered = requests.filter((r) => r.boat === boatName);
+  return { data: filtered, error: null };
+}
+
+export async function fetchRequestHistory(boatId: number): Promise<ApiResponse<Booking[]>> {
+  await delay(400);
+  const boatName = BOAT_NAME_MAP[boatId];
+  if (boatId === 0 || !boatName) {
+    return { data: requestHistory, error: null };
+  }
+  const filtered = requestHistory.filter((r) => r.boat === boatName);
   return { data: filtered, error: null };
 }
 
 export async function submitRequestOutcome(
-  boatId: number,
-  guestName: string,
-  outcome: "accepted" | "rejected"
-): Promise<ApiResponse<BookingRequest>> {
-  await delay(600);
-  const req = mockRequests.find((r) => r.boatId === boatId && r.name === guestName);
-  if (!req) {
-    return {
-      data: null,
-      error: { message: `Request for guest "${guestName}" not found.`, code: "NOT_FOUND" },
-    };
-  }
-  req.outcome = outcome;
-  req.status = outcome === "accepted" ? "Confirmed" : "Rejected";
-  req.actedOn = `Handled by admin just now`;
-  return { data: { ...req }, error: null };
-}
-
-export async function fetchCalendarBookings(boatId: number): Promise<ApiResponse<Record<string, DayBooking>>> {
+  idOrBoatId: number,
+  outcomeOrGuestName: any,
+  outcomeIfThreeArgs?: "accepted" | "declined" | "rejected"
+): Promise<ApiResponse<Booking>> {
   await delay(500);
-  const bookings = mockCalendarBookings[boatId] || {};
-  return { data: { ...bookings }, error: null };
-}
 
-export async function updateCalendarBookings(
-  boatId: number,
-  dateKey: string,
-  booking: DayBooking
-): Promise<ApiResponse<DayBooking>> {
-  await delay(500);
-  if (!mockCalendarBookings[boatId]) {
-    mockCalendarBookings[boatId] = {};
-  }
-  const normalized = normalizeBooking(booking);
-  mockCalendarBookings[boatId][dateKey] = normalized;
-  return { data: normalized, error: null };
-}
+  let targetId = idOrBoatId;
+  let targetOutcome = outcomeOrGuestName;
 
-export async function bulkUpdateCalendarPricing(
-  boatId: number,
-  dateKeys: string[],
-  pricing: {
-    dayCruisePrice?: number;
-    overnightCruisePrice?: number;
-    nightCruisePrice?: number;
-  }
-): Promise<ApiResponse<void>> {
-  await delay(600);
-  if (!mockCalendarBookings[boatId]) {
-    mockCalendarBookings[boatId] = {};
+  if (outcomeIfThreeArgs !== undefined) {
+    const boatName = BOAT_NAME_MAP[idOrBoatId] || "";
+    const guestName = outcomeOrGuestName;
+    const req = requests.find(r => r.guest === guestName && (idOrBoatId === 0 || r.boat === boatName));
+    if (!req) {
+      return { data: null, error: { message: "Request not found", code: "NOT_FOUND" } };
+    }
+    targetId = req.id;
+    targetOutcome = outcomeIfThreeArgs === "rejected" ? "declined" : outcomeIfThreeArgs;
+  } else {
+    if (targetOutcome === "rejected" || targetOutcome === "declined") {
+      targetOutcome = "declined";
+    }
   }
 
-  dateKeys.forEach((key) => {
-    const existing = mockCalendarBookings[boatId][key] || {
-      dayCruise: false,
-      overnightCruise: false,
-      nightCruise: false,
-      details: "",
-    };
-
-    const updated = normalizeBooking({
-      ...existing,
-      dayCruisePrice: pricing.dayCruisePrice !== undefined ? pricing.dayCruisePrice : existing.dayCruisePrice,
-      overnightCruisePrice: pricing.overnightCruisePrice !== undefined ? pricing.overnightCruisePrice : existing.overnightCruisePrice,
-      nightCruisePrice: pricing.nightCruisePrice !== undefined ? pricing.nightCruisePrice : existing.nightCruisePrice,
+  const reqIdx = requests.findIndex((r) => r.id === targetId);
+  if (reqIdx === -1) {
+    return { data: null, error: { message: "Request not found", code: "NOT_FOUND" } };
+  }
+  const req = requests[reqIdx];
+  requests.splice(reqIdx, 1);
+  const decided = {
+    ...req,
+    outcome: targetOutcome,
+    decidedAt: new Date(),
+    status: targetOutcome === "accepted" ? "confirmed" : "declined"
+  };
+  requestHistory.push(decided);
+  if (targetOutcome === "accepted") {
+    bookings.push({
+      ...decided,
+      bookingSource: decided.bookingSource || "Sailcept"
     });
+    // Add to blocked dates
+    const dbDates: string[] = [];
+    if (decided.type === "Overnight stay") {
+      let cursor = new Date(decided.date);
+      const lastBlockedDate = new Date(decided.dateEnd);
+      lastBlockedDate.setDate(lastBlockedDate.getDate() - 1);
+      while (cursor <= lastBlockedDate) {
+        dbDates.push(cursor.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }).replace(/,/g, ""));
+        cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+      }
+    } else {
+      dbDates.push(decided.date);
+    }
+    dbDates.forEach(date => {
+      dateOpenState[`${decided.boat}|${date}`] = true;
+      blockedDates.push({
+        boat: decided.boat,
+        date,
+        reason: "direct",
+        tripType: decided.type === "Day cruise" ? "Day Cruise" : decided.type === "Overnight stay" ? "Overnight Stay" : "Night Stay"
+      });
+    });
+  }
+  return { data: decided, error: null };
+}
 
-    mockCalendarBookings[boatId][key] = updated;
+export async function updateCalendarBookingsStore(
+  newBookings: Booking[],
+  newBlockedDates: typeof blockedDates,
+  newDateOpenState: typeof dateOpenState
+) {
+  bookings = [...newBookings];
+  blockedDates = [...newBlockedDates];
+  dateOpenState = { ...newDateOpenState };
+  dateTripPricing = buildBackfilledPricing(bookings);
+  return { data: null, error: null };
+}
+
+export async function saveDirectBooking(booking: Booking): Promise<ApiResponse<Booking>> {
+  await delay(500);
+  const isEditing = bookings.some(b => b.id === booking.id);
+  
+  const dbDates: string[] = [];
+  const availabilityType = booking.type === "Day cruise" ? "Day Cruise" : booking.type === "Overnight stay" ? "Overnight Stay" : "Night Stay";
+  
+  if (booking.type === "Overnight stay") {
+    let cursor = new Date(booking.date);
+    const lastBlockedDate = new Date(booking.dateEnd);
+    lastBlockedDate.setDate(lastBlockedDate.getDate() - 1);
+    while (cursor <= lastBlockedDate) {
+      dbDates.push(cursor.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }).replace(/,/g, ""));
+      cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+    }
+  } else {
+    dbDates.push(booking.date);
+  }
+
+  if (!booking.bookingId || !booking.bookingId.match(/^AB-\d{8}-\d{4}$/)) {
+    booking.bookingId = formatABBookingId(booking.date);
+  }
+
+  if (isEditing) {
+    bookings = bookings.map(b => b.id === booking.id ? booking : b);
+    // Remove old blocked dates and write new ones
+    blockedDates = [
+      ...blockedDates.filter(bd => !(bd.boat === booking.boat && bd.reason === "direct" && bd.tripType === availabilityType)),
+      ...dbDates.map(date => ({ boat: booking.boat, date, reason: "direct", tripType: availabilityType }))
+    ];
+  } else {
+    bookings.push(booking);
+    blockedDates = [
+      ...blockedDates,
+      ...dbDates.map(date => ({ boat: booking.boat, date, reason: "direct", tripType: availabilityType }))
+    ];
+  }
+
+  dbDates.forEach(date => {
+    dateOpenState[`${booking.boat}|${date}`] = true;
   });
 
+  dateTripPricing = buildBackfilledPricing(bookings);
+  return { data: booking, error: null };
+}
+
+export async function deleteBooking(id: number): Promise<ApiResponse<void>> {
+  await delay(500);
+  const booking = bookings.find(b => b.id === id);
+  if (!booking) return { data: null, error: { message: "Booking not found", code: "NOT_FOUND" } };
+  
+  bookings = bookings.map(b => b.id === id ? { ...b, status: "deleted" } : b);
+  
+  const availabilityType = booking.type === "Day cruise" ? "Day Cruise" : booking.type === "Overnight stay" ? "Overnight Stay" : "Night Stay";
+  const datesToFree: string[] = [];
+  if (booking.type === "Overnight stay") {
+    let cursor = new Date(booking.date);
+    const lastBlockedDate = new Date(booking.dateEnd);
+    lastBlockedDate.setDate(lastBlockedDate.getDate() - 1);
+    while (cursor <= lastBlockedDate) {
+      datesToFree.push(cursor.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }).replace(/,/g, ""));
+      cursor = new Date(cursor.getTime() + 24 * 60 * 60 * 1000);
+    }
+  } else {
+    datesToFree.push(booking.date);
+  }
+
+  blockedDates = blockedDates.filter(bd => !(bd.boat === booking.boat && datesToFree.includes(bd.date) && bd.reason === "direct" && bd.tripType === availabilityType));
+  dateTripPricing = buildBackfilledPricing(bookings);
+  
   return { data: null, error: null };
 }
 
-export async function saveAllCalendarBookings(
-  boatId: number,
-  bookings: Record<string, DayBooking>
-): Promise<ApiResponse<void>> {
-  mockCalendarBookings[boatId] = bookings;
-  return { data: null, error: null };
+export async function fetchBookingDetail(bookingId: string): Promise<ApiResponse<Booking>> {
+  await delay(100);
+  const booking = bookings.find((b) => b.bookingId === bookingId);
+  if (!booking) return { data: null, error: { message: "Booking not found", code: "NOT_FOUND" } };
+  return { data: booking, error: null };
 }
 
-export async function fetchBookingDetail(bookingId: string): Promise<ApiResponse<BookingRecord>> {
-  await delay(400);
-  const found = mockBookings.find((b) => b.id === bookingId);
-  if (found) {
-    return { data: found, error: null };
-  }
-  return {
-    data: null,
-    error: { message: `Booking not found for ID: ${bookingId}`, code: "NOT_FOUND" },
-  };
+export async function fetchRequestDetail(requestName: string, boatId: number): Promise<ApiResponse<Booking>> {
+  await delay(100);
+  const boatName = BOAT_NAME_MAP[boatId] || "";
+  const req = requests.find(r => r.guest === requestName && (boatId === 0 || r.boat === boatName));
+  if (!req) return { data: null, error: { message: "Request not found", code: "NOT_FOUND" } };
+  return { data: req, error: null };
 }
-
-export async function fetchRequestDetail(requestName: string, boatId: number): Promise<ApiResponse<BookingRequest>> {
-  await delay(400);
-  const found = mockRequests.find((r) => r.name === requestName && r.boatId === boatId);
-  if (found) {
-    return { data: found, error: null };
-  }
-  return {
-    data: null,
-    error: { message: `Request not found for ${requestName}`, code: "NOT_FOUND" },
-  };
-}
-

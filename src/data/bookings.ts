@@ -1,25 +1,50 @@
-export type BookingRecord = {
-  id: string;
-  guestName: string;
-  boatId: number;
-  boatName?: string;
-  bookingId: string;
-  details: Array<[string, string]>;
-  notes: string;
+export type DietEntry = {
+  type: string;
+  count: number;
 };
 
-export type BookingRequest = {
-  name: string;
-  boatId: number;
-  boatName?: string;
-  dateLine: string;
-  subtitle: string;
-  status: string;
-  config: string;
-  details: string;
-  request?: string;
-  outcome?: "accepted" | "rejected";
-  actedOn?: string;
+export type Booking = {
+  id: number;
+  bookingId: string;
+  guest: string;
+  phone: string;
+  boat: string;
+  type: string; // "Day cruise" | "Overnight stay" | "Night stay"
+  date: string;
+  dateEnd: string;
+  comfort?: string;
+  mode?: string;
+  adults: number;
+  children: number;
+  kids?: number;
+  rooms: number;
+  cots?: number;
+  dietBreakdown?: DietEntry[];
+  accessibility?: string;
+  specialRequests?: string[];
+  updatedSpecialRequests?: string[];
+  price: number;
+  ghat?: string;
+  checkIn?: string;
+  checkOut?: string;
+  meal?: string;
+  paymentStatus?: string;
+  status?: string; // "cancelled" | "deleted" | "confirmed"
+  isDirect?: boolean;
+  isEdited?: boolean;
+  isUpdated?: boolean;
+  bookingSource?: string;
+  cancelledAt?: Date;
+  requestedAt?: Date;
+  decidedAt?: Date;
+  outcome?: "accepted" | "declined";
+};
+
+export type BlockedDate = {
+  boat: string;
+  date: string;
+  reason: string;
+  tripType: string;
 };
 
 export type ConfigPricing = {
@@ -95,4 +120,28 @@ export type DayBooking = {
   overnightCruiseBookedConfig?: string;
   nightCruiseBookedConfig?: string;
   configs?: Record<string, ConfigPricing>;
+};
+
+export type BookingRecord = {
+  id: string;
+  guestName: string;
+  boatId: number;
+  boatName?: string;
+  bookingId: string;
+  details: Array<[string, string]>;
+  notes: string;
+};
+
+export type BookingRequest = {
+  name: string;
+  boatId: number;
+  boatName?: string;
+  dateLine: string;
+  subtitle: string;
+  status: string;
+  config: string;
+  details: string;
+  request?: string;
+  outcome?: "accepted" | "rejected";
+  actedOn?: string;
 };

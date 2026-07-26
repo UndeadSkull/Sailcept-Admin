@@ -1,81 +1,148 @@
-import React, { useState } from "react";
-import { ScrollView, Text, View, Pressable } from "react-native";
+import React, { useState, useRef } from "react";
+import { ScrollView, Text, View, Pressable, Animated } from "react-native";
 import { useNavigation, type NavigationProp, type ParamListBase } from "@react-navigation/native";
-import {
-  MessageSquarePlus,
-  CalendarDays,
-  XCircle,
-  Sparkles,
-  Edit3,
-  Star,
-  Check,
-  CheckCheck,
-} from "lucide-react-native";
-import { PageHeader, Card } from "../components";
+import { ArrowLeft, Check, CheckCircle2, XCircle } from "lucide-react-native";
 import { useNotification } from "../context/NotificationContext";
 import { Notification } from "../data/notifications";
-import styles from "../styles";
+import { COLORS } from "../styles";
 
-// Visual configurations for each notification type
-const typeConfigs: Record<
-  Notification["type"],
-  { icon: React.ComponentType<{ size?: number; color?: string }>; color: string; bgColor: string }
-> = {
-  new_request: {
-    icon: MessageSquarePlus,
-    color: "#1a7f7f", // Teal
-    bgColor: "#e6f5f4",
-  },
-  change_of_dates: {
-    icon: CalendarDays,
-    color: "#b07c00", // Gold/Orange
-    bgColor: "#fff7e6",
-  },
-  cancellation: {
-    icon: XCircle,
-    color: "#cf3850", // Red
-    bgColor: "#ffebee",
-  },
-  extra_added: {
-    icon: Sparkles,
-    color: "#0f7a4f", // Green
-    bgColor: "#e8f7ed",
-  },
-  booking_changes: {
-    icon: Edit3,
-    color: "#2b5c8f", // Blue
-    bgColor: "#eaf2fb",
-  },
-  reviews: {
-    icon: Star,
-    color: "#a17e00", // Yellow-gold
-    bgColor: "#fef9e6",
-  },
-};
+// Animated Card Component with touch scale and opacity spring transitions
+function AnimatedNotificationCard({
+  children,
+  onPress,
+  style,
+}: {
+  children: React.ReactNode;
+  onPress: () => void;
+  style?: any;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 0.97,
+        useNativeDriver: true,
+        speed: 25,
+        bounciness: 4,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0.88,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 20,
+        bounciness: 6,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 150,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  return (
+    <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut}>
+      <Animated.View style={[style, { transform: [{ scale }], opacity }]}>
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+// Animated Action Button Component with spring bounce
+function AnimatedActionButton({
+  onPress,
+  children,
+  style,
+  testID,
+}: {
+  onPress: (e: any) => void;
+  children: React.ReactNode;
+  style?: any;
+  testID?: string;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+      toValue: 0.82,
+      useNativeDriver: true,
+      speed: 30,
+      bounciness: 4,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 24,
+      bounciness: 8,
+    }).start();
+  };
+
+  return (
+    <Pressable onPress={onPress} onPressIn={handlePressIn} onPressOut={handlePressOut} testID={testID}>
+      <Animated.View style={[style, { transform: [{ scale }] }]}>
+        {children}
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 export default function NotificationsScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
-  const { notifications, markAsRead, markAsUnread, markAllAsRead, respondToRequest } = useNotification();
-  const [activeTab, setActiveTab] = useState<"all" | "unread" | "read">("all");
+  const { notifications, markAsRead, markAsUnread, markAllAsRead } = useNotification();
+  const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
 
+  // Tab filtering
   const filteredNotifications = notifications.filter((n) => {
-    if (activeTab === "unread") return !n.read;
-    if (activeTab === "read") return n.read;
-    return true;
+    if (activeTab === "pending") return !n.read;
+    return n.read;
   });
 
-  // Organize by time groups
-  const groups: Array<{ title: "Today" | "Yesterday" | "Earlier"; items: Notification[] }> = [
-    { title: "Today", items: filteredNotifications.filter((n) => n.timeGroup === "Today") },
-    { title: "Yesterday", items: filteredNotifications.filter((n) => n.timeGroup === "Yesterday") },
-    { title: "Earlier", items: filteredNotifications.filter((n) => n.timeGroup === "Earlier") },
-  ];
+  // Group notifications by date header string
+  const groupedMap: Record<string, Notification[]> = {};
+  filteredNotifications.forEach((n) => {
+    const key = n.timeGroup || n.date || "EARLIER";
+    if (!groupedMap[key]) groupedMap[key] = [];
+    groupedMap[key].push(n);
+  });
+
+  const groupKeys = Object.keys(groupedMap);
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
+  const getNotificationConfig = (type: Notification["type"]) => {
+    if (type === "cancellation") {
+      return {
+        accentColor: "#EF4444",
+        bgColor: "#FEE2E2",
+        icon: XCircle,
+        iconColor: "#EF4444",
+      };
+    }
+    return {
+      accentColor: COLORS.teal,
+      bgColor: "#DCFCE7",
+      icon: CheckCircle2,
+      iconColor: COLORS.teal,
+    };
+  };
 
   const handleNotificationPress = async (notification: Notification) => {
-    // 1. Mark as read
     await markAsRead(notification.id);
 
-    // 2. Navigate to target screen
     if (notification.targetScreen === "Requests") {
       navigation.navigate("MainTabs", { screen: "Requests" });
     } else if (notification.targetScreen === "Bookings") {
@@ -86,122 +153,157 @@ export default function NotificationsScreen() {
     } else if (notification.targetScreen === "Reviews") {
       navigation.navigate("MainTabs", {
         screen: "More",
-        params: {
-          screen: "Reviews",
-        },
+        params: { screen: "Reviews" },
       });
     } else {
       navigation.navigate("MainTabs", { screen: "Overview" });
     }
   };
 
-  const hasUnread = notifications.some((n) => !n.read);
-
   return (
-    <View style={styles.flex1}>
-      <ScrollView contentContainerStyle={styles.pageScrollContent}>
-        <PageHeader
-          title="Notifications"
-          sub="Stay updated on booking changes, requests, and guest feedback."
-          onBack={() => navigation.goBack()}
-        >
-          {hasUnread && (
-            <Pressable
+    <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 16, paddingBottom: 100 }}>
+        
+        {/* Header */}
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <Pressable onPress={() => navigation.goBack()} style={{ padding: 4 }} testID="back-btn">
+              <ArrowLeft size={22} color={COLORS.navy} />
+            </Pressable>
+            <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Notifications</Text>
+          </View>
+
+          {unreadCount > 0 && (
+            <AnimatedActionButton
               onPress={markAllAsRead}
-              style={[styles.outlineButton, { flexDirection: "row", alignItems: "center", gap: 4 }]}
+              style={{
+                borderWidth: 1.5,
+                borderColor: COLORS.teal,
+                backgroundColor: "#F0FDFA",
+                borderRadius: 999,
+                paddingHorizontal: 14,
+                paddingVertical: 7,
+              }}
               testID="mark-all-read-btn"
             >
-              <CheckCheck size={14} color="#5d7289" />
-              <Text style={styles.outlineButtonText}>Mark all read</Text>
-            </Pressable>
+              <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.teal }}>Mark all as read</Text>
+            </AnimatedActionButton>
           )}
-        </PageHeader>
-
-        {/* Tab Switcher */}
-        <View style={styles.requestTabRow}>
-          {(["all", "unread", "read"] as const).map((tab) => {
-            const isActive = activeTab === tab;
-            const label = tab.charAt(0).toUpperCase() + tab.slice(1);
-            return (
-              <Pressable
-                key={tab}
-                onPress={() => setActiveTab(tab)}
-                style={[styles.requestTabButton, isActive ? styles.requestTabButtonActive : null]}
-              >
-                <Text style={[styles.requestTabText, isActive ? styles.requestTabTextActive : null]}>
-                  {label}
-                </Text>
-              </Pressable>
-            );
-          })}
         </View>
 
-        {/* Notifications Grouped List */}
-        {filteredNotifications.length > 0 ? (
-          groups.map((group) => {
-            if (group.items.length === 0) return null;
+        {/* Tab Switcher */}
+        <View style={{ flexDirection: "row", gap: 12, marginBottom: 14 }}>
+          <Pressable
+            onPress={() => setActiveTab("pending")}
+            style={{
+              flex: 1,
+              backgroundColor: activeTab === "pending" ? "#DCFCE7" : COLORS.white,
+              borderWidth: activeTab === "pending" ? 1.5 : 1,
+              borderColor: activeTab === "pending" ? COLORS.teal : COLORS.border,
+              borderRadius: 999,
+              paddingVertical: 12,
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: "700",
+                color: activeTab === "pending" ? COLORS.teal : COLORS.muted,
+              }}
+            >
+              Pending
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => setActiveTab("history")}
+            style={{
+              flex: 1,
+              backgroundColor: activeTab === "history" ? "#DCFCE7" : COLORS.white,
+              borderWidth: activeTab === "history" ? 1.5 : 1,
+              borderColor: activeTab === "history" ? COLORS.teal : COLORS.border,
+              borderRadius: 999,
+              paddingVertical: 12,
+              alignItems: "center",
+            }}
+          >
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: "700",
+                color: activeTab === "history" ? COLORS.teal : COLORS.muted,
+              }}
+            >
+              History
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* Unread Info Text */}
+        <Text style={{ fontSize: 13, color: COLORS.muted, marginBottom: 16 }}>
+          {unreadCount > 0 ? `${unreadCount} to mark as read` : "No pending items to mark as read"}
+        </Text>
+
+        {/* Notifications List Grouped By Date */}
+        {groupKeys.length > 0 ? (
+          groupKeys.map((groupDate) => {
+            const items = groupedMap[groupDate];
             return (
-              <View key={group.title} style={styles.verticalGap10}>
+              <View key={groupDate} style={{ marginBottom: 16 }}>
                 <Text
                   style={{
-                    color: "#8193ac",
                     fontSize: 12,
-                    fontWeight: "700",
+                    fontWeight: "800",
+                    color: "#64748B",
                     textTransform: "uppercase",
-                    letterSpacing: 0.8,
-                    marginTop: 8,
-                    marginBottom: 2,
+                    letterSpacing: 0.6,
+                    marginBottom: 10,
                   }}
                 >
-                  {group.title}
+                  {groupDate}
                 </Text>
-                {group.items.map((item) => {
-                  const config = typeConfigs[item.type];
+
+                {items.map((item) => {
+                  const config = getNotificationConfig(item.type);
                   const IconComponent = config.icon;
 
                   return (
-                    <Pressable
+                    <AnimatedNotificationCard
                       key={item.id}
                       onPress={() => handleNotificationPress(item)}
-                      style={({ pressed }) => [
-                        styles.listCard,
-                        pressed ? styles.listCardPressed : null,
-                        {
-                          backgroundColor: item.read ? "#faf6f199" : "#faf6f1",
-                          borderLeftWidth: 4,
-                          borderLeftColor: config.color,
-                          opacity: item.read ? 0.78 : 1,
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 12,
-                          paddingVertical: 14,
-                        },
-                      ]}
+                      style={{
+                        backgroundColor: COLORS.white,
+                        borderRadius: 20,
+                        borderWidth: 1,
+                        borderColor: COLORS.border,
+                        borderLeftWidth: 4,
+                        borderLeftColor: config.accentColor,
+                        padding: 16,
+                        marginBottom: 12,
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 14,
+                      }}
                     >
-                      {/* Left Icon Accent */}
+                      {/* Left Icon Badge */}
                       <View
                         style={{
-                          width: 40,
-                          height: 40,
-                          borderRadius: 10,
+                          width: 42,
+                          height: 42,
+                          borderRadius: 21,
                           backgroundColor: config.bgColor,
                           alignItems: "center",
                           justifyContent: "center",
                         }}
                       >
-                        <IconComponent size={20} color={config.color} />
+                        <IconComponent size={20} color={config.iconColor} />
                       </View>
 
                       {/* Content */}
-                      <View style={{ flex: 1, gap: 2 }}>
+                      <View style={{ flex: 1 }}>
                         <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                          <Text
-                            style={{
-                              color: "#0f2748",
-                              fontWeight: item.read ? "600" : "700",
-                              fontSize: 14,
-                            }}
-                          >
+                          <Text style={{ fontSize: 15, fontWeight: "700", color: COLORS.navy }}>
                             {item.title}
                           </Text>
                           {!item.read && (
@@ -209,88 +311,28 @@ export default function NotificationsScreen() {
                               style={{
                                 width: 7,
                                 height: 7,
-                                borderRadius: 4,
-                                backgroundColor: "#1a7f7f",
+                                borderRadius: 3.5,
+                                backgroundColor: COLORS.teal,
                               }}
                             />
                           )}
                         </View>
                         <Text
                           style={{
-                            color: item.read ? "#64788f" : "#234058",
                             fontSize: 12.5,
-                            lineHeight: 16,
+                            color: COLORS.muted,
+                            marginTop: 4,
+                            lineHeight: 18,
                           }}
                         >
                           {item.description}
                         </Text>
-                        <Text style={{ color: "#8ea0b6", fontSize: 10.5, marginTop: 2 }}>
-                          {item.date}
-                        </Text>
-
-                        {/* Accept / Decline Action Buttons */}
-                        {(item.type === "new_request" || item.type === "change_of_dates") && (
-                          <View style={{ marginTop: 6 }}>
-                            {item.outcome ? (
-                              <Text
-                                style={{
-                                  fontSize: 11,
-                                  fontWeight: "700",
-                                  color: item.outcome === "accepted" ? "#0f7a4f" : "#cf3850",
-                                }}
-                              >
-                                {item.outcome === "accepted" ? "✓ Request Accepted" : "✗ Request Declined"}
-                              </Text>
-                            ) : (
-                              <View style={{ flexDirection: "row", gap: 8, marginTop: 4 }}>
-                                <Pressable
-                                  onPress={(e) => {
-                                    e.stopPropagation();
-                                    respondToRequest(item.id, "rejected");
-                                  }}
-                                  style={{
-                                    backgroundColor: "#cf3850",
-                                    paddingVertical: 5,
-                                    paddingHorizontal: 12,
-                                    borderRadius: 6,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                  }}
-                                  testID={`decline-btn-${item.id}`}
-                                >
-                                  <Text style={{ color: "#fff", fontSize: 11, fontWeight: "600" }}>
-                                    Decline
-                                  </Text>
-                                </Pressable>
-                                <Pressable
-                                  onPress={(e) => {
-                                    e.stopPropagation();
-                                    respondToRequest(item.id, "accepted");
-                                  }}
-                                  style={{
-                                    backgroundColor: "#109c61",
-                                    paddingVertical: 5,
-                                    paddingHorizontal: 12,
-                                    borderRadius: 6,
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                  }}
-                                  testID={`accept-btn-${item.id}`}
-                                >
-                                  <Text style={{ color: "#fff", fontSize: 11, fontWeight: "600" }}>
-                                    Accept
-                                  </Text>
-                                </Pressable>
-                              </View>
-                            )}
-                          </View>
-                        )}
                       </View>
 
-                      {/* Action Button: Mark read / unread */}
-                      <Pressable
+                      {/* Right Action Button (Checkmark to mark read/unread) */}
+                      <AnimatedActionButton
                         onPress={(e) => {
-                          e.stopPropagation(); // prevent card tap navigate
+                          e.stopPropagation();
                           if (item.read) {
                             markAsUnread(item.id);
                           } else {
@@ -298,37 +340,43 @@ export default function NotificationsScreen() {
                           }
                         }}
                         style={{
-                          padding: 8,
-                          borderRadius: 8,
-                          backgroundColor: item.read ? "#e8ebe9" : "#e6f5f4",
+                          width: 36,
+                          height: 36,
+                          borderRadius: 18,
+                          backgroundColor: "#DCFCE7",
                           alignItems: "center",
                           justifyContent: "center",
                         }}
                         testID={`mark-toggle-${item.id}`}
                       >
-                        <Check size={14} color={item.read ? "#8ea0b6" : "#1a7f7f"} strokeWidth={3} />
-                      </Pressable>
-                    </Pressable>
+                        <Check size={16} color={COLORS.teal} strokeWidth={3} />
+                      </AnimatedActionButton>
+                    </AnimatedNotificationCard>
                   );
                 })}
               </View>
             );
           })
         ) : (
-          <Card>
-            <View style={{ paddingVertical: 24, alignItems: "center", justifyContent: "center" }}>
-              <Text style={{ color: "#64788f", fontSize: 14, fontWeight: "600", textAlign: "center" }}>
-                No notifications found
-              </Text>
-              <Text style={{ color: "#8ea0b6", fontSize: 12, textAlign: "center", marginTop: 4 }}>
-                {activeTab === "unread"
-                  ? "You have caught up with all notifications!"
-                  : activeTab === "read"
-                  ? "Read notifications will appear here."
-                  : "Notifications will appear here as they arrive."}
-              </Text>
-            </View>
-          </Card>
+          <View
+            style={{
+              backgroundColor: COLORS.white,
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: COLORS.border,
+              paddingVertical: 40,
+              paddingHorizontal: 20,
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Text style={{ fontSize: 15, fontWeight: "700", color: COLORS.navy }}>No notifications</Text>
+            <Text style={{ fontSize: 13, color: COLORS.muted, textAlign: "center", marginTop: 4 }}>
+              {activeTab === "pending"
+                ? "You have caught up with all notifications!"
+                : "No notifications in history."}
+            </Text>
+          </View>
         )}
       </ScrollView>
     </View>

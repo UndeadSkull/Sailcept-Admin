@@ -23,6 +23,33 @@ export type Boat = {
   features: string[];
   cruiseTypes: CruiseType[];
   roomSettings: RoomSettings;
+  // Extended profile properties from mockup
+  registrationNumber?: string;
+  boardingLocation?: string;
+  configuration?: string;
+  checkInOut?: Record<string, { in: string; out: string }>;
+  comfortLevel?: string;
+  accessibleDeckAreas?: string[];
+  bedTypes?: string[];
+  cotMat?: boolean;
+  wheelchairAccessible?: boolean;
+  privateParking?: boolean;
+  wifi?: boolean;
+  ac?: boolean;
+  acType?: string[];
+  bathroomType?: string[];
+  bathroomAmenities?: string[];
+  hotWater?: boolean;
+  powerBackupGenerator?: boolean;
+  otherAmenities?: string[];
+  diets?: string[];
+  extraActivities?: string[];
+  compliance?: {
+    vesselRegistrationCertificate?: string;
+    certificateOfSurvey?: string;
+    insuranceCertificate?: string;
+    pollutionCompliance?: string;
+  };
 };
 
 export type BoatListItem = {
