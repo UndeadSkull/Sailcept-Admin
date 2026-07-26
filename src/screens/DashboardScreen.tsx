@@ -12,7 +12,8 @@ type NavigationProp = MainTabScreenProps<"Overview">["navigation"];
 
 export default function DashboardScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { selectedBoat, setSelectedBoat, boats, searchQuery } = useBoat();
+  const { boats, searchQuery } = useBoat();
+  const [selectedBoat, setSelectedBoat] = useState<number>(0);
 
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [allRequests, setAllRequests] = useState<Booking[]>([]);
@@ -168,7 +169,7 @@ export default function DashboardScreen() {
             <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Overview</Text>
             <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>{formatToday()}</Text>
           </View>
-          <BoatSelector />
+          <BoatSelector selectedBoat={selectedBoat} setSelectedBoat={setSelectedBoat} />
         </View>
 
         {isLoading ? (

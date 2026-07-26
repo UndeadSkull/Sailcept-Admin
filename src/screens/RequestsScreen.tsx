@@ -9,7 +9,8 @@ import { COLORS } from "../styles";
 
 export default function RequestsScreen() {
   const navigation = useNavigation();
-  const { selectedBoat, setSelectedBoat, boats, searchQuery, refreshRequestsCount } = useBoat();
+  const { boats, searchQuery, refreshRequestsCount } = useBoat();
+  const [selectedBoat, setSelectedBoat] = useState<number>(0);
   const [requestsView, setRequestsView] = useState<"pending" | "history">("pending");
 
   const [allRequests, setAllRequests] = useState<Booking[]>([]);
@@ -109,7 +110,7 @@ export default function RequestsScreen() {
         {/* Title */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Requests</Text>
-          <BoatSelector />
+          <BoatSelector selectedBoat={selectedBoat} setSelectedBoat={setSelectedBoat} />
         </View>
 
         {/* Tab row */}

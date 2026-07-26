@@ -11,26 +11,16 @@ const now = new Date("2026-06-18T10:00:00");
 
 export default function AvailabilityScreen() {
   const navigation = useNavigation();
-  const { selectedBoat, setSelectedBoat, boats } = useBoat();
+  const { boats } = useBoat();
   const [localBoatName, setLocalBoatName] = useState<string | null>(null);
 
-  // Reset boat context on focus
+  // Reset local boat selection on focus
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
-      setSelectedBoat(0);
+      setLocalBoatName(null);
     });
     return unsubscribe;
   }, [navigation]);
-
-  // Sync with global boat context
-  useEffect(() => {
-    if (selectedBoat !== 0) {
-      const name = boats.find((b) => b.id === selectedBoat)?.name || null;
-      setLocalBoatName(name);
-    } else {
-      setLocalBoatName(null);
-    }
-  }, [selectedBoat, boats]);
 
   // Screen state
   const [allBookings, setAllBookings] = useState<Booking[]>([]);

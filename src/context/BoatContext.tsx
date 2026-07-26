@@ -5,8 +5,6 @@ import { requests } from "../services/bookings";
 
 type BoatContextValue = {
   boats: BoatListItem[];
-  selectedBoat: number;
-  setSelectedBoat: (boatId: number) => void;
   isLoading: boolean;
   refreshBoats: () => Promise<void>;
   searchQuery: string;
@@ -19,8 +17,6 @@ type BoatContextValue = {
 
 const BoatContext = createContext<BoatContextValue>({
   boats: [],
-  selectedBoat: 0,
-  setSelectedBoat: () => {},
   isLoading: true,
   refreshBoats: async () => {},
   searchQuery: "",
@@ -33,7 +29,6 @@ const BoatContext = createContext<BoatContextValue>({
 
 export function BoatProvider({ children }: { children: ReactNode }) {
   const [boats, setBoats] = useState<BoatListItem[]>([]);
-  const [selectedBoat, setSelectedBoat] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
@@ -70,8 +65,6 @@ export function BoatProvider({ children }: { children: ReactNode }) {
     <BoatContext.Provider
       value={{
         boats,
-        selectedBoat,
-        setSelectedBoat,
         isLoading,
         refreshBoats: loadBoats,
         searchQuery,

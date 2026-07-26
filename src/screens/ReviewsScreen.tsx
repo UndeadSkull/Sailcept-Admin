@@ -9,7 +9,8 @@ import { COLORS } from "../styles";
 
 export default function ReviewsScreen() {
   const navigation = useNavigation();
-  const { selectedBoat, setSelectedBoat, searchQuery } = useBoat();
+  const { searchQuery } = useBoat();
+  const [selectedBoat, setSelectedBoat] = useState<number>(0);
 
   const [reviewsList, setReviewsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -100,7 +101,7 @@ export default function ReviewsScreen() {
           </Pressable>
           <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Reviews</Text>
         </View>
-        <BoatSelector />
+        <BoatSelector selectedBoat={selectedBoat} setSelectedBoat={setSelectedBoat} />
       </View>
 
       {isLoading ? (

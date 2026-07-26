@@ -8,7 +8,8 @@ import { COLORS } from "../styles";
 
 export default function FinanceScreen() {
   const navigation = useNavigation();
-  const { selectedBoat, setSelectedBoat, boats } = useBoat();
+  const { boats } = useBoat();
+  const [selectedBoat, setSelectedBoat] = useState<number>(0);
 
   React.useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {

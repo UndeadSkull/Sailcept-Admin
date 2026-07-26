@@ -10,8 +10,8 @@ const allStructuralFeatures = ["Full upper deck", "Partial deck", "Sundeck", "Ba
 type Props = RootStackScreenProps<"BoatAssetModal">;
 
 export default function BoatProfileDetailScreen({ route, navigation }: Props) {
-  const { selectedBoat, boats } = useBoat();
-  const boatId = route.params.boatId ?? selectedBoat;
+  const { boats } = useBoat();
+  const boatId = route.params.boatId ?? (boats.length > 0 ? boats[0].id : 1);
   const boatName = boats.find((b) => b.id === boatId)?.name || "";
 
   const [isEditing, setIsEditing] = useState(false);

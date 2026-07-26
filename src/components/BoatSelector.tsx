@@ -5,8 +5,13 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useBoat } from "../context/BoatContext";
 import { COLORS } from "../styles";
 
-export default function BoatSelector() {
-  const { boats, selectedBoat, setSelectedBoat } = useBoat();
+type BoatSelectorProps = {
+  selectedBoat: number;
+  setSelectedBoat: (boatId: number) => void;
+};
+
+export default function BoatSelector({ selectedBoat, setSelectedBoat }: BoatSelectorProps) {
+  const { boats } = useBoat();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
   const buttonRef = useRef<View>(null);

@@ -11,7 +11,8 @@ import { COLORS } from "../styles";
 const now = new Date("2026-06-18T10:00:00");
 
 export default function BookingsScreen({ route, navigation }: MainTabScreenProps<"Bookings">) {
-  const { selectedBoat, setSelectedBoat, boats, searchQuery } = useBoat();
+  const { boats, searchQuery } = useBoat();
+  const [selectedBoat, setSelectedBoat] = useState<number>(0);
 
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -230,7 +231,7 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
               Track confirmed guest check-ins and history.
             </Text>
           </View>
-          <BoatSelector />
+          <BoatSelector selectedBoat={selectedBoat} setSelectedBoat={setSelectedBoat} />
         </View>
 
         {isLoading ? (
