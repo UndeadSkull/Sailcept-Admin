@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { fetchBoats } from "../services/boats";
 import { BoatListItem } from "../data/boats";
+import { requests } from "../services/bookings";
 
 type BoatContextValue = {
   boats: BoatListItem[];
@@ -12,6 +13,8 @@ type BoatContextValue = {
   setSearchQuery: (query: string) => void;
   searchOpen: boolean;
   setSearchOpen: (open: boolean) => void;
+  requestsCount: number;
+  refreshRequestsCount: () => void;
 };
 
 const BoatContext = createContext<BoatContextValue>({
@@ -24,6 +27,8 @@ const BoatContext = createContext<BoatContextValue>({
   setSearchQuery: () => {},
   searchOpen: false,
   setSearchOpen: () => {},
+  requestsCount: 0,
+  refreshRequestsCount: () => {},
 });
 
 export function BoatProvider({ children }: { children: ReactNode }) {
@@ -32,6 +37,11 @@ export function BoatProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
+  const [requestsCount, setRequestsCount] = useState<number>(requests.length);
+
+  const refreshRequestsCount = useCallback(() => {
+    setRequestsCount(requests.length);
+  }, []);
 
   const loadBoats = useCallback(async () => {
     setIsLoading(true);
@@ -71,6 +81,8 @@ export function BoatProvider({ children }: { children: ReactNode }) {
         setSearchQuery,
         searchOpen,
         setSearchOpen,
+        requestsCount,
+        refreshRequestsCount,
       }}
     >
       {children}

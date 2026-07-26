@@ -7,7 +7,7 @@ import { fetchRequests, fetchRequestHistory, submitRequestOutcome, Booking, MONT
 import { COLORS } from "../styles";
 
 export default function RequestsScreen() {
-  const { selectedBoat, boats, searchQuery } = useBoat();
+  const { selectedBoat, boats, searchQuery, refreshRequestsCount } = useBoat();
   const [requestsView, setRequestsView] = useState<"pending" | "history">("pending");
 
   const [allRequests, setAllRequests] = useState<Booking[]>([]);
@@ -34,6 +34,7 @@ export default function RequestsScreen() {
       ]);
       if (reqsRes.data) setAllRequests(reqsRes.data);
       if (histRes.data) setAllHistory(histRes.data);
+      refreshRequestsCount();
     } catch (err) {
       console.error("Failed to load requests:", err);
     } finally {

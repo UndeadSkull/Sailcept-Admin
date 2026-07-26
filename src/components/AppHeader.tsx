@@ -149,6 +149,22 @@ export default function AppHeader({ currentRouteName }: { currentRouteName?: str
         </View>
       </LinearGradient>
 
+      {/* Backdrop to close search on click outside */}
+      {searchOpen && (
+        <Pressable
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: -1000,
+            left: -1000,
+            right: -1000,
+            zIndex: 9998,
+            backgroundColor: "transparent",
+          }}
+          onPress={() => setSearchOpen(false)}
+        />
+      )}
+
       {/* Absolute Search Input and Dropdown */}
       {searchOpen && (
         <View
@@ -158,38 +174,37 @@ export default function AppHeader({ currentRouteName }: { currentRouteName?: str
             right: 12,
             width: "85%",
             zIndex: 10000,
-            overflow: "visible",
+            backgroundColor: "#FFFFFF",
+            borderRadius: 22,
+            padding: 12,
+            shadowColor: "#000000",
+            shadowOffset: { width: 0, height: 6 },
+            shadowOpacity: 0.1,
+            shadowRadius: 10,
+            elevation: 6,
           }}
         >
-          {/* Absolute Input Field */}
+          {/* Inner Input Wrapper */}
           <View
             style={{
               flexDirection: "row",
               alignItems: "center",
-              backgroundColor: "#FFFFFF",
-              borderRadius: 8,
               borderWidth: 1,
               borderColor: "#E2E8F0",
-              paddingHorizontal: 12,
+              borderRadius: 14,
+              paddingHorizontal: 16,
               height: 44,
-              shadowColor: "#000000",
-              shadowOffset: { width: 0, height: 2 },
-              shadowOpacity: 0.1,
-              shadowRadius: 4,
-              elevation: 4,
             }}
           >
-            <Search size={18} color="#000000" />
             <TextInput
               style={{
-                marginLeft: 8,
                 flex: 1,
                 color: "#000000",
                 fontSize: 14,
                 fontWeight: "500",
                 padding: 0,
               }}
-              placeholder="Search guest or booking ID..."
+              placeholder="Search name, surname or booking"
               placeholderTextColor="#94A3B8"
               value={localQuery}
               onChangeText={setLocalQuery}
@@ -197,47 +212,36 @@ export default function AppHeader({ currentRouteName }: { currentRouteName?: str
               autoCorrect={false}
               autoFocus={true}
             />
-            <Pressable
-              onPress={() => {
-                if (localQuery.length > 0) {
-                  setLocalQuery("");
-                } else {
-                  setSearchOpen(false);
-                }
-              }}
-              style={{ padding: 4 }}
-            >
-              <X size={18} color="#000000" />
-            </Pressable>
+            {localQuery.length > 0 && (
+              <Pressable
+                onPress={() => setLocalQuery("")}
+                style={{ padding: 4, marginLeft: 8 }}
+              >
+                <X size={16} color="#94A3B8" />
+              </Pressable>
+            )}
           </View>
 
           {/* Autocomplete Dropdown */}
           {(isSearching || searchResults.length > 0 || (debouncedQuery.trim().length > 0)) && (
             <View
               style={{
-                marginTop: 6,
-                backgroundColor: "#FFFFFF",
-                borderRadius: 8,
-                borderWidth: 1,
-                borderColor: "#E2E8F0",
-                maxHeight: 280,
-                shadowColor: "#000000",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 8,
-                elevation: 5,
+                marginTop: 10,
+                borderTopWidth: 1,
+                borderTopColor: "#F1F5F9",
+                paddingTop: 10,
               }}
             >
               {isSearching ? (
                 <View style={{ paddingVertical: 20, alignItems: "center", justifyContent: "center", flexDirection: "row", gap: 8 }}>
                   <ActivityIndicator size="small" color="#000000" />
-                  <Text style={{ color: "#000000", fontSize: 13, fontWeight: "500" }}>Searching...</Text>
+                  <Text style={{ color: "#64748B", fontSize: 13, fontWeight: "500" }}>Searching...</Text>
                 </View>
               ) : searchResults.length > 0 ? (
                 <ScrollView
                   keyboardShouldPersistTaps="handled"
-                  style={{ maxHeight: 270 }}
-                  contentContainerStyle={{ paddingVertical: 4 }}
+                  style={{ maxHeight: 230 }}
+                  contentContainerStyle={{ paddingVertical: 2 }}
                   nestedScrollEnabled={true}
                 >
                   {searchResults.map((item) => (
@@ -250,9 +254,9 @@ export default function AppHeader({ currentRouteName }: { currentRouteName?: str
                       }}
                       style={({ pressed }) => ({
                         paddingVertical: 10,
-                        paddingHorizontal: 14,
-                        borderBottomWidth: 1,
-                        borderBottomColor: "#F1F5F9",
+                        paddingHorizontal: 8,
+                        borderRadius: 8,
+                        marginBottom: 4,
                         backgroundColor: pressed ? "#F8FAFC" : "#FFFFFF",
                       })}
                     >
@@ -265,10 +269,10 @@ export default function AppHeader({ currentRouteName }: { currentRouteName?: str
                         </Text>
                       </View>
                       <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                        <Text style={{ fontSize: 12, color: "#475569" }}>
+                        <Text style={{ fontSize: 12, color: "#64748B" }}>
                           ID: {item.bookingId}
                         </Text>
-                        <Text style={{ fontSize: 12, color: "#475569" }}>
+                        <Text style={{ fontSize: 12, color: "#64748B" }}>
                           {item.date}
                         </Text>
                       </View>
