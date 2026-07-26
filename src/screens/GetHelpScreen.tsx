@@ -29,7 +29,7 @@ export default function GetHelpScreen() {
         <Pressable onPress={() => navigation.goBack()} style={{ padding: 4 }}>
           <ArrowLeft size={20} color={COLORS.navy} />
         </Pressable>
-        <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Need Help?</Text>
+        <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Need Help?</Text>
       </View>
 
       <View style={{ alignItems: "center", paddingVertical: 30, gap: 10 }}>

@@ -137,7 +137,7 @@ export default function SettingsScreen() {
             <Pressable onPress={() => setSettingsPage(null)} style={{ padding: 4 }}>
               <ArrowLeft size={20} color={COLORS.navy} />
             </Pressable>
-            <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Notifications</Text>
+            <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Notifications</Text>
           </View>
 
           <View style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, overflow: "hidden", marginBottom: 14 }}>
@@ -189,7 +189,7 @@ export default function SettingsScreen() {
             <Pressable onPress={() => setSettingsPage(null)} style={{ padding: 4 }}>
               <ArrowLeft size={20} color={COLORS.navy} />
             </Pressable>
-            <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Do Not Disturb</Text>
+            <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Do Not Disturb</Text>
           </View>
 
           <View style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, overflow: "hidden", marginBottom: 14 }}>
@@ -289,7 +289,7 @@ export default function SettingsScreen() {
           return (
             <View>
               <View style={{ marginBottom: 20, flexDirection: "row", alignItems: "center", gap: 10 }}>
-                <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Security</Text>
+                <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Security</Text>
               </View>
               <View style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, padding: 24, alignItems: "center", marginBottom: 16 }}>
                 <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: "#D1FAE5", alignItems: "center", justifyContent: "center", marginBottom: 16 }}>
@@ -310,7 +310,7 @@ export default function SettingsScreen() {
               <Pressable onPress={() => setSettingsPage(null)} style={{ padding: 4 }}>
                 <ArrowLeft size={20} color={COLORS.navy} />
               </Pressable>
-              <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Security</Text>
+              <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Security</Text>
             </View>
 
             <View style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, borderRadius: 20, padding: 18, marginBottom: 14, gap: 14 }}>
@@ -383,7 +383,7 @@ export default function SettingsScreen() {
               <Pressable onPress={() => setSettingsPage(null)} style={{ padding: 4 }}>
                 <ArrowLeft size={20} color={COLORS.navy} />
               </Pressable>
-              <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Remove Boat / Account</Text>
+              <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Remove Boat / Account</Text>
             </View>
             <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>
               Need to remove a boat or close your operator account?
@@ -429,7 +429,7 @@ export default function SettingsScreen() {
             <Pressable onPress={() => navigation.goBack()} style={{ padding: 4 }}>
               <ArrowLeft size={20} color={COLORS.navy} />
             </Pressable>
-            <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Settings</Text>
+            <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Settings</Text>
           </View>
 
           <View style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, borderRadius: 24, overflow: "hidden", marginBottom: 16 }}>

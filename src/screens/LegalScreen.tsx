@@ -107,7 +107,7 @@ export default function LegalScreen() {
             <ArrowLeft size={20} color={COLORS.navy} />
           </Pressable>
           <View>
-            <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.navy }}>{doc.title}</Text>
+            <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>{doc.title}</Text>
             <Text style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }}>{doc.updated}</Text>
           </View>
         </View>

@@ -125,7 +125,7 @@ export default function FinanceScreen() {
           <Pressable onPress={() => navigation.goBack()} style={{ padding: 4 }}>
             <ArrowLeft size={20} color={COLORS.navy} />
           </Pressable>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Finance</Text>
+          <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Finance</Text>
         </View>
 
         {/* Tab buttons */}

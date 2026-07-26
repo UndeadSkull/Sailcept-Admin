@@ -166,7 +166,7 @@ export default function DashboardScreen() {
         {/* Header information */}
         <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18 }}>
           <View>
-            <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Overview</Text>
+            <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Overview</Text>
             <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>{formatToday()}</Text>
           </View>
           <BoatSelector selectedBoat={selectedBoat} setSelectedBoat={setSelectedBoat} />

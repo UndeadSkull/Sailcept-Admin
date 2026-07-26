@@ -230,6 +230,36 @@ export function safeParseDate(dateVal: any): Date {
   return new Date(dateStr);
 }
 
+export function isBookingCoveringDate(b: Booking, dateStr: string): boolean {
+  if (b.status === "cancelled" || b.status === "deleted") return false;
+  const targetDate = safeParseDate(dateStr);
+  if (isNaN(targetDate.getTime())) return false;
+
+  const startDate = safeParseDate(b.date);
+  if (isNaN(startDate.getTime())) return false;
+
+  if (b.type === "Overnight stay" || b.type === "Overnight Stay") {
+    const endDate = safeParseDate(b.dateEnd);
+    if (!isNaN(endDate.getTime()) && endDate > startDate) {
+      const t = targetDate.getTime();
+      const s = startDate.getTime();
+      const e = endDate.getTime();
+      return t >= s && t < e;
+    }
+  }
+  return targetDate.getTime() === startDate.getTime();
+}
+
+export function formatABBookingId(dateStr: string): string {
+  const d = safeParseDate(dateStr);
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = String(d.getFullYear());
+  const random4 = Math.floor(1000 + Math.random() * 9000);
+  return `AB-${day}${month}${year}-${random4}`;
+}
+
+
 export function toISODate(dateStr: string) {
   if (!dateStr) return "";
   const d = safeParseDate(dateStr);
@@ -322,7 +352,7 @@ export function getAvailabilityStatus(
   };
 
   const sameDayBookings = allBookings.filter(
-    b => b.boat === boat && b.date === dateStr && b.status !== "cancelled" && b.status !== "deleted"
+    b => b.boat === boat && isBookingCoveringDate(b, dateStr)
   );
   const sameDayDirectBookings = allBlockedDates.filter(
     b => b.boat === boat && b.date === dateStr && b.reason === "direct"
@@ -331,7 +361,8 @@ export function getAvailabilityStatus(
 
   const isBooked = (type: string) => {
     const bookingTypeMap: Record<string, string> = { "Day Cruise": "Day cruise", "Overnight Stay": "Overnight stay", "Night Stay": "Night stay" };
-    const realBooked = sameDayBookings.some(b => b.type === bookingTypeMap[type]);
+    const targetType = bookingTypeMap[type] || type;
+    const realBooked = sameDayBookings.some(b => b.type === targetType || b.type === type);
     const directBooked = sameDayDirectBookings.some(b => b.tripType === type);
     return realBooked || directBooked;
   };
@@ -497,6 +528,10 @@ export async function saveDirectBooking(booking: Booking): Promise<ApiResponse<B
     }
   } else {
     dbDates.push(booking.date);
+  }
+
+  if (!booking.bookingId || !booking.bookingId.match(/^AB-\d{8}-\d{4}$/)) {
+    booking.bookingId = formatABBookingId(booking.date);
   }
 
   if (isEditing) {

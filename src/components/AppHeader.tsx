@@ -94,7 +94,7 @@ export default function AppHeader({ currentRouteName }: { currentRouteName?: str
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           {/* Logo Title */}
           <Pressable onPress={() => { navigation.navigate("MainTabs"); setSearchQuery(""); setSearchOpen(false); }}>
-            <Text style={{ fontSize: 22, color: COLORS.white, fontWeight: "900", letterSpacing: -0.8 }}>
+            <Text style={{ fontSize: 26, color: COLORS.white, fontWeight: "900", letterSpacing: -0.8 }}>
               Sailcept
             </Text>
           </Pressable>

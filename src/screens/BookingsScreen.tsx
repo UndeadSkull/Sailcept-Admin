@@ -224,13 +224,8 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
         {/* Page Header */}
-        <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18 }}>
-          <View style={{ flex: 1, marginRight: 8 }}>
-            <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Bookings</Text>
-            <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>
-              Track confirmed guest check-ins and history.
-            </Text>
-          </View>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Bookings</Text>
           <BoatSelector selectedBoat={selectedBoat} setSelectedBoat={setSelectedBoat} />
         </View>
 

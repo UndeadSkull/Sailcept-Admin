@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   pageTitle: {
     color: COLORS.navy,
     fontSize: 26,
-    fontWeight: "700",
+    fontWeight: "800",
   },
   pageSub: {
     color: COLORS.muted,

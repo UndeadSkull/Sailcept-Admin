@@ -1,12 +1,13 @@
 export type NotificationType =
   | "new_request"
+  | "booking_confirmed"
   | "change_of_dates"
   | "cancellation"
   | "extra_added"
   | "booking_changes"
   | "reviews";
 
-export type NotificationTimeGroup = "Today" | "Yesterday" | "Earlier";
+export type NotificationTimeGroup = string;
 
 export type Notification = {
   id: string;

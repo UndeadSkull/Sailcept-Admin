@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, Tex
 import { ArrowLeft, Calendar, ChevronDown, ChevronUp, ArrowRight, Sun, Moon, Sunrise, Pencil, Trash, X, CheckCircle, Info, Ship } from "lucide-react-native";
 import { useBoat } from "../context/BoatContext";
 import { useNavigation } from "@react-navigation/native";
-import { fetchBookings, saveDirectBooking, deleteBooking, Booking, DietEntry, MONTHS, BOAT_BH_CONFIGS, BOAT_TOTAL_BH, SHARED_BOATS, SHARED_BOAT_TOTAL_UNITS, TRIP_TYPES, AVAILABILITY_TYPE_ICONS, getAvailabilityStatus, buildDefaultPricing, toISODate, fromISODate, formatDateRange, getMinimumRooms, getCotsMattresses, isContactUnlocked, dateOpenState as initialDateOpenState, blockedDates as initialBlockedDates, safeParseDate } from "../services/bookings";
+import { fetchBookings, saveDirectBooking, deleteBooking, Booking, DietEntry, MONTHS, BOAT_BH_CONFIGS, BOAT_TOTAL_BH, SHARED_BOATS, SHARED_BOAT_TOTAL_UNITS, TRIP_TYPES, AVAILABILITY_TYPE_ICONS, getAvailabilityStatus, buildDefaultPricing, toISODate, fromISODate, formatDateRange, getMinimumRooms, getCotsMattresses, isContactUnlocked, dateOpenState as initialDateOpenState, blockedDates as initialBlockedDates, safeParseDate, isBookingCoveringDate } from "../services/bookings";
 import { COLORS } from "../styles";
 
 // Freeze reference date to June 18, 2026
@@ -40,6 +40,7 @@ export default function AvailabilityScreen() {
   const [confirmRatesSuccess, setConfirmRatesSuccess] = useState<string | null>(null);
 
   // Shared units edit state
+  const [localSharedUnits, setLocalSharedUnits] = useState<Record<string, number>>({});
   const [unitsEditingKey, setUnitsEditingKey] = useState<string | null>(null);
   const [unitsDraft, setUnitsDraft] = useState("");
 
@@ -114,7 +115,7 @@ export default function AvailabilityScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
         <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy, marginBottom: 6 }}>
+          <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy, marginBottom: 6 }}>
             Availability
           </Text>
           <Text style={{ fontSize: 13, color: COLORS.muted, marginBottom: 20 }}>
@@ -251,7 +252,7 @@ export default function AvailabilityScreen() {
   };
 
   const STATUS_COLORS: Record<string, string> = { green: COLORS.green, amber: COLORS.amber, red: COLORS.red };
-  const STATUS_TINTS: Record<string, string> = { green: COLORS.white, amber: "#FEF3C7", red: "#FEE2E2", empty: COLORS.bg };
+  const STATUS_TINTS: Record<string, string> = { green: "#DCFCE7", amber: "#FEF3C7", red: "#FEE2E2", empty: COLORS.bg };
 
   const selectedDateLabel = (() => {
     if (availabilitySelection.length === 0) return null;
@@ -267,8 +268,9 @@ export default function AvailabilityScreen() {
       "Overnight Stay": "Overnight stay",
       "Night Stay": "Night stay",
     };
+    const targetType = bookingTypeMap[type] || type;
     const realBooked = allBookings.some(
-      (b) => b.boat === boatName && b.date === dateStr && b.type === bookingTypeMap[type] && b.status !== "cancelled" && b.status !== "deleted"
+      (b) => b.boat === boatName && isBookingCoveringDate(b, dateStr) && (b.type === targetType || b.type === type)
     );
     const directBlocked = allBlockedDates.some(
       (b) => b.boat === boatName && b.date === dateStr && b.reason === "direct" && b.tripType === type
@@ -293,13 +295,37 @@ export default function AvailabilityScreen() {
   const firstDateStr = selectedDates[0] || "";
   const isDateOpen = firstDateStr ? localDateOpenState[`${boat}|${firstDateStr}`] === true : false;
   const hasRealBookingOnSelection = selectedDates.some((dateStr) =>
-    allBookings.some((b) => b.boat === boat && b.date === dateStr && b.status !== "cancelled" && b.status !== "deleted")
+    allBookings.some((b) => b.boat === boat && isBookingCoveringDate(b, dateStr))
   );
+
+  const getFormattedNextDay = (dateStr: string) => {
+    const d = safeParseDate(dateStr);
+    if (isNaN(d.getTime())) return dateStr;
+    const next = new Date(d.getTime() + 24 * 60 * 60 * 1000);
+    return fromISODate(toISODate(next.toISOString()));
+  };
 
   // Handle Form changes
   const updateField = (key: string, value: any) => {
     setAddBookingForm((prev) => {
       const next = { ...prev, [key]: value };
+
+      if (key === "type" || key === "checkIn") {
+        const currentType = key === "type" ? value : prev.type;
+        const currentCheckIn = key === "checkIn" ? value : prev.checkIn;
+
+        if (currentType === "Day Cruise") {
+          next.checkOut = currentCheckIn;
+        } else if (currentType === "Night Stay") {
+          next.checkOut = getFormattedNextDay(currentCheckIn);
+        } else if (currentType === "Overnight Stay") {
+          const cin = safeParseDate(currentCheckIn);
+          const cout = safeParseDate(next.checkOut);
+          if (isNaN(cout.getTime()) || cout <= cin) {
+            next.checkOut = getFormattedNextDay(currentCheckIn);
+          }
+        }
+      }
       
       // Auto adjustments
       if (key === "adults" || key === "children") {
@@ -418,7 +444,7 @@ export default function AvailabilityScreen() {
           <Pressable onPress={() => setLocalBoatName(null)} style={{ padding: 4 }}>
             <ArrowLeft size={20} color={COLORS.navy} />
           </Pressable>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>{boat}</Text>
+          <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>{boat}</Text>
         </View>
 
         {isLoading ? (
@@ -607,17 +633,76 @@ export default function AvailabilityScreen() {
                 </Text>
 
                 {/* Shared unit indicator */}
-                {isShared && isDateOpen && totalUnits && (
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: COLORS.bg, borderRadius: 12, padding: 12, marginBottom: 16 }}>
-                    <View>
-                      <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy }}>Rooms available</Text>
-                      <Text style={{ fontSize: 11, color: COLORS.navy, marginTop: 3 }}>Number of configured rooms: {totalUnits}</Text>
+                {isShared && isDateOpen && totalUnits && (() => {
+                  const bookedRoomsOnSelection = selectedDates.reduce((max, dateStr) => {
+                    const sum = allBookings
+                      .filter(b => b.boat === boat && isBookingCoveringDate(b, dateStr))
+                      .reduce((acc, b) => acc + (b.rooms || 1), 0);
+                    return Math.max(max, sum);
+                  }, 0);
+                  const maxAvailableUnits = Math.max(0, totalUnits - bookedRoomsOnSelection);
+                  const sharedKey = `${boat}|${firstDateStr}`;
+                  const currentAvailableUnits = localSharedUnits[sharedKey] ?? maxAvailableUnits;
+
+                  return (
+                    <View style={{ backgroundColor: COLORS.bg, borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: COLORS.border }}>
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                        <View>
+                          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy }}>Rooms available</Text>
+                          <Text style={{ fontSize: 11, color: COLORS.muted, marginTop: 2 }}>
+                            Configured: {totalUnits} · Booked: {bookedRoomsOnSelection}
+                          </Text>
+                        </View>
+                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                          <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.teal }}>{currentAvailableUnits}</Text>
+                          <Pressable
+                            onPress={() => setUnitsEditingKey(unitsEditingKey === sharedKey ? null : sharedKey)}
+                            style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.teal, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.teal }}>
+                              {unitsEditingKey === sharedKey ? "Done" : "Edit"}
+                            </Text>
+                          </Pressable>
+                        </View>
+                      </View>
+
+                      {unitsEditingKey === sharedKey && (
+                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.border }}>
+                          <Text style={{ fontSize: 12, color: COLORS.navy, fontWeight: "600" }}>Available units (Max {maxAvailableUnits}):</Text>
+                          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                            <Pressable
+                              onPress={() => {
+                                const val = Math.max(0, currentAvailableUnits - 1);
+                                setLocalSharedUnits(prev => {
+                                  const next = { ...prev };
+                                  selectedDates.forEach(d => { next[`${boat}|${d}`] = val; });
+                                  return next;
+                                });
+                              }}
+                              style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" }}
+                            >
+                              <Text style={{ fontSize: 16, fontWeight: "700", color: COLORS.navy }}>-</Text>
+                            </Pressable>
+                            <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.navy, minWidth: 20, textAlign: "center" }}>{currentAvailableUnits}</Text>
+                            <Pressable
+                              onPress={() => {
+                                const val = Math.min(maxAvailableUnits, currentAvailableUnits + 1);
+                                setLocalSharedUnits(prev => {
+                                  const next = { ...prev };
+                                  selectedDates.forEach(d => { next[`${boat}|${d}`] = val; });
+                                  return next;
+                                });
+                              }}
+                              style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" }}
+                            >
+                              <Text style={{ fontSize: 16, fontWeight: "700", color: COLORS.navy }}>+</Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      )}
                     </View>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                      <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.teal }}>{totalUnits}</Text>
-                    </View>
-                  </View>
-                )}
+                  );
+                })()}
 
                 {/* Trip pricing list */}
                 <View style={{ gap: 10, opacity: isDateOpen ? 1 : 0.5, pointerEvents: isDateOpen ? "auto" : "none" }}>
@@ -726,8 +811,44 @@ export default function AvailabilityScreen() {
                                             setConfirmRatesError(`${type}|${bh}|booked`);
                                             return;
                                           }
-                                          setPriceDrafts(prev => ({ ...prev, [draftKey]: { ...draft, open: !tierOpen } }));
-                                          if (!tierOpen) setConfirmRatesError(null);
+                                          const nextTierOpen = !tierOpen;
+                                          const willAllTiersBeClosed = bhTiers.every((obh) => {
+                                            if (obh === bh) return !nextTierOpen;
+                                            const otherDk = `${type}|${obh}`;
+                                            if (priceDrafts[otherDk] !== undefined) return !priceDrafts[otherDk].open;
+                                            return !(confirmedEntry?.tiers?.[obh]?.open ?? false);
+                                          });
+
+                                          if (willAllTiersBeClosed) {
+                                            setLocalTripPricing(prev => {
+                                              const next = { ...prev };
+                                              const tiers: Record<number, any> = {};
+                                              bhTiers.forEach((tbh) => {
+                                                const fallback = buildDefaultPricing(boat)[type]?.tiers?.[tbh];
+                                                const existing = confirmedEntry?.tiers?.[tbh];
+                                                tiers[tbh] = {
+                                                  base: existing?.base ?? fallback?.base ?? 0,
+                                                  extraAdult: existing?.extraAdult ?? fallback?.extraAdult ?? 0,
+                                                  extraChild: existing?.extraChild ?? fallback?.extraChild ?? 0,
+                                                  open: false,
+                                                };
+                                              });
+                                              selectedDates.forEach((dateStr) => {
+                                                next[`${boat}|${dateStr}|${type}`] = { tiers };
+                                              });
+                                              return next;
+                                            });
+                                            setPriceDrafts(prev => {
+                                              const next = { ...prev };
+                                              delete next[`_editing_${type}`];
+                                              bhTiers.forEach((tbh) => delete next[`${type}|${tbh}`]);
+                                              return next;
+                                            });
+                                            setConfirmRatesError(null);
+                                          } else {
+                                            setPriceDrafts(prev => ({ ...prev, [draftKey]: { ...draft, open: nextTierOpen } }));
+                                            if (nextTierOpen) setConfirmRatesError(null);
+                                          }
                                         }}
                                         style={{ flexDirection: "row", alignItems: "center", gap: 6, opacity: closingBlocked ? 0.6 : 1 }}
                                       >
@@ -1026,9 +1147,21 @@ export default function AvailabilityScreen() {
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>Check-out</Text>
+                  <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.muted, textTransform: "uppercase" }}>
+                    Check-out {addBookingForm.type !== "Overnight Stay" ? "(Locked)" : ""}
+                  </Text>
                   <TextInput
-                    style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 10, padding: 10, marginTop: 6, color: COLORS.navy, fontSize: 14 }}
+                    editable={addBookingForm.type === "Overnight Stay"}
+                    style={{
+                      borderWidth: 1,
+                      borderColor: COLORS.border,
+                      borderRadius: 10,
+                      padding: 10,
+                      marginTop: 6,
+                      color: addBookingForm.type === "Overnight Stay" ? COLORS.navy : COLORS.muted,
+                      backgroundColor: addBookingForm.type === "Overnight Stay" ? COLORS.white : COLORS.bg,
+                      fontSize: 14,
+                    }}
                     value={addBookingForm.checkOut}
                     onChangeText={(val) => updateField("checkOut", val)}
                   />

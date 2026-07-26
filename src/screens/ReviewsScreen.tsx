@@ -99,7 +99,7 @@ export default function ReviewsScreen() {
           <Pressable onPress={() => navigation.goBack()} style={{ padding: 4 }}>
             <ArrowLeft size={20} color={COLORS.navy} />
           </Pressable>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Reviews</Text>
+          <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Reviews</Text>
         </View>
         <BoatSelector selectedBoat={selectedBoat} setSelectedBoat={setSelectedBoat} />
       </View>

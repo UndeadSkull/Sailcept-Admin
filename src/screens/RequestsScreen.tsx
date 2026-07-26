@@ -109,7 +109,7 @@ export default function RequestsScreen() {
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
         {/* Title */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>Requests</Text>
+          <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Requests</Text>
           <BoatSelector selectedBoat={selectedBoat} setSelectedBoat={setSelectedBoat} />
         </View>
 

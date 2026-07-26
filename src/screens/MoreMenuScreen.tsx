@@ -71,7 +71,7 @@ export default function MoreMenuScreen({ navigation }: { navigation: any }) {
     <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
       {/* Title */}
       <View style={{ marginBottom: 18 }}>
-        <Text style={{ fontSize: 22, fontWeight: "800", color: COLORS.navy }}>More</Text>
+        <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>More</Text>
         <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>
           Manage your account, houseboats, finance and preferences.
         </Text>
