@@ -14,17 +14,17 @@ import styles from "../styles";
 
 export default function LoginScreen() {
   const { login } = useAuth();
-  
-  const [username, setUsername] = useState("");
+
+  const [sailceptId, setSailceptId] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleLogin = async () => {
     setError("");
-    const trimmedUser = username.trim();
-    if (!trimmedUser) {
-      setError("Please enter your username.");
+    const trimmedId = sailceptId.trim();
+    if (!trimmedId) {
+      setError("Please enter your Sailcept ID.");
       return;
     }
     if (!password) {
@@ -34,14 +34,11 @@ export default function LoginScreen() {
 
     setIsSubmitting(true);
     try {
-      if (trimmedUser.toLowerCase() === "admin" && password === "password") {
-        await login(trimmedUser, password);
-      } else {
-        setError("Invalid username or password. Use 'admin' and 'password' for testing.");
-        setIsSubmitting(false);
-      }
-    } catch (err) {
-      setError("Authentication failed. Please try again.");
+      await login(trimmedId, password);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Authentication failed. Please try again.";
+      setError(message);
+    } finally {
       setIsSubmitting(false);
     }
   };
@@ -62,7 +59,7 @@ export default function LoginScreen() {
               <Text style={styles.loginLogoText}>≈</Text>
             </View>
             <Text style={styles.loginBrandOverline}>Sailcept</Text>
-            <Text style={styles.loginBrandTitle}>Admin Dashboard</Text>
+            <Text style={styles.loginBrandTitle}>Operator Dashboard</Text>
           </View>
 
           {/* Login Card Container */}
@@ -70,7 +67,7 @@ export default function LoginScreen() {
             <View style={styles.loginCardContent}>
               <Text style={styles.loginTitle}>Welcome back</Text>
               <Text style={styles.loginSub}>
-                Enter your credentials to access your operator dashboard.
+                Enter your Sailcept credentials to start an authenticated operator session.
               </Text>
 
               {error ? (
@@ -79,23 +76,23 @@ export default function LoginScreen() {
                 </View>
               ) : null}
 
-              {/* Username Input */}
+              {/* Sailcept ID Input */}
               <View style={styles.loginInputLabelContainer}>
-                <Text style={styles.loginInputLabel}>Username</Text>
+                <Text style={styles.loginInputLabel}>Sailcept ID</Text>
               </View>
               <View style={[styles.loginPhoneInputWrapper, { marginBottom: 14, minHeight: 46 }]}>
                 <TextInput
                   style={styles.loginPhoneInput}
-                  value={username}
+                  value={sailceptId}
                   onChangeText={(val) => {
                     setError("");
-                    setUsername(val);
+                    setSailceptId(val);
                   }}
-                  placeholder="Enter your username"
+                  placeholder="Enter your Sailcept ID"
                   placeholderTextColor="#8ea0b6"
                   autoCapitalize="none"
                   autoCorrect={false}
-                  accessibilityLabel="Username input"
+                  accessibilityLabel="Sailcept ID input"
                 />
               </View>
 
@@ -139,15 +136,6 @@ export default function LoginScreen() {
                 )}
               </Pressable>
             </View>
-          </View>
-
-          {/* Tester Helper Box */}
-          <View style={styles.loginTesterHelper}>
-            <Text style={styles.loginTesterHelperTitle}>Tester Note:</Text>
-            <Text style={styles.loginTesterHelperText}>
-              • Enter username <Text style={{ fontWeight: "800" }}>admin</Text>{"\n"}
-              • Enter password <Text style={{ fontWeight: "800" }}>password</Text> to authenticate.
-            </Text>
           </View>
         </View>
       </ScrollView>

@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { User } from "../data/auth";
+import { AUTH_TOKEN_KEY } from "../services/apiClient";
+import { getOperatorProfile, loginOperator } from "../services/auth";
 
 type AuthContextType = {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: User | null;
-  login: (username: string, password: string) => Promise<void>;
+  login: (sailceptId: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 };
 
@@ -18,7 +20,8 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
 });
 
-const AUTH_TOKEN_KEY = "@sailcept_admin_auth_token";
+const USER_ID_KEY = "@sailcept_admin_user_id";
+const SAILCEPT_ID_KEY = "@sailcept_admin_sailcept_id";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -30,13 +33,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuthStatus = async () => {
       try {
         const token = await AsyncStorage.getItem(AUTH_TOKEN_KEY);
+        const storedSailceptId = await AsyncStorage.getItem(SAILCEPT_ID_KEY);
+        const storedUserId = await AsyncStorage.getItem(USER_ID_KEY);
+
         if (token) {
           setIsAuthenticated(true);
-          setUser({
-            name: "Ethan Walker",
-            phone: "+1 415 555 0134",
-            email: "ethan.walker@sailcept.com",
-          });
+          const initialUser: User = {
+            sailceptId: storedSailceptId || "Operator",
+            boatOwnerUserId: storedUserId ? Number(storedUserId) : undefined,
+            name: storedSailceptId || "Operator",
+            email: storedSailceptId ? `${storedSailceptId.toLowerCase()}@sailcept.com` : "operator@sailcept.com",
+            phone: "",
+          };
+          setUser(initialUser);
+
+          // Attempt to fetch full profile asynchronously
+          const profileRes = await getOperatorProfile();
+          if (profileRes.data) {
+            setUser({
+              ...initialUser,
+              ...profileRes.data,
+            });
+          }
         }
       } catch (error) {
         console.error("Error loading auth token:", error);
@@ -48,28 +66,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuthStatus();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const login = async (sailceptId: string, password: string) => {
     try {
-      // Simulate network request delay
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      // Save dummy token in AsyncStorage
-      const dummyToken = `dummy-token-${username}-${Date.now()}`;
-      await AsyncStorage.setItem(AUTH_TOKEN_KEY, dummyToken);
-      setUser({
-        name: "Ethan Walker",
-        phone: "+1 415 555 0134",
-        email: "ethan.walker@sailcept.com",
-      });
+      const response = await loginOperator({ sailceptId, password });
+
+      if (response.error || !response.data) {
+        throw new Error(response.error?.message || "Authentication failed. Please check your credentials.");
+      }
+
+      const { accessToken, boatOwnerUserId, sailceptId: returnedSailceptId } = response.data;
+      const finalSailceptId = returnedSailceptId || sailceptId;
+
+      await AsyncStorage.setItem(AUTH_TOKEN_KEY, accessToken);
+      await AsyncStorage.setItem(SAILCEPT_ID_KEY, finalSailceptId);
+      if (boatOwnerUserId) {
+        await AsyncStorage.setItem(USER_ID_KEY, String(boatOwnerUserId));
+      }
+
+      const newUser: User = {
+        sailceptId: finalSailceptId,
+        boatOwnerUserId,
+        name: finalSailceptId,
+        email: `${finalSailceptId.toLowerCase()}@sailcept.com`,
+        phone: "",
+      };
+
+      setUser(newUser);
       setIsAuthenticated(true);
+
+      // Attempt to load full profile details if available
+      getOperatorProfile().then((profileRes) => {
+        if (profileRes.data) {
+          setUser((prev) => (prev ? { ...prev, ...profileRes.data } : prev));
+        }
+      });
     } catch (error) {
-      console.error("Error setting auth token:", error);
+      console.error("Login error:", error);
       throw error;
     }
   };
 
   const logout = async () => {
     try {
-      await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+      await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, SAILCEPT_ID_KEY, USER_ID_KEY]);
       setUser(null);
       setIsAuthenticated(false);
     } catch (error) {

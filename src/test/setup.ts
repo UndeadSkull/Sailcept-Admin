@@ -11,8 +11,17 @@ jest.mock("@expo/vector-icons", () => ({
 	FontAwesome5: () => null,
 }));
 
-
-
+if (typeof globalThis !== "undefined" && !globalThis.fetch) {
+  (globalThis as unknown as { fetch: unknown }).fetch = jest.fn(() =>
+    Promise.resolve({
+      ok: true,
+      status: 200,
+      headers: { get: () => "application/json" },
+      json: () => Promise.resolve({}),
+      text: () => Promise.resolve("{}"),
+    } as unknown as Response)
+  );
+}
 
 jest.mock("@react-navigation/native-stack", () => {
 	const stack = jest.requireActual("@react-navigation/stack");
@@ -20,8 +29,6 @@ jest.mock("@react-navigation/native-stack", () => {
 		createNativeStackNavigator: stack.createStackNavigator,
 	};
 });
-
-
 
 jest.mock("react-native-safe-area-context", () => {
 	const React = require("react");

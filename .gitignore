@@ -27,3 +27,6 @@ dist-ssr
 .expo/
 
 android/build/
+
+# ENV
+.env.local
