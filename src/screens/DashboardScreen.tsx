@@ -3,7 +3,8 @@ import { useNavigation } from "@react-navigation/native";
 import { Pressable, ScrollView, Text, View, ActivityIndicator } from "react-native";
 import { BookingCard, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
-import { fetchBookings, fetchRequests, fetchRequestHistory, Booking, formatToday, safeParseDate } from "../services/bookings";
+import { fetchBookings, fetchRequests, fetchRequestHistory, Booking, safeParseDate } from "../services/bookings";
+import { fetchOverviewStats, OverviewStatsResponse } from "../services/dashboard";
 import { COLORS } from "../styles";
 
 import type { MainTabScreenProps } from "../navigation/types";
@@ -15,25 +16,27 @@ export default function DashboardScreen() {
   const { boats, searchQuery } = useBoat();
   const [selectedBoat, setSelectedBoat] = useState<number>(0);
 
+  const [stats, setStats] = useState<OverviewStatsResponse | null>(null);
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
-  const [allRequests, setAllRequests] = useState<Booking[]>([]);
-  const [allHistory, setAllHistory] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedBooking, setExpandedBooking] = useState<number | null>(null);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Fetch all data for filtering
-      const [bookingsRes, requestsRes, historyRes] = await Promise.all([
-        fetchBookings(0), // fetch all boats bookings
-        fetchRequests(0), // fetch all requests
-        fetchRequestHistory(0), // fetch all history
+      const targetBoatId = selectedBoat > 0 ? selectedBoat : undefined;
+
+      const [statsRes, bookingsRes] = await Promise.all([
+        fetchOverviewStats(targetBoatId),
+        fetchBookings(selectedBoat),
       ]);
 
-      if (bookingsRes.data) setAllBookings(bookingsRes.data);
-      if (requestsRes.data) setAllRequests(requestsRes.data);
-      if (historyRes.data) setAllHistory(historyRes.data);
+      if (statsRes.data) {
+        setStats(statsRes.data);
+      }
+      if (bookingsRes.data) {
+        setAllBookings(bookingsRes.data);
+      }
     } catch (err) {
       console.error("Failed to load dashboard data:", err);
     } finally {
@@ -50,7 +53,7 @@ export default function DashboardScreen() {
 
   useEffect(() => {
     loadData();
-  }, [selectedBoat]); // Reload when selectedBoat changes
+  }, [selectedBoat]);
 
   // Helper to check if a booking matches search query
   const matchesSearch = (b: Booking) => {
@@ -65,42 +68,17 @@ export default function DashboardScreen() {
   // Resolve boat name
   const selectedBoatName = selectedBoat === 0 ? "All" : boats.find((b) => b.id === selectedBoat)?.name || "";
 
-  // Filter lists based on selected boat and search query
+  // Filter list based on selected boat and search query
   const filteredBookings = allBookings.filter((b) => {
     const boatMatch = selectedBoat === 0 || b.boat === selectedBoatName;
     return boatMatch && matchesSearch(b);
   });
 
-  const filteredRequests = allRequests.filter((r) => {
-    const boatMatch = selectedBoat === 0 || r.boat === selectedBoatName;
-    return boatMatch && matchesSearch(r);
-  });
-
-  const filteredHistory = allHistory.filter((h) => {
-    const boatMatch = selectedBoat === 0 || h.boat === selectedBoatName;
-    return boatMatch && matchesSearch(h);
-  });
-
-  // Calculate stats
-  const todayStr = "18 Jun 2026"; // mockup today date
-  const todaysTrips = filteredBookings.filter(
-    (b) => b.date === todayStr && b.status !== "cancelled" && b.status !== "deleted"
-  );
-
-  const confirmedBookingsThisMonth = filteredBookings.filter(
-    (b) => b.date.includes("Jun 2026") && b.status !== "cancelled" && b.status !== "deleted"
-  );
-
-  // Conversion rate: accepted / (accepted + declined)
-  const acceptedRequests = filteredHistory.filter((h) => h.outcome === "accepted").length;
-  const declinedRequests = filteredHistory.filter((h) => h.outcome === "declined").length;
-  const totalDecided = acceptedRequests + declinedRequests;
-  const conversionRate = totalDecided > 0 ? Math.round((acceptedRequests / totalDecided) * 100) : 0;
-
-  // Filter upcoming cruises: date >= June 18, 2026 and not cancelled/deleted
+  // Upcoming cruises
   const upcomingCruises = filteredBookings.filter((b) => {
     const bookingDate = safeParseDate(b.date);
-    const todayStart = new Date(2026, 5, 18); // June 18
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
     return bookingDate >= todayStart && b.status !== "cancelled" && b.status !== "deleted";
   });
 
@@ -116,7 +94,7 @@ export default function DashboardScreen() {
     return groups;
   }, {});
 
-  // Custom Stat Card row renderer
+  // Stat card renderer
   const renderStatCard = (label: string, value: string, isAccent = false, onPress?: () => void) => {
     return (
       <Pressable
@@ -160,6 +138,20 @@ export default function DashboardScreen() {
     );
   };
 
+  const formattedAsOfDate = stats?.asOfDate
+    ? new Date(stats.asOfDate).toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : new Date().toLocaleDateString("en-GB", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
       <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
@@ -167,7 +159,7 @@ export default function DashboardScreen() {
         <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18 }}>
           <View>
             <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Overview</Text>
-            <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>{formatToday()}</Text>
+            <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>{formattedAsOfDate}</Text>
           </View>
           <BoatSelector selectedBoat={selectedBoat} setSelectedBoat={setSelectedBoat} />
         </View>
@@ -181,17 +173,23 @@ export default function DashboardScreen() {
           <>
             {/* Stats rows */}
             <View style={{ flexDirection: "row", gap: 10, marginBottom: 10 }}>
-              {renderStatCard("Today's trips", String(todaysTrips.length), false, () => {
-                navigation.navigate("Bookings"); // Go to bookings
+              {renderStatCard("Today's trips", String(stats?.todaysTrips ?? 0), false, () => {
+                navigation.navigate("Bookings");
               })}
-              {renderStatCard("Pending requests", String(filteredRequests.length), true, () => {
-                navigation.navigate("Requests"); // Go to requests
+              {renderStatCard("Pending requests", String(stats?.pendingRequests ?? 0), true, () => {
+                navigation.navigate("Requests");
               })}
             </View>
 
             <View style={{ flexDirection: "row", gap: 10, marginBottom: 24 }}>
-              {renderStatCard("Confirmed bookings this month", String(confirmedBookingsThisMonth.length))}
-              {renderStatCard("Booking conversion rate (last 30 days)", `${conversionRate}%`)}
+              {renderStatCard(
+                "Confirmed bookings this month",
+                String(stats?.confirmedBookingsThisMonth ?? 0)
+              )}
+              {renderStatCard(
+                "Booking conversion rate (last 30 days)",
+                `${stats?.bookingConversionRateLast30Days ?? 0}%`
+              )}
             </View>
 
             {/* Upcoming cruises section */}
