@@ -100,7 +100,7 @@ export default function AppHeader({ currentRouteName }: { currentRouteName?: str
               setSearchQuery("");
               setSearchOpen(false);
             }}
-            style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
           >
             <LogoFillWhite size={36} color={COLORS.white} />
             <Text style={{ fontSize: 26, color: COLORS.white, fontWeight: "900", letterSpacing: -0.8 }}>
