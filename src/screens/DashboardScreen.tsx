@@ -3,7 +3,7 @@ import { useNavigation } from "@react-navigation/native";
 import { Pressable, ScrollView, Text, View, ActivityIndicator } from "react-native";
 import { BookingCard, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
-import { fetchBookings, fetchRequests, fetchRequestHistory, Booking, safeParseDate } from "../services/bookings";
+import { fetchUpcomingCruisesApi, fetchRequests, fetchRequestHistory, Booking, safeParseDate } from "../services/bookings";
 import { fetchOverviewStats, OverviewStatsResponse } from "../services/dashboard";
 import { COLORS } from "../styles";
 
@@ -28,7 +28,7 @@ export default function DashboardScreen() {
 
       const [statsRes, bookingsRes] = await Promise.all([
         fetchOverviewStats(targetBoatId),
-        fetchBookings(selectedBoat),
+        fetchUpcomingCruisesApi(selectedBoat),
       ]);
 
       if (statsRes.data) {

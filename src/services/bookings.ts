@@ -587,9 +587,85 @@ export async function deleteBooking(id: number): Promise<ApiResponse<void>> {
   return { data: null, error: null };
 }
 
+export function mapBookingSummaryToBooking(r: any): Booking {
+  const dateStr = r.travelDate ? (r.travelDate.includes("-") ? fromISODate(r.travelDate) : r.travelDate) : (r.date || "");
+  const dateEndStr = r.travelEndDate ? (r.travelEndDate.includes("-") ? fromISODate(r.travelEndDate) : r.travelEndDate) : (r.dateEnd || dateStr);
+
+  let specialRequestsArray: string[] = [];
+  if (Array.isArray(r.specialRequests)) {
+    specialRequestsArray = r.specialRequests;
+  } else if (typeof r.specialRequests === "string" && r.specialRequests.trim() !== "") {
+    specialRequestsArray = [r.specialRequests];
+  }
+
+  let dietBreakdownList: DietEntry[] | undefined = undefined;
+  if (Array.isArray(r.dietBreakdown)) {
+    dietBreakdownList = r.dietBreakdown;
+  } else if (typeof r.dietBreakdown === "string" && r.dietBreakdown.trim() !== "") {
+    try {
+      dietBreakdownList = JSON.parse(r.dietBreakdown);
+    } catch {
+      // ignore
+    }
+  }
+
+  return {
+    id: r.bookingId || r.id || 0,
+    bookingId: r.bookingCode || r.bookingId || String(r.id || ""),
+    guest: r.guestName || r.guest || "",
+    phone: r.guestPhone || r.phone || r.contactPhone || "",
+    boat: r.boatName || r.boat || "",
+    type: r.cruiseTypeLabel || r.cruiseTypeCode || r.type || "Day Cruise",
+    date: dateStr,
+    dateEnd: dateEndStr,
+    comfort: r.comfortLevelLabel || r.comfortLevel || r.comfort,
+    mode: r.bookingMode || r.mode || "Private",
+    adults: r.adultCount !== undefined ? r.adultCount : (r.adults || 0),
+    children: r.childCount !== undefined ? r.childCount : (r.children || 0),
+    kids: r.infantCount !== undefined ? r.infantCount : (r.kids || 0),
+    rooms: r.roomCount !== undefined ? r.roomCount : (r.rooms || 1),
+    cots: r.extraBedCount !== undefined ? r.extraBedCount : (r.cots || 0),
+    dietBreakdown: dietBreakdownList,
+    accessibility: r.accessibility,
+    specialRequests: specialRequestsArray,
+    updatedSpecialRequests: r.updatedSpecialRequests,
+    price: r.price !== undefined ? r.price : 0,
+    ghat: r.ghat || r.boardingLocation,
+    checkIn: r.checkInTime || r.checkIn || "",
+    checkOut: r.checkOutTime || r.checkOut || "",
+    meal: r.meal,
+    paymentStatus: r.paymentStatus,
+    status: r.status,
+    isDirect: r.isDirect !== undefined ? r.isDirect : r.isAdded,
+    isUpdated: r.isUpdated,
+    isEdited: r.isEdited,
+    bookingSource: r.bookingSource || r.channel || "",
+  };
+}
+
+export async function fetchUpcomingCruisesApi(boatId: number): Promise<ApiResponse<Booking[]>> {
+  const apiRes = await fetchBookingsApi({ scope: "upcoming", boatId });
+  if (apiRes.data?.content) {
+    const list: Booking[] = apiRes.data.content.map(mapBookingSummaryToBooking);
+    return { data: list, error: null };
+  }
+  
+  // Fallback to mock logic
+  await delay(100);
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const boatName = BOAT_NAME_MAP[boatId];
+  const list = bookings.filter((b) => {
+    if (boatId > 0 && b.boat !== boatName) return false;
+    const bDate = safeParseDate(b.date);
+    return bDate >= now && b.status !== "cancelled" && b.status !== "deleted";
+  });
+  return { data: list, error: null };
+}
+
 export async function fetchBookingDetail(bookingId: string): Promise<ApiResponse<Booking>> {
   const apiRes = await fetchBookingDetailByIdApi(bookingId);
-  if (apiRes.data) return { data: apiRes.data as any, error: null };
+  if (apiRes.data) return { data: mapBookingSummaryToBooking(apiRes.data), error: null };
   await delay(100);
   const booking = bookings.find((b) => b.bookingId === bookingId);
   if (!booking) return { data: null, error: { message: "Booking not found", code: "NOT_FOUND" } };
