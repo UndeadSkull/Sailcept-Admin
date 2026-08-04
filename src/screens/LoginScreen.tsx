@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useAuth } from "../context/AuthContext";
 import styles from "../styles";
+import { LogoFillGradient } from "../components/AppLogo";
 
 export default function LoginScreen() {
   const { login } = useAuth();
@@ -56,7 +57,7 @@ export default function LoginScreen() {
           {/* Logo & Brand Section */}
           <View style={styles.loginHeader}>
             <View style={styles.loginLogoBox}>
-              <Text style={styles.loginLogoText}>≈</Text>
+              <LogoFillGradient size={64} />
             </View>
             <Text style={styles.loginBrandOverline}>Sailcept</Text>
             <Text style={styles.loginBrandTitle}>Operator Dashboard</Text>
