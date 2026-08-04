@@ -12,6 +12,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { COLORS } from "../styles";
 import { searchBookingsApi } from "../services/search";
 import { Booking } from "../data/bookings";
+import { LogoFillWhite } from "./AppLogo";
 
 type RootNav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -93,7 +94,15 @@ export default function AppHeader({ currentRouteName }: { currentRouteName?: str
       >
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
           {/* Logo Title */}
-          <Pressable onPress={() => { navigation.navigate("MainTabs"); setSearchQuery(""); setSearchOpen(false); }}>
+          <Pressable
+            onPress={() => {
+              navigation.navigate("MainTabs");
+              setSearchQuery("");
+              setSearchOpen(false);
+            }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+          >
+            <LogoFillWhite size={36} color={COLORS.white} />
             <Text style={{ fontSize: 26, color: COLORS.white, fontWeight: "900", letterSpacing: -0.8 }}>
               Sailcept
             </Text>
