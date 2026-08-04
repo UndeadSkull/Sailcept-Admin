@@ -56,3 +56,41 @@ export type BoatListItem = {
   id: number;
   name: string;
 };
+
+export type BoatListItemResponse = {
+  boatId: number;
+  boatCode: string;
+  boatName: string;
+  vesselRegistrationNumber: string;
+  boatTypeCode: string;
+  boatTypeLabel: string;
+  boatClassCode: string;
+  boatClassLabel: string;
+  configurationSummary: string;
+  status: string;
+  profileStatus: string;
+  primaryPhotoUrl: string | null;
+};
+
+export type BoatDetailResponse = Boat;
+
+export type BoatDocumentDetailsResponse = {
+  boatId: number;
+  vesselRegistrationNumber: string | null;
+  surveyCertificateExpiryDate: string | null;
+  insuranceCertificateExpiryDate: string | null;
+  pollutionDocumentExpiryDate: string | null;
+};
+
+export type CancellationPolicyResponse = {
+  policyId: number;
+  boatId: number;
+  cruiseApplicability: string;
+  freeCancellationCutoffHours: number;
+  partialRefundCutoffHours: number;
+  refundPercentage: number;
+  resaleSettings: string;
+  policyText: string;
+  isActive: boolean;
+};
+

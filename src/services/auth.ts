@@ -1,5 +1,5 @@
 import { ENDPOINTS } from "../config/api";
-import { ApiResponse, LoginRequest, LoginResponse, User } from "../data/auth";
+import { ApiResponse, LoginRequest, LoginResponse, ProfileResponse, User } from "../data/auth";
 import { apiClient } from "./apiClient";
 
 export async function loginOperator(
@@ -15,7 +15,22 @@ export async function loginOperator(
   );
 }
 
+export async function fetchOperatorProfileApi(): Promise<ApiResponse<ProfileResponse>> {
+  return apiClient.get<ProfileResponse>(ENDPOINTS.PROFILE);
+}
+
 export async function getOperatorProfile(): Promise<ApiResponse<User>> {
+  const profileRes = await fetchOperatorProfileApi();
+  if (profileRes.data) {
+    const user: User = {
+      sailceptId: profileRes.data.sailceptId,
+      boatOwnerUserId: profileRes.data.userId || profileRes.data.ownerId,
+      name: profileRes.data.ownerName || "Operator",
+      phone: profileRes.data.contactPhone || "",
+      email: profileRes.data.contactEmail || "",
+    };
+    return { data: user, error: null };
+  }
   return apiClient.get<User>(ENDPOINTS.PROFILE);
 }
 
@@ -26,3 +41,4 @@ export async function logoutUser(): Promise<ApiResponse<void>> {
 export async function getCurrentUser(): Promise<ApiResponse<User>> {
   return getOperatorProfile();
 }
+

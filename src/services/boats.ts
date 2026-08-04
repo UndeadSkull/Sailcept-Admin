@@ -209,17 +209,38 @@ export const mockBoats: Record<number, Boat> = {
   }
 };
 
+import { ENDPOINTS } from "../config/api";
+import { apiClient } from "./apiClient";
+import {
+  BoatListItemResponse,
+  BoatDetailResponse,
+  BoatDocumentDetailsResponse,
+  CancellationPolicyResponse,
+} from "../data/boats";
+
 const delay = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, process.env.NODE_ENV === "test" ? 0 : ms));
 
 export async function fetchBoats(): Promise<ApiResponse<BoatListItem[]>> {
-  await delay(400);
+  const res = await apiClient.get<BoatListItemResponse[] | BoatListItem[]>(ENDPOINTS.BOATS);
+  if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+    const list: BoatListItem[] = res.data.map((item: any) => ({
+      id: item.boatId !== undefined ? item.boatId : item.id,
+      name: item.boatName !== undefined ? item.boatName : item.name,
+    }));
+    return { data: list, error: null };
+  }
+  await delay(200);
   const list = Object.values(mockBoats).map((b) => ({ id: b.id, name: b.name }));
   return { data: list, error: null };
 }
 
 export async function fetchBoatDetails(boatId: number): Promise<ApiResponse<Boat>> {
-  await delay(500);
+  const res = await apiClient.get<BoatDetailResponse>(`${ENDPOINTS.BOATS}/${boatId}`);
+  if (res.data && res.data.name) {
+    return { data: res.data, error: null };
+  }
+  await delay(200);
   const boat = mockBoats[boatId];
   if (!boat) {
     return {
@@ -230,11 +251,57 @@ export async function fetchBoatDetails(boatId: number): Promise<ApiResponse<Boat
   return { data: { ...boat }, error: null };
 }
 
+export async function fetchBoatDocumentDetails(boatId: number): Promise<ApiResponse<BoatDocumentDetailsResponse>> {
+  const res = await apiClient.get<BoatDocumentDetailsResponse>(`${ENDPOINTS.BOATS}/${boatId}/document`);
+  if (res.data) {
+    return res;
+  }
+  const boat = mockBoats[boatId];
+  return {
+    data: {
+      boatId,
+      vesselRegistrationNumber: boat?.registrationNumber || null,
+      surveyCertificateExpiryDate: "2027-12-31",
+      insuranceCertificateExpiryDate: "2027-06-30",
+      pollutionDocumentExpiryDate: "2026-11-30",
+    },
+    error: null,
+  };
+}
+
+export async function fetchCancellationPolicies(
+  boatId: number,
+  activeOnly = true
+): Promise<ApiResponse<CancellationPolicyResponse[]>> {
+  const res = await apiClient.get<CancellationPolicyResponse[]>(
+    `${ENDPOINTS.BOATS}/${boatId}/cancellation-policies?activeOnly=${activeOnly}`
+  );
+  if (res.data) {
+    return res;
+  }
+  return {
+    data: [
+      {
+        policyId: 1,
+        boatId,
+        cruiseApplicability: "ALL",
+        freeCancellationCutoffHours: 48,
+        partialRefundCutoffHours: 24,
+        refundPercentage: 50,
+        resaleSettings: "AUTO_RELIST",
+        policyText: "Free cancellation up to 48 hours prior to service start.",
+        isActive: true,
+      },
+    ],
+    error: null,
+  };
+}
+
 export async function updateBoatDetails(
   boatId: number,
   updatedDetails: Partial<Boat>
 ): Promise<ApiResponse<Boat>> {
-  await delay(600);
+  await delay(200);
   const boat = mockBoats[boatId];
   if (!boat) {
     return {
@@ -250,3 +317,4 @@ export async function updateBoatDetails(
   mockBoats[boatId] = updated;
   return { data: updated, error: null };
 }
+

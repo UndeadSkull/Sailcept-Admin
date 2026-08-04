@@ -1,8 +1,11 @@
-import { ApiResponse } from "../data/auth";
+import { ApiResponse, PageResponse } from "../data/auth";
 import { Booking, BlockedDate, BookingRequest, DayBooking, DietEntry } from "../data/bookings";
 export type { Booking, BlockedDate, BookingRequest, DayBooking, DietEntry };
 import { mockBoats } from "./boats";
 export { reviews, fetchReviews, initialReviews } from "./reviews";
+import { ENDPOINTS } from "../config/api";
+import { apiClient } from "./apiClient";
+
 
 export const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -585,6 +588,8 @@ export async function deleteBooking(id: number): Promise<ApiResponse<void>> {
 }
 
 export async function fetchBookingDetail(bookingId: string): Promise<ApiResponse<Booking>> {
+  const apiRes = await fetchBookingDetailByIdApi(bookingId);
+  if (apiRes.data) return { data: apiRes.data as any, error: null };
   await delay(100);
   const booking = bookings.find((b) => b.bookingId === bookingId);
   if (!booking) return { data: null, error: { message: "Booking not found", code: "NOT_FOUND" } };
@@ -592,9 +597,124 @@ export async function fetchBookingDetail(bookingId: string): Promise<ApiResponse
 }
 
 export async function fetchRequestDetail(requestName: string, boatId: number): Promise<ApiResponse<Booking>> {
-  await delay(100);
   const boatName = BOAT_NAME_MAP[boatId] || "";
-  const req = requests.find(r => r.guest === requestName && (boatId === 0 || r.boat === boatName));
+  const req = requests.find(r => (r.guest === requestName || r.bookingId === requestName) && (boatId === 0 || r.boat === boatName));
+  if (req?.bookingId) {
+    const apiRes = await fetchRequestDetailByIdApi(req.bookingId);
+    if (apiRes.data) return { data: apiRes.data as any, error: null };
+  }
+  await delay(100);
   if (!req) return { data: null, error: { message: "Request not found", code: "NOT_FOUND" } };
   return { data: req, error: null };
 }
+
+// -------------------------------------------------------------
+// CANONICAL API INTEGRATION (Sailcept Operator API Guide 2026)
+// Base path: /api/v1/operator
+// -------------------------------------------------------------
+
+// Booking Requests APIs
+export async function fetchRequestsApi(params: {
+  view: "PENDING" | "HISTORY";
+  boatId?: number;
+  page?: number;
+  size?: number;
+  month?: string;
+  year?: number;
+  outcome?: string;
+}): Promise<ApiResponse<PageResponse<any>>> {
+  const queryParts: string[] = [`view=${params.view}`];
+  if (params.boatId && params.boatId > 0) queryParts.push(`boatId=${params.boatId}`);
+  if (params.page !== undefined) queryParts.push(`page=${params.page}`);
+  if (params.size !== undefined) queryParts.push(`size=${params.size}`);
+  if (params.month) queryParts.push(`month=${params.month}`);
+  if (params.year) queryParts.push(`year=${params.year}`);
+  if (params.outcome) queryParts.push(`outcome=${params.outcome}`);
+
+  return apiClient.get<PageResponse<any>>(`${ENDPOINTS.REQUESTS}?${queryParts.join("&")}`);
+}
+
+export async function fetchRequestDetailByIdApi(requestId: string): Promise<ApiResponse<any>> {
+  return apiClient.get<any>(`${ENDPOINTS.REQUESTS}/${requestId}`);
+}
+
+export async function acceptRequestApi(requestId: string): Promise<ApiResponse<any>> {
+  return apiClient.post<any>(`${ENDPOINTS.REQUESTS}/${requestId}/accept`);
+}
+
+export async function declineRequestApi(requestId: string, reason?: string): Promise<ApiResponse<any>> {
+  return apiClient.post<any>(`${ENDPOINTS.REQUESTS}/${requestId}/decline`, reason ? { reason } : undefined);
+}
+
+// Bookings APIs
+export async function fetchBookingsApi(params: {
+  scope: "upcoming" | "today" | "date" | "month";
+  date?: string;
+  month?: string;
+  status?: string;
+  boatId?: number;
+  page?: number;
+  size?: number;
+}): Promise<ApiResponse<PageResponse<any>>> {
+  const queryParts: string[] = [`scope=${params.scope}`];
+  if (params.date) queryParts.push(`date=${params.date}`);
+  if (params.month) queryParts.push(`month=${params.month}`);
+  if (params.status) queryParts.push(`status=${params.status}`);
+  if (params.boatId && params.boatId > 0) queryParts.push(`boatId=${params.boatId}`);
+  if (params.page !== undefined) queryParts.push(`page=${params.page}`);
+  if (params.size !== undefined) queryParts.push(`size=${params.size}`);
+
+  return apiClient.get<PageResponse<any>>(`${ENDPOINTS.BOOKINGS}?${queryParts.join("&")}`);
+}
+
+export async function fetchBookingCalendarApi(month: string, boatId?: number): Promise<ApiResponse<any>> {
+  const query = boatId && boatId > 0 ? `?month=${month}&boatId=${boatId}` : `?month=${month}`;
+  return apiClient.get<any>(`${ENDPOINTS.BOOKINGS_CALENDAR}${query}`);
+}
+
+export async function fetchBookingDetailByIdApi(bookingId: string): Promise<ApiResponse<any>> {
+  return apiClient.get<any>(`${ENDPOINTS.BOOKINGS}/${bookingId}`);
+}
+
+// Operator-Added Bookings APIs
+export async function fetchAddedBookingOptionsApi(boatId: number): Promise<ApiResponse<any>> {
+  return apiClient.get<any>(`${ENDPOINTS.BOOKINGS_ADDED_OPTIONS}?boatId=${boatId}`);
+}
+
+export async function createAddedBookingApi(payload: any, idempotencyKey?: string): Promise<ApiResponse<any>> {
+  const headers: Record<string, string> = {};
+  if (idempotencyKey) {
+    headers["Idempotency-Key"] = idempotencyKey;
+  }
+  return apiClient.post<any>(ENDPOINTS.BOOKINGS_ADDED, payload, { headers });
+}
+
+export async function updateAddedBookingApi(bookingId: string, payload: any): Promise<ApiResponse<any>> {
+  return apiClient.put<any>(`${ENDPOINTS.BOOKINGS_ADDED}/${bookingId}`, payload);
+}
+
+export async function deleteAddedBookingApi(bookingId: string): Promise<ApiResponse<any>> {
+  return apiClient.delete<any>(`${ENDPOINTS.BOOKINGS_ADDED}/${bookingId}`);
+}
+
+// Availability APIs
+export async function fetchAvailabilityCalendarApi(boatId: number, month: string): Promise<ApiResponse<any>> {
+  return apiClient.get<any>(`${ENDPOINTS.AVAILABILITY_CALENDAR}/${boatId}/calendar?month=${month}`);
+}
+
+export async function fetchAvailabilitySelectionApi(boatId: number, from: string, to: string): Promise<ApiResponse<any>> {
+  return apiClient.get<any>(`${ENDPOINTS.AVAILABILITY_CALENDAR}/${boatId}/selection?from=${from}&to=${to}`);
+}
+
+export async function updateDateStatusApi(boatId: number, fromDate: string, toDate: string, isOpen: boolean): Promise<ApiResponse<any>> {
+  return apiClient.put<any>(`${ENDPOINTS.AVAILABILITY_CALENDAR}/${boatId}/date-status`, { fromDate, toDate, isOpen });
+}
+
+export async function updateRatesApi(boatId: number, fromDate: string, toDate: string, cruiseType: string, tiers: any[]): Promise<ApiResponse<any>> {
+  return apiClient.put<any>(`${ENDPOINTS.AVAILABILITY_CALENDAR}/${boatId}/rates`, { fromDate, toDate, cruiseType, tiers });
+}
+
+export async function updateSharedInventoryApi(boatId: number, fromDate: string, toDate: string, sellableRoomLimit: number): Promise<ApiResponse<any>> {
+  return apiClient.put<any>(`${ENDPOINTS.AVAILABILITY_CALENDAR}/${boatId}/shared-inventory`, { fromDate, toDate, sellableRoomLimit });
+}
+

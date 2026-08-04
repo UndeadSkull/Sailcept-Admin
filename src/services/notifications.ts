@@ -1,6 +1,8 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { ApiResponse } from "../data/auth";
+import { ApiResponse, PageResponse } from "../data/auth";
 import { Notification } from "../data/notifications";
+import { ENDPOINTS } from "../config/api";
+import { apiClient } from "./apiClient";
 
 const STORAGE_KEY = "@sailcept_admin_notifications_state";
 
@@ -66,6 +68,20 @@ async function saveState(updated: Notification[]): Promise<void> {
 }
 
 export async function fetchNotifications(): Promise<ApiResponse<Notification[]>> {
+  const apiRes = await fetchNotificationsFeedApi();
+  if (apiRes.data?.content) {
+    const list: Notification[] = apiRes.data.content.map((item: any) => ({
+      id: item.notificationId || item.id,
+      type: item.type || item.notificationTypeCode || "new_request",
+      title: item.title || "Notification",
+      description: item.message || item.description || "",
+      date: item.createdAt || new Date().toISOString(),
+      timeGroup: item.createdAt || "",
+      read: item.isRead !== undefined ? item.isRead : item.read,
+      targetScreen: item.category === "REQUEST" ? "Requests" : "Bookings",
+    }));
+    return { data: list, error: null };
+  }
   try {
     const stored = await AsyncStorage.getItem(STORAGE_KEY);
     if (stored) {
@@ -84,6 +100,7 @@ export async function fetchNotifications(): Promise<ApiResponse<Notification[]>>
 }
 
 export async function markNotificationRead(id: string, currentList: Notification[]): Promise<ApiResponse<Notification[]>> {
+  markNotificationReadApi(id).catch(() => {});
   const updated = currentList.map((n) => (n.id === id ? { ...n, read: true } : n));
   await saveState(updated);
   return { data: updated, error: null };
@@ -96,6 +113,7 @@ export async function markNotificationUnread(id: string, currentList: Notificati
 }
 
 export async function markAllNotificationsRead(currentList: Notification[]): Promise<ApiResponse<Notification[]>> {
+  markAllNotificationsReadApi().catch(() => {});
   const updated = currentList.map((n) => ({ ...n, read: true }));
   await saveState(updated);
   return { data: updated, error: null };
@@ -110,3 +128,40 @@ export async function respondToRequestNotification(
   await saveState(updated);
   return { data: updated, error: null };
 }
+
+// -------------------------------------------------------------
+// CANONICAL NOTIFICATION APIs (Sailcept Operator API Guide 2026)
+// -------------------------------------------------------------
+
+export async function fetchNotificationsFeedApi(params?: {
+  readStatus?: "UNREAD" | "READ";
+  month?: string;
+  year?: number;
+  page?: number;
+  size?: number;
+}): Promise<ApiResponse<PageResponse<any>>> {
+  const queryParts: string[] = [`readStatus=${params?.readStatus || "UNREAD"}`];
+  if (params?.month) queryParts.push(`month=${params.month}`);
+  if (params?.year) queryParts.push(`year=${params.year}`);
+  if (params?.page !== undefined) queryParts.push(`page=${params.page}`);
+  if (params?.size !== undefined) queryParts.push(`size=${params.size}`);
+
+  return apiClient.get<PageResponse<any>>(`${ENDPOINTS.NOTIFICATIONS}?${queryParts.join("&")}`);
+}
+
+export async function fetchUnreadNotificationCountApi(): Promise<ApiResponse<{ unreadCount: number }>> {
+  return apiClient.get<{ unreadCount: number }>(ENDPOINTS.NOTIFICATIONS_UNREAD_COUNT);
+}
+
+export async function fetchNotificationDetailApi(notificationId: string): Promise<ApiResponse<any>> {
+  return apiClient.get<any>(`${ENDPOINTS.NOTIFICATIONS}/${notificationId}`);
+}
+
+export async function markNotificationReadApi(notificationId: string): Promise<ApiResponse<any>> {
+  return apiClient.patch<any>(`${ENDPOINTS.NOTIFICATIONS}/${notificationId}/read`);
+}
+
+export async function markAllNotificationsReadApi(): Promise<ApiResponse<any>> {
+  return apiClient.patch<any>(ENDPOINTS.NOTIFICATIONS_MARK_ALL_READ);
+}
+

@@ -1,5 +1,20 @@
-import { ApiResponse } from "../data/auth";
+import { ApiResponse, PageResponse } from "../data/auth";
 import { Review } from "../data/reviews";
+import { ENDPOINTS } from "../config/api";
+import { apiClient } from "./apiClient";
+
+export type ReviewResponse = {
+  reviewId: number;
+  bookingId: number;
+  boatId: number;
+  bookingCode: string;
+  boatName: string;
+  guestName: string;
+  reviewDate: string;
+  cruiseTypeCode: string;
+  cruiseTypeLabel: string;
+  reviewText: string;
+};
 
 export const initialReviews: Review[] = [
   { id: "r1", boat: "Lake Ripples", guest: "Daniel Foster", rating: 5, cruiseType: "Overnight Stay", date: "3 Jun 2026", text: "Absolutely magical experience. The crew was incredibly attentive and the food was outstanding. Waking up on the backwaters at sunrise is something I'll never forget. Highly recommend Lake Ripples to anyone visiting Kerala." },
@@ -21,8 +36,39 @@ export let reviews: Review[] = [...initialReviews];
 const delay = (ms: number) =>
   new Promise((resolve) => setTimeout(resolve, process.env.NODE_ENV === "test" ? 0 : ms));
 
+export async function fetchReviewsApi(params?: {
+  boatId?: number;
+  year?: number;
+  month?: number;
+  page?: number;
+  size?: number;
+}): Promise<ApiResponse<PageResponse<ReviewResponse>>> {
+  const queryParts: string[] = [];
+  if (params?.boatId && params.boatId > 0) queryParts.push(`boatId=${params.boatId}`);
+  if (params?.year) queryParts.push(`year=${params.year}`);
+  if (params?.month) queryParts.push(`month=${params.month}`);
+  if (params?.page !== undefined) queryParts.push(`page=${params.page}`);
+  if (params?.size !== undefined) queryParts.push(`size=${params.size}`);
+
+  const queryString = queryParts.length ? `?${queryParts.join("&")}` : "";
+  return apiClient.get<PageResponse<ReviewResponse>>(`${ENDPOINTS.REVIEWS}${queryString}`);
+}
+
 export async function fetchReviews(boatId?: number): Promise<ApiResponse<Review[]>> {
-  await delay(400);
+  const apiRes = await fetchReviewsApi({ boatId });
+  if (apiRes.data?.content) {
+    const list: Review[] = apiRes.data.content.map((r) => ({
+      id: String(r.reviewId),
+      boat: r.boatName,
+      guest: r.guestName,
+      rating: 5,
+      cruiseType: r.cruiseTypeLabel || r.cruiseTypeCode,
+      date: r.reviewDate,
+      text: r.reviewText,
+    }));
+    return { data: list, error: null };
+  }
+  await delay(200);
   // boatId 0 = all boats
   if (!boatId || boatId === 0) {
     return { data: reviews, error: null };
@@ -32,3 +78,4 @@ export async function fetchReviews(boatId?: number): Promise<ApiResponse<Review[
   if (!boatName) return { data: reviews, error: null };
   return { data: reviews.filter((r) => r.boat === boatName), error: null };
 }
+
