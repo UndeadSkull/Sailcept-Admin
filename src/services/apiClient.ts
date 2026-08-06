@@ -4,6 +4,26 @@ import { ApiResponse } from "../data/auth";
 
 export const AUTH_TOKEN_KEY = "@sailcept_admin_auth_token";
 
+export type ApiFailureListener = (endpoint: string) => void;
+const apiFailureListeners = new Set<ApiFailureListener>();
+
+export function subscribeToApiFailure(listener: ApiFailureListener): () => void {
+  apiFailureListeners.add(listener);
+  return () => {
+    apiFailureListeners.delete(listener);
+  };
+}
+
+function notifyApiFailure(endpoint: string) {
+  apiFailureListeners.forEach((listener) => {
+    try {
+      listener(endpoint);
+    } catch (e) {
+      console.error("Error in apiFailureListener:", e);
+    }
+  });
+}
+
 export type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
   token?: string;
@@ -64,6 +84,9 @@ export async function request<T>(
         errObj?.message ||
         errObj?.error ||
         `Request failed with status ${response.status}`;
+      
+      notifyApiFailure(cleanEndpoint);
+
       return {
         data: null,
         error: {
@@ -79,6 +102,9 @@ export async function request<T>(
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Network error occurred";
+    
+    notifyApiFailure(cleanEndpoint);
+
     return {
       data: null,
       error: {
