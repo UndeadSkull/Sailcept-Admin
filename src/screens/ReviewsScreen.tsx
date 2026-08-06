@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from "react";
-import { Pressable, ScrollView, Text, View, ActivityIndicator } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { Pressable, ScrollView, Text, View, ActivityIndicator, RefreshControl } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { ArrowLeft, Star } from "lucide-react-native";
 import { Card, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
-import { fetchReviews } from "../services/bookings";
+import { fetchReviews } from "../services/reviews";
 import { COLORS } from "../styles";
 
 export default function ReviewsScreen() {
@@ -14,6 +14,7 @@ export default function ReviewsScreen() {
 
   const [reviewsList, setReviewsList] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [starFilter, setStarFilter] = useState<number | null>(null);
 
   const loadReviews = async () => {
@@ -29,6 +30,20 @@ export default function ReviewsScreen() {
       setIsLoading(false);
     }
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const response = await fetchReviews(selectedBoat);
+      if (response.data) {
+        setReviewsList(response.data);
+      }
+    } catch (err) {
+      console.error("Failed to refresh reviews:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [selectedBoat]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -92,7 +107,10 @@ export default function ReviewsScreen() {
 
 
   return (
-    <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
+    <ScrollView
+      contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.teal]} tintColor={COLORS.teal} />}
+    >
       {/* Header */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, flex: 1 }}>

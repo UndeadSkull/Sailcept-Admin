@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, StyleSheet } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, StyleSheet, RefreshControl } from "react-native";
 import { Inbox, ChevronDown, ChevronUp } from "lucide-react-native";
 import { BookingCard, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
@@ -16,6 +16,7 @@ export default function RequestsScreen() {
   const [allRequests, setAllRequests] = useState<Booking[]>([]);
   const [allHistory, setAllHistory] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [expandedBooking, setExpandedBooking] = useState<number | null>(null);
 
   // History filtering
@@ -44,6 +45,23 @@ export default function RequestsScreen() {
       setIsLoading(false);
     }
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const [reqsRes, histRes] = await Promise.all([
+        fetchRequests(0),
+        fetchRequestHistory(0),
+      ]);
+      if (reqsRes.data) setAllRequests(reqsRes.data);
+      if (histRes.data) setAllHistory(histRes.data);
+      refreshRequestsCount();
+    } catch (err) {
+      console.error("Failed to refresh requests:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refreshRequestsCount]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -106,7 +124,10 @@ export default function RequestsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.teal]} tintColor={COLORS.teal} />}
+      >
         {/* Title */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
           <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Requests</Text>

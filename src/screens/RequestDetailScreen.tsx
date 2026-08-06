@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { ScrollView, Text, View, ActivityIndicator, Pressable, Alert } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import { ScrollView, Text, View, ActivityIndicator, Pressable, Alert, RefreshControl } from "react-native";
 import {
   Calendar,
   DollarSign,
@@ -19,10 +19,11 @@ export default function RequestDetailScreen({ route, navigation }: Props) {
   const { requestName, boatId } = route.params;
   const [request, setRequest] = useState<Booking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const loadRequest = () => {
+  const loadRequest = useCallback(() => {
     setIsLoading(true);
     fetchRequestDetail(requestName, boatId)
       .then((res) => {
@@ -39,11 +40,25 @@ export default function RequestDetailScreen({ route, navigation }: Props) {
       .finally(() => {
         setIsLoading(false);
       });
-  };
+  }, [requestName, boatId]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    setErrorMsg(null);
+    try {
+      const res = await fetchRequestDetail(requestName, boatId);
+      if (res.error) setErrorMsg(res.error.message);
+      else if (res.data) setRequest(res.data);
+    } catch {
+      setErrorMsg("An unexpected error occurred.");
+    } finally {
+      setRefreshing(false);
+    }
+  }, [requestName, boatId]);
 
   useEffect(() => {
     loadRequest();
-  }, [requestName, boatId]);
+  }, [loadRequest]);
 
   const handleRespond = async (outcome: "accepted" | "declined") => {
     if (!request) return;
@@ -68,7 +83,10 @@ export default function RequestDetailScreen({ route, navigation }: Props) {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.teal]} tintColor={COLORS.teal} />}
+      >
         <PageHeader
           title="Request Details"
           sub={request ? `Boat: ${request.boat || "Houseboat"}` : "Fetching request..."}

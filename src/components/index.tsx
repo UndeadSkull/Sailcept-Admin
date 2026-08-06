@@ -8,6 +8,7 @@ export { default as CruiseTypeIcon } from "./CruiseTypeIcon";
 export { default as CruiseCard } from "./CruiseCard";
 export { default as BookingCard } from "./BookingCard";
 export { default as BoatSelector } from "./BoatSelector";
+export { default as GlobalToast } from "./GlobalToast";
 export type { Request } from "./StatusPill";
 export { requestStatusStyle } from "./StatusPill";
 

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { Pressable, ScrollView, Text, View, ActivityIndicator, Modal, StyleSheet } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import { Pressable, ScrollView, Text, View, ActivityIndicator, Modal, StyleSheet, RefreshControl } from "react-native";
 import { Calendar, ChevronDown, ChevronUp, ArrowLeft, ArrowRight, ClipboardList } from "lucide-react-native";
 import { BookingCard, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
@@ -16,6 +16,7 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
 
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [expandedBooking, setExpandedBooking] = useState<number | null>(null);
 
   // Calendar states
@@ -42,6 +43,20 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
       setIsLoading(false);
     }
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const response = await fetchBookings(0);
+      if (response.data) {
+        setAllBookings(response.data);
+      }
+    } catch (err) {
+      console.error("Failed to refresh bookings:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -222,7 +237,10 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.teal]} tintColor={COLORS.teal} />}
+      >
         {/* Page Header */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
           <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>Bookings</Text>

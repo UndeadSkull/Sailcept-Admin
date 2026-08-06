@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from "react";
 import { Notification } from "../data/notifications";
 import {
   fetchNotifications,
@@ -12,6 +12,7 @@ type NotificationContextType = {
   notifications: Notification[];
   unreadCount: number;
   isLoading: boolean;
+  refreshNotifications: () => Promise<void>;
   markAsRead: (id: string) => Promise<void>;
   markAsUnread: (id: string) => Promise<void>;
   markAllAsRead: () => Promise<void>;
@@ -22,6 +23,7 @@ const NotificationContext = createContext<NotificationContextType>({
   notifications: [],
   unreadCount: 0,
   isLoading: true,
+  refreshNotifications: async () => {},
   markAsRead: async () => {},
   markAsUnread: async () => {},
   markAllAsRead: async () => {},
@@ -32,23 +34,24 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const refreshNotifications = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetchNotifications();
+      if (response.data && !response.error) {
+        setNotifications(response.data);
+      }
+    } catch (error) {
+      console.error("Failed to load notifications from service:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   // Load notifications on launch
   useEffect(() => {
-    const loadNotifications = async () => {
-      try {
-        const response = await fetchNotifications();
-        if (response.data && !response.error) {
-          setNotifications(response.data);
-        }
-      } catch (error) {
-        console.error("Failed to load notifications from service:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadNotifications();
-  }, []);
+    refreshNotifications();
+  }, [refreshNotifications]);
 
   const markAsRead = async (id: string) => {
     try {
@@ -102,6 +105,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         notifications,
         unreadCount,
         isLoading,
+        refreshNotifications,
         markAsRead,
         markAsUnread,
         markAllAsRead,

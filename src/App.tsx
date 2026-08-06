@@ -8,6 +8,7 @@ import { NotificationProvider } from "./context/NotificationContext";
 import AppNavigator from "./navigation/AppNavigator";
 import styles from "./styles";
 import AppHeader from "./components/AppHeader";
+import GlobalToast from "./components/GlobalToast";
 
 export default function App() {
   const navigationRef = useNavigationContainerRef();
@@ -32,6 +33,7 @@ export default function App() {
                 <StatusBar style="light" />
                 <AppNavigator />
               </NavigationContainer>
+              <GlobalToast />
             </SafeAreaView>
           </SafeAreaProvider>
         </NotificationProvider>

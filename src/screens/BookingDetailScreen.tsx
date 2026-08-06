@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { ScrollView, Text, View, ActivityIndicator, Pressable } from "react-native";
+import React, { useEffect, useState, useCallback } from "react";
+import { ScrollView, Text, View, ActivityIndicator, Pressable, RefreshControl } from "react-native";
 import {
   Calendar,
   User,
@@ -33,7 +33,28 @@ export default function BookingDetailScreen({ route, navigation }: Props) {
   const { bookingId } = route.params;
   const [booking, setBooking] = useState<Booking | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const loadDetail = useCallback(async () => {
+    try {
+      const res = await fetchBookingDetail(bookingId);
+      if (res.error) {
+        setErrorMsg(res.error.message);
+      } else if (res.data) {
+        setBooking(res.data);
+      }
+    } catch (err) {
+      setErrorMsg("An unexpected error occurred.");
+    }
+  }, [bookingId]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    setErrorMsg(null);
+    await loadDetail();
+    setRefreshing(false);
+  }, [loadDetail]);
 
   useEffect(() => {
     let active = true;
@@ -72,14 +93,17 @@ export default function BookingDetailScreen({ route, navigation }: Props) {
       ["Configuration", `${b.rooms}BH · ${b.adults} Adults · ${b.children ?? 0} Children`],
       ["Total Agreed Price", `₹${b.price?.toLocaleString("en-IN")}`],
       ["Pickup Arranged", b.ghat || "Finishing Point, Alappuzha"],
-      ["Meal Preference", b.meal || (b.dietBreakdown ? b.dietBreakdown.map(d => `${d.count} ${d.type}`).join(", ") : "Veg only")],
+      ["Meal Preference", b.meal || (b.dietBreakdown ? b.dietBreakdown.map((d: any) => `${d.count} ${d.type}`).join(", ") : "Veg only")],
       ["Special Requests", b.specialRequests && b.specialRequests.length > 0 ? b.specialRequests.join(", ") : "None"],
     ];
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.teal]} tintColor={COLORS.teal} />}
+      >
         <PageHeader
           title="Booking Details"
           sub={booking ? `ID: ${booking.bookingId}` : "Fetching details..."}
