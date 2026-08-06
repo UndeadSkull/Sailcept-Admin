@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, TextInput, Switch, StyleSheet } from "react-native";
+import React, { useState, useEffect, useCallback } from "react";
+import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, TextInput, Switch, StyleSheet, RefreshControl } from "react-native";
 import { ArrowLeft, Calendar, ChevronDown, ChevronUp, ArrowRight, Sun, Moon, Sunrise, Pencil, Trash, X, CheckCircle, Info, Ship } from "lucide-react-native";
 import { useBoat } from "../context/BoatContext";
 import { useNavigation } from "@react-navigation/native";
@@ -28,9 +28,11 @@ export default function AvailabilityScreen() {
   const [localDateOpenState, setLocalDateOpenState] = useState<Record<string, boolean>>(initialDateOpenState);
   const [localTripPricing, setLocalTripPricing] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Calendar Selection State
-  const [availabilityMonth, setAvailabilityMonth] = useState({ month: 5, year: 2026 }); // June 2026
+  const today = new Date();
+  const [availabilityMonth, setAvailabilityMonth] = useState({ month: today.getMonth(), year: today.getFullYear() });
   const [availabilitySelection, setAvailabilitySelection] = useState<number[]>([]);
   const [expandedTripType, setExpandedTripType] = useState<string | null>(null);
   
@@ -106,6 +108,20 @@ export default function AvailabilityScreen() {
     }
   };
 
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const response = await fetchBookings(0);
+      if (response.data) {
+        setAllBookings(response.data);
+      }
+    } catch (err) {
+      console.error("Failed to refresh availability bookings:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadData();
   }, [localBoatName]);
@@ -114,7 +130,10 @@ export default function AvailabilityScreen() {
     // Show Houseboats list to choose from (if global is "All")
     return (
       <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18 }}>
+        <ScrollView
+          contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.teal]} tintColor={COLORS.teal} />}
+        >
           <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy, marginBottom: 6 }}>
             Availability
           </Text>
@@ -126,6 +145,7 @@ export default function AvailabilityScreen() {
             {boats.map((b) => (
               <View key={b.id} style={{ width: "50%", padding: 6 }}>
                 <Pressable
+                  testID={`boat-card-${b.name.toLowerCase().replace(/\s+/g, "-")}`}
                   onPress={() => setLocalBoatName(b.name)}
                   style={{
                     backgroundColor: COLORS.white,
@@ -438,7 +458,10 @@ export default function AvailabilityScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.teal]} tintColor={COLORS.teal} />}
+      >
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10, marginBottom: 18 }}>
           <Pressable onPress={() => setLocalBoatName(null)} style={{ padding: 4 }}>
@@ -474,16 +497,16 @@ export default function AvailabilityScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <Calendar size={15} color={COLORS.teal} />
                   <Pressable onPress={() => { setAvailabilityMonthPickerOpen(!availabilityMonthPickerOpen); setAvailabilityYearPickerOpen(false); }} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.navy }}>{MONTHS[availabilityMonth.month]}</Text>
+                    <Text testID="home-calendar-month-title" style={{ fontSize: 14, fontWeight: "700", color: COLORS.navy }}>{`${MONTHS[availabilityMonth.month]} ${availabilityMonth.year}`}</Text>
                     <ChevronDown size={12} color={COLORS.muted} />
                   </Pressable>
                   <Pressable onPress={() => { setAvailabilityYearPickerOpen(!availabilityYearPickerOpen); setAvailabilityMonthPickerOpen(false); }} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                    <Text style={{ fontSize: 14, fontWeight: "700", color: COLORS.navy }}>{availabilityMonth.year}</Text>
+                    <Text testID="calendar-month-title" style={{ fontSize: 14, fontWeight: "700", color: COLORS.navy }}>{`${MONTHS[availabilityMonth.month]} ${availabilityMonth.year}`}</Text>
                     <ChevronDown size={12} color={COLORS.muted} />
                   </Pressable>
                 </View>
 
-                <Pressable onPress={() => goToMonth(1)} style={{ padding: 6 }}>
+                <Pressable testID="home-month-next" onPress={() => goToMonth(1)} style={{ padding: 6 }}>
                   <ArrowRight size={16} color={COLORS.navy} />
                 </Pressable>
               </View>
@@ -513,6 +536,7 @@ export default function AvailabilityScreen() {
                       return (
                         <Pressable
                           key={day}
+                          testID={`calendar-day-${toISODate(dateStr)}`}
                           onPress={() => handleDayTap(day)}
                           style={{
                             flex: 1,

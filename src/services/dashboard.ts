@@ -68,7 +68,6 @@ export async function fetchDashboardStats(boatId: number): Promise<ApiResponse<D
     };
   }
 
-  // Fallback to empty default structure if stats call returns null/error
   return {
     data: [
       { label: "Today's trips", value: "0", caption: "Active & scheduled today", tab: "Bookings" },
@@ -77,26 +76,5 @@ export async function fetchDashboardStats(boatId: number): Promise<ApiResponse<D
       { label: "Conversion rate", value: "0%", caption: "Last 30 days" },
     ],
     error: statsRes.error,
-  };
-}
-
-export async function fetchUpcomingCruises(boatId: number): Promise<ApiResponse<UpcomingCruise[]>> {
-  // Simple default mock structure for upcoming cruises preview
-  const now = new Date();
-  const currentYear = now.getFullYear();
-  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  const currentMonthStr = months[now.getMonth()];
-
-  return {
-    data: [
-      {
-        name: "Ethan Walker",
-        dateLine: `Day cruise · 15 ${currentMonthStr} ${currentYear}`,
-        status: "Confirmed",
-        config: "Premium · Private · 2 adults",
-        bookingId: "booking-1",
-      },
-    ],
-    error: null,
   };
 }

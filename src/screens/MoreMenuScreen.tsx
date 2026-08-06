@@ -35,12 +35,6 @@ export default function MoreMenuScreen({ navigation }: { navigation: any }) {
       onPress: () => navigation.navigate("Reviews"),
     },
     {
-      label: "Finance",
-      sub: "Earnings, payouts, invoices and bank settings",
-      icon: <CreditCard size={18} color={COLORS.teal} strokeWidth={2.2} />,
-      onPress: () => navigation.navigate("Finance"),
-    },
-    {
       label: "Settings",
       sub: "Notifications, DND, security & accounts",
       icon: <Settings size={18} color={COLORS.teal} strokeWidth={2.2} />,
@@ -73,7 +67,7 @@ export default function MoreMenuScreen({ navigation }: { navigation: any }) {
       <View style={{ marginBottom: 18 }}>
         <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>More</Text>
         <Text style={{ fontSize: 13, color: COLORS.muted, marginTop: 2 }}>
-          Manage your account, houseboats, finance and preferences.
+          Manage your account, houseboats and preferences.
         </Text>
       </View>
 

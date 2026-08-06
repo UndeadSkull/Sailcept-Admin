@@ -1,29 +1,32 @@
 import { ApiResponse } from "../data/auth";
 import { Booking } from "../data/bookings";
-import { bookings } from "./bookings";
+import { ENDPOINTS } from "../config/api";
+import { apiClient } from "./apiClient";
+import { mapBookingSummaryToBooking } from "./bookings";
 
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * Searches bookings (simulating an API call with dummy data)
- */
 export async function searchBookingsApi(query: string): Promise<ApiResponse<Booking[]>> {
-  // Simulate network latency
-  await delay(300);
+  const cleanQuery = query ? query.trim() : "";
 
-  if (!query || query.trim() === "") {
+  if (cleanQuery.length < 2) {
     return { data: [], error: null };
   }
 
-  const cleanQuery = query.toLowerCase().trim();
+  const endpoint = `${ENDPOINTS.SEARCH}?q=${encodeURIComponent(cleanQuery)}&limit=20`;
+  const res = await apiClient.get<any>(endpoint);
 
-  // Search bookings by guest name, booking ID, or boat name
-  const filtered = bookings.filter((b) => {
-    const guestMatch = b.guest ? b.guest.toLowerCase().includes(cleanQuery) : false;
-    const idMatch = b.bookingId ? b.bookingId.toLowerCase().includes(cleanQuery) : false;
-    const boatMatch = b.boat ? b.boat.toLowerCase().includes(cleanQuery) : false;
-    return guestMatch || idMatch || boatMatch;
-  });
+  if (res.data) {
+    let rawList: any[] = [];
+    if (Array.isArray(res.data)) {
+      rawList = res.data;
+    } else if (Array.isArray(res.data.content)) {
+      rawList = res.data.content;
+    } else if (Array.isArray(res.data.results)) {
+      rawList = res.data.results;
+    }
 
-  return { data: filtered, error: null };
+    const bookings: Booking[] = rawList.map(mapBookingSummaryToBooking);
+    return { data: bookings, error: null };
+  }
+
+  return { data: [], error: res.error };
 }

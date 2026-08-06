@@ -3,7 +3,6 @@ import MoreMenuScreen from "../screens/MoreMenuScreen";
 import BoatProfilesListScreen from "../screens/BoatProfilesListScreen";
 import UserProfileScreen from "../screens/UserProfileScreen";
 import ReviewsScreen from "../screens/ReviewsScreen";
-import FinanceScreen from "../screens/FinanceScreen";
 import SettingsScreen from "../screens/SettingsScreen";
 import LegalScreen from "../screens/LegalScreen";
 import GetHelpScreen from "../screens/GetHelpScreen";
@@ -40,16 +39,6 @@ export default function MoreStack() {
         name="Reviews"
         component={ReviewsScreen}
         options={{ title: "Reviews" }}
-      />
-      <Stack.Screen
-        name="Invoices"
-        component={FinanceScreen}
-        options={{ title: "Invoices" }}
-      />
-      <Stack.Screen
-        name="Finance"
-        component={FinanceScreen}
-        options={{ title: "Finance" }}
       />
       <Stack.Screen
         name="Settings"

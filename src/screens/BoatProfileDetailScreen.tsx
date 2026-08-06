@@ -1,207 +1,166 @@
-import { useState } from "react";
-import { Pressable, ScrollView, Switch, Text, TextInput, View } from "react-native";
-import { Card, OptionSelect, PageHeader } from "../components";
+import React, { useEffect, useState, useCallback } from "react";
+import { ActivityIndicator, ScrollView, Text, View, RefreshControl } from "react-native";
+import { Card, PageHeader } from "../components";
 import { useBoat } from "../context/BoatContext";
+import { fetchBoatDetails } from "../services/boats";
+import { Boat } from "../data/boats";
 import type { RootStackScreenProps } from "../navigation/types";
+import { COLORS } from "../styles";
 import styles from "../styles";
-
-const allStructuralFeatures = ["Full upper deck", "Partial deck", "Sundeck", "Balcony"];
 
 type Props = RootStackScreenProps<"BoatAssetModal">;
 
 export default function BoatProfileDetailScreen({ route, navigation }: Props) {
   const { boats } = useBoat();
   const boatId = route.params.boatId ?? (boats.length > 0 ? boats[0].id : 1);
-  const boatName = boats.find((b) => b.id === boatId)?.name || "";
+  const fallbackName = boats.find((b) => b.id === boatId)?.name || "";
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [identity, setIdentity] = useState({
-    boatName,
-    experienceTier: "Premium",
-    bookingType: "Private only",
-    maxCapacity: 6,
-    bedroomsCount: 2,
-    bedsCount: 4,
-    extraBedsCount: 1,
-    extraCotsCount: 1,
-    maxPassengerCapacityCert: 12,
-    crewCountExcludingCaptain: 2,
-  });
-  const [features, setFeatures] = useState<string[]>(["Full upper deck", "Sundeck"]);
-  const [cruiseTypes, setCruiseTypes] = useState([
-    { label: "Day cruise", on: true },
-    { label: "Overnight stay", on: true },
-    { label: "Night stay", on: false },
-  ]);
+  const [boat, setBoat] = useState<Boat | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  function toggleFeature(feature: string) {
-    setFeatures((current) =>
-      current.includes(feature) ? current.filter((f) => f !== feature) : [...current, feature],
-    );
-  }
+  const loadData = useCallback(async () => {
+    try {
+      const res = await fetchBoatDetails(boatId);
+      if (res.data) {
+        setBoat(res.data);
+      } else if (res.error) {
+        setErrorMsg(res.error.message);
+      }
+    } catch (err) {
+      setErrorMsg("Failed to load boat details");
+    }
+  }, [boatId]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    setErrorMsg(null);
+    await loadData();
+    setRefreshing(false);
+  }, [loadData]);
+
+  useEffect(() => {
+    let isMounted = true;
+    setIsLoading(true);
+    setErrorMsg(null);
+
+    fetchBoatDetails(boatId)
+      .then((res) => {
+        if (!isMounted) return;
+        if (res.data) {
+          setBoat(res.data);
+        } else if (res.error) {
+          setErrorMsg(res.error.message);
+        }
+      })
+      .catch((err) => {
+        if (isMounted) setErrorMsg("Failed to load boat details");
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [boatId]);
+
+  const displayTitle = boat?.name || fallbackName || `Boat #${boatId}`;
 
   return (
-    <ScrollView contentContainerStyle={styles.pageScrollContent}>
+    <ScrollView 
+      contentContainerStyle={styles.pageScrollContent}
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.teal]} tintColor={COLORS.teal} />}
+    >
       <PageHeader
         title="Boat asset definition"
-        sub={`These details are permanent truths about your boat. They drive all matching logic. · Boat: ${boatName}`}
+        sub={`These details are permanent truths about your boat. They drive all matching logic. · Boat: ${displayTitle}`}
         onBack={() => navigation.goBack()}
-      >
-        <View style={styles.rowGap8}>
-          {isEditing ? (
-            <>
-              <Pressable onPress={() => setIsEditing(false)} style={styles.outlineButton}>
-                <Text style={styles.outlineButtonText}>Cancel</Text>
-              </Pressable>
-              <Pressable onPress={() => setIsEditing(false)} style={styles.softBlueButton}>
-                <Text style={styles.softBlueButtonText}>Save</Text>
-              </Pressable>
-            </>
-          ) : (
-            <Pressable onPress={() => setIsEditing(true)} style={styles.softBlueButton}>
-              <Text style={styles.softBlueButtonText}>Edit</Text>
-            </Pressable>
-          )}
-        </View>
-      </PageHeader>
+      />
 
-      <Card title="Identity & classification">
-        <View style={styles.verticalGap10}>
-          <View style={styles.metaBox}>
-            <Text style={styles.metaLabel}>Boat name</Text>
-            {isEditing ? (
-              <TextInput value={identity.boatName} onChangeText={(t) => setIdentity((c) => ({ ...c, boatName: t }))} style={styles.input} />
-            ) : (
-              <Text style={styles.metaValue}>{identity.boatName}</Text>
-            )}
-          </View>
-          <View style={styles.metaBox}>
-            <Text style={styles.metaLabel}>Experience tier</Text>
-            {isEditing ? (
-              <OptionSelect value={identity.experienceTier} onChange={(v) => setIdentity((c) => ({ ...c, experienceTier: v }))} options={[{ label: "Premium", value: "Premium" }, { label: "Luxury", value: "Luxury" }, { label: "Standard", value: "Standard" }]} />
-            ) : (
-              <Text style={styles.metaValue}>{identity.experienceTier}</Text>
-            )}
-          </View>
-          <View style={styles.metaBox}>
-            <Text style={styles.metaLabel}>Booking type</Text>
-            {isEditing ? (
-              <OptionSelect value={identity.bookingType} onChange={(v) => setIdentity((c) => ({ ...c, bookingType: v }))} options={[{ label: "Private only", value: "Private only" }, { label: "Shared", value: "Shared" }, { label: "Private + shared", value: "Private + shared" }]} />
-            ) : (
-              <Text style={styles.metaValue}>{identity.bookingType}</Text>
-            )}
-          </View>
-          <View style={styles.metaBox}>
-            <Text style={styles.metaLabel}>Bedrooms count</Text>
-            {isEditing ? (
-              <TextInput value={String(identity.bedroomsCount)} keyboardType="numeric" onChangeText={(v) => setIdentity((c) => ({ ...c, bedroomsCount: Number(v) || 0 }))} style={styles.input} />
-            ) : (
-              <Text style={styles.metaValue}>{identity.bedroomsCount} bedrooms</Text>
-            )}
-          </View>
-          <View style={styles.metaBox}>
-            <Text style={styles.metaLabel}>Max capacity (guests)</Text>
-            {isEditing ? (
-              <TextInput value={String(identity.maxCapacity)} keyboardType="numeric" onChangeText={(v) => setIdentity((c) => ({ ...c, maxCapacity: Number(v) || 0 }))} style={styles.input} />
-            ) : (
-              <Text style={styles.metaValue}>{identity.maxCapacity} guests</Text>
-            )}
-          </View>
+      {isLoading ? (
+        <View style={{ paddingVertical: 40, alignItems: "center" }}>
+          <ActivityIndicator size="large" color={COLORS.teal} />
         </View>
-      </Card>
+      ) : errorMsg ? (
+        <Card title="Unable to load boat profile">
+          <Text style={{ color: COLORS.red, padding: 12 }}>{errorMsg}</Text>
+        </Card>
+      ) : boat ? (
+        <>
+          <Card title="Identity & classification">
+            <View style={styles.verticalGap10}>
+              <View style={styles.metaBox}>
+                <Text style={styles.metaLabel}>Boat name</Text>
+                <Text style={styles.metaValue}>{boat.name}</Text>
+              </View>
+              <View style={styles.metaBox}>
+                <Text style={styles.metaLabel}>Experience tier</Text>
+                <Text style={styles.metaValue}>{boat.experienceTier || "N/A"}</Text>
+              </View>
+              <View style={styles.metaBox}>
+                <Text style={styles.metaLabel}>Booking type</Text>
+                <Text style={styles.metaValue}>{boat.bookingType || "N/A"}</Text>
+              </View>
+              <View style={styles.metaBox}>
+                <Text style={styles.metaLabel}>Bedrooms count</Text>
+                <Text style={styles.metaValue}>{boat.bedrooms} bedrooms</Text>
+              </View>
+              <View style={styles.metaBox}>
+                <Text style={styles.metaLabel}>Max capacity (guests)</Text>
+                <Text style={styles.metaValue}>{boat.maxGuests} guests</Text>
+              </View>
+            </View>
+          </Card>
 
-      <Card title="Aggregate capacity & crew" sub="Boat-wide layout metrics and capacity limits.">
-        <View style={styles.verticalGap10}>
-          <View style={styles.metaBox}>
-            <Text style={styles.metaLabel}>Beds count</Text>
-            {isEditing ? (
-              <TextInput value={String(identity.bedsCount)} keyboardType="numeric" onChangeText={(v) => setIdentity((c) => ({ ...c, bedsCount: Number(v) || 0 }))} style={styles.input} />
-            ) : (
-              <Text style={styles.metaValue}>{identity.bedsCount} beds</Text>
-            )}
-          </View>
-          <View style={styles.metaBox}>
-            <Text style={styles.metaLabel}>Extra beds count</Text>
-            {isEditing ? (
-              <TextInput value={String(identity.extraBedsCount)} keyboardType="numeric" onChangeText={(v) => setIdentity((c) => ({ ...c, extraBedsCount: Number(v) || 0 }))} style={styles.input} />
-            ) : (
-              <Text style={styles.metaValue}>{identity.extraBedsCount} extra beds allowed</Text>
-            )}
-          </View>
-          <View style={styles.metaBox}>
-            <Text style={styles.metaLabel}>Extra cots count</Text>
-            {isEditing ? (
-              <TextInput value={String(identity.extraCotsCount)} keyboardType="numeric" onChangeText={(v) => setIdentity((c) => ({ ...c, extraCotsCount: Number(v) || 0 }))} style={styles.input} />
-            ) : (
-              <Text style={styles.metaValue}>{identity.extraCotsCount} extra cots allowed</Text>
-            )}
-          </View>
-          <View style={styles.metaBox}>
-            <Text style={styles.metaLabel}>Max passenger capacity certificate</Text>
-            {isEditing ? (
-              <TextInput value={String(identity.maxPassengerCapacityCert)} keyboardType="numeric" onChangeText={(v) => setIdentity((c) => ({ ...c, maxPassengerCapacityCert: Number(v) || 0 }))} style={styles.input} />
-            ) : (
-              <Text style={styles.metaValue}>{identity.maxPassengerCapacityCert} passengers max</Text>
-            )}
-          </View>
-          <View style={styles.metaBox}>
-            <Text style={styles.metaLabel}>Crew count (excluding captain)</Text>
-            {isEditing ? (
-              <TextInput value={String(identity.crewCountExcludingCaptain)} keyboardType="numeric" onChangeText={(v) => setIdentity((c) => ({ ...c, crewCountExcludingCaptain: Number(v) || 0 }))} style={styles.input} />
-            ) : (
-              <Text style={styles.metaValue}>{identity.crewCountExcludingCaptain} members</Text>
-            )}
-          </View>
-        </View>
-      </Card>
-
-      <Card title="Structural features">
-        {isEditing ? (
-          <View style={styles.verticalGap8}>
-            {allStructuralFeatures.map((feature) => {
-              const enabled = features.includes(feature);
-              return (
-                <Pressable key={feature} style={styles.featureRow} onPress={() => toggleFeature(feature)}>
-                  <Text style={styles.featureRowText}>{feature}</Text>
-                  <Switch value={enabled} onValueChange={() => toggleFeature(feature)} />
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : (
-          <View style={styles.pillWrap}>
-            {allStructuralFeatures.map((feature) => {
-              const enabled = features.includes(feature);
-              return (
-                <View key={feature} style={[styles.featurePill, enabled ? styles.featurePillEnabled : styles.featurePillDisabled]}>
-                  <Text style={enabled ? styles.featurePillEnabledText : styles.featurePillDisabledText}>{feature}</Text>
+          {boat.registrationNumber && (
+            <Card title="Registration & Boarding">
+              <View style={styles.verticalGap10}>
+                <View style={styles.metaBox}>
+                  <Text style={styles.metaLabel}>Registration Number</Text>
+                  <Text style={styles.metaValue}>{boat.registrationNumber}</Text>
                 </View>
-              );
-            })}
-          </View>
-        )}
-      </Card>
+                {boat.boardingLocation && (
+                  <View style={styles.metaBox}>
+                    <Text style={styles.metaLabel}>Boarding Location</Text>
+                    <Text style={styles.metaValue}>{boat.boardingLocation}</Text>
+                  </View>
+                )}
+              </View>
+            </Card>
+          )}
 
-      <Card title="Supported cruise types" sub="Only enable cruise types you are fully equipped to deliver.">
-        {isEditing ? (
-          <View style={styles.verticalGap8}>
-            {cruiseTypes.map((type) => (
-              <View key={type.label} style={styles.featureRow}>
-                <Text style={styles.featureRowText}>{type.label}</Text>
-                <Switch value={type.on} onValueChange={(v) => setCruiseTypes((c) => c.map((t) => t.label === type.label ? { ...t, on: v } : t))} />
+          {boat.features && boat.features.length > 0 && (
+            <Card title="Features">
+              <View style={styles.pillWrap}>
+                {boat.features.map((feature) => (
+                  <View key={feature} style={[styles.featurePill, styles.featurePillEnabled]}>
+                    <Text style={styles.featurePillEnabledText}>{feature}</Text>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
-        ) : (
-          <View style={styles.pillWrap}>
-            {cruiseTypes.map((type) => (
-              <View key={type.label} style={[styles.featurePill, type.on ? styles.cruisePillEnabled : styles.cruisePillDisabled]}>
-                <Text style={type.on ? styles.cruisePillEnabledText : styles.cruisePillDisabledText}>{type.label}</Text>
+            </Card>
+          )}
+
+          {boat.cruiseTypes && boat.cruiseTypes.length > 0 && (
+            <Card title="Supported cruise types" sub="Only enable cruise types you are fully equipped to deliver.">
+              <View style={styles.pillWrap}>
+                {boat.cruiseTypes.map((type) => (
+                  <View
+                    key={type.label}
+                    style={[styles.featurePill, type.on ? styles.cruisePillEnabled : styles.cruisePillDisabled]}
+                  >
+                    <Text style={type.on ? styles.cruisePillEnabledText : styles.cruisePillDisabledText}>
+                      {type.label}
+                    </Text>
+                  </View>
+                ))}
               </View>
-            ))}
-          </View>
-        )}
-      </Card>
+            </Card>
+          )}
+        </>
+      ) : null}
     </ScrollView>
   );
 }

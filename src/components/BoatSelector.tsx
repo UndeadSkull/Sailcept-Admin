@@ -37,6 +37,7 @@ export default function BoatSelector({ selectedBoat, setSelectedBoat }: BoatSele
   return (
     <View ref={buttonRef} collapsable={false} style={styles.container}>
       <Pressable
+        testID="boat-selector-trigger"
         onPress={handlePress}
         style={[
           styles.pill,
@@ -105,6 +106,7 @@ export default function BoatSelector({ selectedBoat, setSelectedBoat }: BoatSele
               {boats.map((b, index) => (
                 <Pressable
                   key={b.id}
+                  testID={`boat-option-${b.id}`}
                   onPress={() => {
                     setSelectedBoat(b.id);
                     setDropdownOpen(false);

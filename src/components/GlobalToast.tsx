@@ -8,7 +8,7 @@ export default function GlobalToast() {
   const [endpoint, setEndpoint] = useState<string | null>(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(24)).current; // Start 24px lower
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hideToast = () => {
     if (timerRef.current) {

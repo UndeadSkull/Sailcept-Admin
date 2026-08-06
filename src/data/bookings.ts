@@ -3,15 +3,99 @@ export type DietEntry = {
   count: number;
 };
 
+export interface RawBookingDto {
+  bookingId: number;
+  bookingCode: string;
+  boatId: number;
+  boatName: string;
+  boatConfigurationId: number;
+  configurationCode: string;
+  boatType: string;
+  guestName: string;
+  travelDate: string;
+  serviceStartAt: string;
+  serviceEndAt: string;
+  cruiseType: string;
+  cruiseTypeLabel: string;
+  adultsCount: number;
+  childrenCount: number;
+  kidsCount: number;
+  roomsCount: number;
+  bookingStatus: string;
+  bookingStatusLabel: string;
+  bookingCategory: string;
+  bookingSourceType: string;
+  bookingChannel: string;
+  bookingChannelLabel: string;
+  finalPrice: number;
+  currency: string;
+  isUpdated: boolean;
+  isAdded: boolean;
+  isEdited: boolean;
+  [key: string]: any;
+}
+
+export interface RawRequestDto {
+  requestId: number;
+  requestReference: string;
+  boatId: number;
+  boatName: string;
+  boatConfigurationId: number;
+  configurationCode: string;
+  guestName: string;
+  travelDate: string;
+  serviceStartAt: string;
+  serviceEndAt: string;
+  operationalCutoffAt?: string | null;
+  cruiseType: string;
+  cruiseTypeLabel: string;
+  boatType: string;
+  adultsCount: number;
+  childrenCount: number;
+  kidsCount: number;
+  roomsCount: number;
+  quotedPrice: number;
+  currency: string;
+  requestedAt?: string | null;
+  ownerDecisionAt?: string | null;
+  resolvedAt?: string | null;
+  finalizedAt?: string | null;
+  decisionSource?: string | null;
+  reasonCode?: string | null;
+  operatorState: string;
+  operatorStateLabel: string;
+  attentionLevel?: string;
+  paymentState?: string;
+  paymentActionRequired?: boolean;
+  paymentRetryExpiresAt?: string | null;
+  holdState?: string;
+  resultingBookingId?: number | null;
+  resultingBookingCode?: string | null;
+  contactAvailable?: boolean;
+  contactUnlockDate?: string | null;
+  customerPhone?: string | null;
+  allowedActions?: string[];
+  [key: string]: any;
+}
+
 export type Booking = {
   id: number;
   bookingId: string;
+  bookingCode?: string;
   guest: string;
   phone: string;
   boat: string;
+  boatId?: number;
+  boatConfigurationId?: number;
+  configurationCode?: string;
+  boatType?: string;
+  cruiseType?: string;
   type: string; // "Day cruise" | "Overnight stay" | "Night stay"
   date: string;
   dateEnd: string;
+  serviceStartAt?: string;
+  serviceEndAt?: string;
+  operationalCutoffAt?: string;
   comfort?: string;
   mode?: string;
   adults: number;
@@ -24,13 +108,25 @@ export type Booking = {
   specialRequests?: string[];
   updatedSpecialRequests?: string[];
   price: number;
+  currency?: string;
   ghat?: string;
   checkIn?: string;
   checkOut?: string;
   meal?: string;
   paymentStatus?: string;
+  paymentState?: string;
+  paymentActionRequired?: boolean;
   status?: string; // "cancelled" | "deleted" | "confirmed"
+  operatorState?: string;
+  operatorStateLabel?: string;
+  attentionLevel?: string;
+  holdState?: string;
+  contactAvailable?: boolean;
+  contactUnlockDate?: string;
+  allowedActions?: string[];
+  requestReference?: string;
   isDirect?: boolean;
+  isAdded?: boolean;
   isEdited?: boolean;
   isUpdated?: boolean;
   bookingSource?: string;

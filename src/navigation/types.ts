@@ -26,8 +26,6 @@ export type MoreStackParamList = {
   BoatProfilesList: undefined;
   BoatProfileDetail: { boatId: number };
   Reviews: undefined;
-  Invoices: undefined; // keep for compatibility
-  Finance: undefined;
   Settings: undefined;
   Legal: undefined;
   GetHelp: undefined;

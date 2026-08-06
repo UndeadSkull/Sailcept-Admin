@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigation } from "@react-navigation/native";
-import { Pressable, ScrollView, Text, View, ActivityIndicator } from "react-native";
+import { Pressable, ScrollView, Text, View, ActivityIndicator, RefreshControl } from "react-native";
 import { BookingCard, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
 import { fetchUpcomingCruisesApi, fetchRequests, fetchRequestHistory, Booking, safeParseDate } from "../services/bookings";
@@ -19,6 +19,7 @@ export default function DashboardScreen() {
   const [stats, setStats] = useState<OverviewStatsResponse | null>(null);
   const [allBookings, setAllBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [expandedBooking, setExpandedBooking] = useState<number | null>(null);
 
   const loadData = async () => {
@@ -43,6 +44,29 @@ export default function DashboardScreen() {
       setIsLoading(false);
     }
   };
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      const targetBoatId = selectedBoat > 0 ? selectedBoat : undefined;
+
+      const [statsRes, bookingsRes] = await Promise.all([
+        fetchOverviewStats(targetBoatId),
+        fetchUpcomingCruisesApi(selectedBoat),
+      ]);
+
+      if (statsRes.data) {
+        setStats(statsRes.data);
+      }
+      if (bookingsRes.data) {
+        setAllBookings(bookingsRes.data);
+      }
+    } catch (err) {
+      console.error("Failed to refresh dashboard data:", err);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [selectedBoat]);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener("focus", () => {
@@ -154,7 +178,10 @@ export default function DashboardScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 18, paddingBottom: 120 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.teal]} tintColor={COLORS.teal} />}
+      >
         {/* Header information */}
         <View style={{ flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 18 }}>
           <View>

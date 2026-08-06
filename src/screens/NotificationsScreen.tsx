@@ -1,5 +1,5 @@
-import React, { useState, useRef } from "react";
-import { ScrollView, Text, View, Pressable, Animated } from "react-native";
+import React, { useState, useRef, useCallback } from "react";
+import { ScrollView, Text, View, Pressable, Animated, RefreshControl } from "react-native";
 import { useNavigation, type NavigationProp, type ParamListBase } from "@react-navigation/native";
 import { ArrowLeft, Check, CheckCircle2, XCircle } from "lucide-react-native";
 import { useNotification } from "../context/NotificationContext";
@@ -103,8 +103,15 @@ function AnimatedActionButton({
 
 export default function NotificationsScreen() {
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
-  const { notifications, markAsRead, markAsUnread, markAllAsRead } = useNotification();
+  const { notifications, refreshNotifications, markAsRead, markAsUnread, markAllAsRead } = useNotification();
   const [activeTab, setActiveTab] = useState<"pending" | "history">("pending");
+  const [refreshing, setRefreshing] = useState(false);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await refreshNotifications();
+    setRefreshing(false);
+  }, [refreshNotifications]);
 
   // Tab filtering
   const filteredNotifications = notifications.filter((n) => {
@@ -162,7 +169,10 @@ export default function NotificationsScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: COLORS.bg }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 16, paddingBottom: 100 }}>
+      <ScrollView
+        contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 16, paddingBottom: 100 }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.teal]} tintColor={COLORS.teal} />}
+      >
         
         {/* Header */}
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
