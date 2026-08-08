@@ -21,16 +21,16 @@ export default function BoatSelector({ selectedBoat, setSelectedBoat }: BoatSele
   const selectedBoatName = selectedBoat === 0 ? "All Houseboats" : boats.find((b) => b.id === selectedBoat)?.name || "";
 
   const handlePress = () => {
-    if (buttonRef.current) {
+    setDropdownOpen(true);
+    if (buttonRef.current && typeof buttonRef.current.measure === "function") {
       buttonRef.current.measure((x, y, width, height, pageX, pageY) => {
-        setDropdownPosition({
-          top: pageY + height - insets.top + 4,
-          right: windowWidth - pageX - width,
-        });
-        setDropdownOpen(true);
+        if (pageX !== undefined && pageY !== undefined) {
+          setDropdownPosition({
+            top: pageY + height - insets.top + 4,
+            right: windowWidth - pageX - width,
+          });
+        }
       });
-    } else {
-      setDropdownOpen(true);
     }
   };
 

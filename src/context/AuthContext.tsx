@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { User } from "../data/auth";
-import { AUTH_TOKEN_KEY } from "../services/apiClient";
+import { AUTH_TOKEN_KEY, handleLogout, subscribeToUnauthorized } from "../services/apiClient";
 import { getOperatorProfile, loginOperator } from "../services/auth";
 
 type AuthContextType = {
@@ -27,6 +27,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsubscribe = subscribeToUnauthorized(() => {
+      setUser(null);
+      setIsAuthenticated(false);
+    });
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     // Check if token exists on app launch
@@ -107,13 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = async () => {
-    try {
-      await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, SAILCEPT_ID_KEY, USER_ID_KEY]);
-      setUser(null);
-      setIsAuthenticated(false);
-    } catch (error) {
-      console.error("Error clearing auth token:", error);
-    }
+    await handleLogout();
   };
 
   return (

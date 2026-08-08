@@ -24,6 +24,35 @@ function notifyApiFailure(endpoint: string) {
   });
 }
 
+export type UnauthorizedListener = () => void;
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+export function subscribeToUnauthorized(listener: UnauthorizedListener): () => void {
+  unauthorizedListeners.add(listener);
+  return () => {
+    unauthorizedListeners.delete(listener);
+  };
+}
+
+export async function handleLogout(): Promise<void> {
+  try {
+    await AsyncStorage.multiRemove([
+      AUTH_TOKEN_KEY,
+      "@sailcept_admin_sailcept_id",
+      "@sailcept_admin_user_id",
+    ]);
+  } catch (e) {
+    console.error("Error clearing auth token on logout:", e);
+  }
+  unauthorizedListeners.forEach((listener) => {
+    try {
+      listener();
+    } catch (e) {
+      console.error("Error in unauthorizedListener:", e);
+    }
+  });
+}
+
 export type RequestOptions = Omit<RequestInit, "body"> & {
   body?: unknown;
   token?: string;
@@ -79,6 +108,10 @@ export async function request<T>(
     }
 
     if (!response.ok) {
+      if (response.status === 401) {
+        await handleLogout();
+      }
+
       const errObj = data as { message?: string; error?: string; code?: string } | null;
       const errorMessage =
         errObj?.message ||
