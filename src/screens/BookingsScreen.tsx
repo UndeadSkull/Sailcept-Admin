@@ -7,8 +7,8 @@ import { fetchBookings, Booking, MONTHS, safeParseDate, BOAT_ID_MAP } from "../s
 import type { MainTabScreenProps } from "../navigation/types";
 import { COLORS } from "../styles";
 
-// Freeze reference point to June 18, 2026
-const now = new Date("2026-06-18T10:00:00");
+// Dynamic current date
+const getTodayDate = () => new Date();
 
 export default function BookingsScreen({ route, navigation }: MainTabScreenProps<"Bookings">) {
   const { boats, searchQuery } = useBoat();
@@ -20,7 +20,8 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
   const [expandedBooking, setExpandedBooking] = useState<number | null>(null);
 
   // Calendar states
-  const [calendarMonth, setCalendarMonth] = useState({ month: 5, year: 2026 }); // June 2026
+  const today = getTodayDate();
+  const [calendarMonth, setCalendarMonth] = useState({ month: today.getMonth(), year: today.getFullYear() });
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<{ day: number; month: number; year: number } | null>(null);
   const [bookingsFilter, setBookingsFilter] = useState<"all" | "today" | "date">("all");
 
@@ -203,10 +204,11 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
   }
 
   const isTodayDay = (day: number) => {
+    const currentDate = getTodayDate();
     return (
-      day === now.getDate() &&
-      calendarMonth.month === now.getMonth() &&
-      calendarMonth.year === now.getFullYear()
+      day === currentDate.getDate() &&
+      calendarMonth.month === currentDate.getMonth() &&
+      calendarMonth.year === currentDate.getFullYear()
     );
   };
 

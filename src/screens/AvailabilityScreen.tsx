@@ -209,10 +209,11 @@ export default function AvailabilityScreen() {
   }
 
   const isTodayDay = (day: number) => {
+    const currentDate = new Date();
     return (
-      day === now.getDate() &&
-      availabilityMonth.month === now.getMonth() &&
-      availabilityMonth.year === now.getFullYear()
+      day === currentDate.getDate() &&
+      availabilityMonth.month === currentDate.getMonth() &&
+      availabilityMonth.year === currentDate.getFullYear()
     );
   };
 
