@@ -268,12 +268,52 @@ export function getMinimumRooms(b: { adults: number; children: number }) {
   return Math.max(1, Math.ceil(countableGuests / 3));
 }
 
-export function isContactUnlocked(tripDate: string) {
+function parseLocalYMD(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  const clean = dateStr.split("T")[0];
+  const parts = clean.split("-");
+  if (parts.length === 3) {
+    const y = parseInt(parts[0], 10);
+    const m = parseInt(parts[1], 10) - 1;
+    const d = parseInt(parts[2], 10);
+    return new Date(y, m, d, 0, 0, 0, 0);
+  }
+  const d = new Date(dateStr);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+export function isContactUnlocked(
+  bookingOrDate: string | { date?: string; contactUnlockDate?: string; contactAvailable?: boolean },
+  contactUnlockDate?: string,
+  contactAvailable?: boolean
+): boolean {
+  if (typeof bookingOrDate === "object" && bookingOrDate !== null) {
+    if (bookingOrDate.contactAvailable !== undefined) {
+      return bookingOrDate.contactAvailable;
+    }
+    if (bookingOrDate.contactUnlockDate) {
+      contactUnlockDate = bookingOrDate.contactUnlockDate;
+    }
+    bookingOrDate = bookingOrDate.date || "";
+  }
+
+  if (contactAvailable !== undefined) {
+    return contactAvailable;
+  }
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  const trip = new Date(tripDate);
-  trip.setHours(0, 0, 0, 0);
-  const daysUntilTrip = (trip.getTime() - today.getTime()) / (1000 * 60 * 60 * 24);
+
+  if (contactUnlockDate) {
+    const unlockDate = parseLocalYMD(contactUnlockDate);
+    return today.getTime() >= unlockDate.getTime();
+  }
+
+  if (!bookingOrDate) return false;
+
+  const trip = parseLocalYMD(bookingOrDate);
+  const daysUntilTrip = Math.round((trip.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   return daysUntilTrip <= 4;
 }
 

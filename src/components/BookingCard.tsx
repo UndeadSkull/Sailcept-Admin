@@ -63,7 +63,7 @@ export default function BookingCard({
   }, [expanded, animValue]);
 
   const phoneDigits = b.phone ? b.phone.replace(/[^\d+]/g, "") : "";
-  const unlocked = b.date ? isContactUnlocked(b.date) && historyOutcome?.outcome !== "declined" : false;
+  const unlocked = isContactUnlocked(b) && historyOutcome?.outcome !== "declined";
 
   const handleWhatsApp = () => {
     if (!unlocked) return;

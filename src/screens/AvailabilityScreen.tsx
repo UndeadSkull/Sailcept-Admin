@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View, ActivityIndicator, Alert, Modal, Tex
 import { ArrowLeft, Calendar, ChevronDown, ChevronUp, ArrowRight, Sun, Moon, Sunrise, Pencil, Trash, X, CheckCircle, Info, Ship } from "lucide-react-native";
 import { useBoat } from "../context/BoatContext";
 import { useNavigation } from "@react-navigation/native";
-import { fetchBookings, saveDirectBooking, deleteBooking, Booking, DietEntry, MONTHS, BOAT_BH_CONFIGS, BOAT_TOTAL_BH, SHARED_BOATS, SHARED_BOAT_TOTAL_UNITS, TRIP_TYPES, AVAILABILITY_TYPE_ICONS, getAvailabilityStatus, buildDefaultPricing, toISODate, fromISODate, formatDateRange, getMinimumRooms, getCotsMattresses, isContactUnlocked, dateOpenState as initialDateOpenState, blockedDates as initialBlockedDates, safeParseDate, isBookingCoveringDate } from "../services/bookings";
+import { fetchBookings, saveDirectBooking, deleteBooking, Booking, DietEntry, MONTHS, BOAT_BH_CONFIGS, BOAT_TOTAL_BH, SHARED_BOATS, SHARED_BOAT_TOTAL_UNITS, TRIP_TYPES, AVAILABILITY_TYPE_ICONS, getAvailabilityStatus, buildDefaultPricing, toISODate, fromISODate, formatDateRange, dateOpenState as initialDateOpenState, blockedDates as initialBlockedDates, safeParseDate, isBookingCoveringDate } from "../services/bookings";
 import { COLORS } from "../styles";
 import {
   fetchAvailabilityCalendar,
