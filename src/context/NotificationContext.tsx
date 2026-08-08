@@ -7,6 +7,7 @@ import {
   markAllNotificationsRead,
   respondToRequestNotification,
 } from "../services/notifications";
+import { useAuth } from "./AuthContext";
 
 type NotificationContextType = {
   notifications: Notification[];
@@ -31,10 +32,16 @@ const NotificationContext = createContext<NotificationContextType>({
 });
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const refreshNotifications = useCallback(async () => {
+    if (!isAuthenticated) {
+      setNotifications([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await fetchNotifications();
@@ -46,12 +53,17 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
-  // Load notifications on launch
+  // Load notifications only when authenticated
   useEffect(() => {
-    refreshNotifications();
-  }, [refreshNotifications]);
+    if (isAuthenticated) {
+      refreshNotifications();
+    } else {
+      setNotifications([]);
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, refreshNotifications]);
 
   const markAsRead = async (id: string) => {
     try {

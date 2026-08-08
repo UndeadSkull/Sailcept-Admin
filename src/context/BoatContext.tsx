@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, Rea
 import { fetchBoats } from "../services/boats";
 import { BoatListItem } from "../data/boats";
 import { requests } from "../services/bookings";
+import { useAuth } from "./AuthContext";
 
 type BoatContextValue = {
   boats: BoatListItem[];
@@ -28,8 +29,9 @@ const BoatContext = createContext<BoatContextValue>({
 });
 
 export function BoatProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const [boats, setBoats] = useState<BoatListItem[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [searchOpen, setSearchOpen] = useState<boolean>(false);
   const [requestsCount, setRequestsCount] = useState<number>(requests.length);
@@ -39,6 +41,11 @@ export function BoatProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadBoats = useCallback(async () => {
+    if (!isAuthenticated) {
+      setBoats([]);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await fetchBoats();
@@ -50,16 +57,16 @@ export function BoatProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
+    if (isAuthenticated) {
       loadBoats();
-    }, 0);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, []);
+    } else {
+      setBoats([]);
+      setIsLoading(false);
+    }
+  }, [isAuthenticated, loadBoats]);
 
   return (
     <BoatContext.Provider
