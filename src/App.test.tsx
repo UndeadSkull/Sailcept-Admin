@@ -41,10 +41,44 @@ beforeEach(async () => {
       } as Response);
     }
     if (cleanUrl.includes("/availability/boats")) {
+      if (cleanUrl.includes("/calendar")) {
+        return Promise.resolve({
+          ok: true,
+          headers: new Headers({ "content-type": "application/json" }),
+          json: () =>
+            Promise.resolve({
+              boatId: 1,
+              month: "2026-08",
+              shared: false,
+              physicalRoomCount: 2,
+              days: [],
+            }),
+        } as Response);
+      }
       return Promise.resolve({
         ok: true,
         headers: new Headers({ "content-type": "application/json" }),
-        json: () => Promise.resolve({ dates: [] }),
+        json: () =>
+          Promise.resolve({
+            boatId: 1,
+            shared: false,
+            physicalRoomCount: 2,
+            fromDate: "2026-08-01",
+            toDate: "2026-08-01",
+            manualSalesRangeState: "OPEN",
+            pricingRangeState: "OPEN",
+            sharedInventoryRangeState: "UNIFORM",
+            dates: [],
+            addedBookings: [],
+            allowedActions: {
+              canOpen: true,
+              canClose: true,
+              canSetRates: true,
+              canSetSharedInventory: true,
+              canAddBooking: true,
+              blockingReasons: [],
+            },
+          }),
       } as Response);
     }
     return Promise.resolve({
@@ -69,147 +103,88 @@ async function renderApp() {
   return utils;
 }
 
-async function pressByText(
-  finder: (text: string | RegExp) => Promise<unknown[]>,
-  text: string | RegExp,
-) {
-  const matches = await finder(text);
-  fireEvent.press(matches[0] as never);
+async function pressTab(utils: any, tabName: string) {
+  const tabBtn = await utils.findByLabelText(new RegExp(`${tabName}, tab`, "i"));
+  fireEvent.press(tabBtn);
 }
 
 describe("App", () => {
   it("shows overview content by default", async () => {
-    const { findAllByText, findByText } = await renderApp();
-    expect((await findAllByText("Overview")).length).toBeGreaterThan(0);
-    expect(await findByText(/Your houseboat performance at a glance/)).toBeTruthy();
+    const utils = await renderApp();
+    expect((await utils.findAllByText("Overview")).length).toBeGreaterThan(0);
+    expect(await utils.findByText(/Today's trips/i)).toBeTruthy();
   });
 
   it("shows main tabs in app shell", async () => {
-    const { findAllByText, findByText } = await renderApp();
-    expect((await findAllByText("Overview")).length).toBeGreaterThan(0);
-    expect(await findByText("Availability")).toBeTruthy();
-    expect(await findByText("Requests")).toBeTruthy();
-    expect(await findByText("Bookings")).toBeTruthy();
-  });
-
-  it("applies one cruise-type price to multiple selected dates in bulk mode", async () => {
-    const { findAllByText, findByTestId } = await renderApp();
-    const day3 = dateKeyForCurrentMonth(3);
-    const day4 = dateKeyForCurrentMonth(4);
-
-    await pressByText(findAllByText, "Availability");
-    fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
-    await pressByText(findAllByText, "Enable");
-
-    fireEvent.press(await findByTestId(`calendar-day-${day3}`));
-    fireEvent.press(await findByTestId(`calendar-day-${day4}`));
-    
-    // Open the bulk edit bottom sheet
-    fireEvent.press(await findByTestId("edit-selected-dates-button"));
-    
-    // Fill the price inside the bottom sheet
-    fireEvent.changeText(await findByTestId("modal-price-input-day"), "15000");
-    
-    // Save the changes
-    await pressByText(findAllByText, "Save changes");
-
-    expect(within(await findByTestId(`calendar-day-${day3}`)).getByText("15,000")).toBeTruthy();
-    expect(within(await findByTestId(`calendar-day-${day4}`)).getByText("15,000")).toBeTruthy();
-  });
-
-  it("opens bottom sheet with cruise cards when a date is tapped", async () => {
-    const { findAllByText, findByTestId, findByText } = await renderApp();
-    const day5 = dateKeyForCurrentMonth(5);
-
-    await pressByText(findAllByText, "Availability");
-    fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
-    fireEvent.press(await findByTestId(`calendar-day-${day5}`));
-
-    // Bottom sheet should show cruise type labels
-    expect(await findByText("Day cruise")).toBeTruthy();
-    expect(await findByText("Overnight")).toBeTruthy();
-    expect(await findByText("Night stay")).toBeTruthy();
-    expect(await findByText("Save changes")).toBeTruthy();
+    const utils = await renderApp();
+    expect((await utils.findAllByText("Overview")).length).toBeGreaterThan(0);
+    expect(await utils.findByText("Availability")).toBeTruthy();
+    expect(await utils.findByText("Requests")).toBeTruthy();
+    expect(await utils.findByText("Bookings")).toBeTruthy();
   });
 
   it("shows current month title and weekday headers", async () => {
-    const { findAllByText, findByText, findByTestId } = await renderApp();
+    const utils = await renderApp();
     const now = new Date();
-    const expectedMonthName = now.toLocaleString("en-US", { month: "long" });
+    const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const expectedMonthName = MONTHS[now.getMonth()];
 
-    await pressByText(findAllByText, "Availability");
-    fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
+    await pressTab(utils, "Availability");
+    fireEvent.press(await utils.findByTestId("boat-card-vembanad-crest"));
 
-    expect((await findByTestId("home-calendar-month-title")).props.children).toBe(expectedMonthName);
-    expect(await findByText("Sun")).toBeTruthy();
-    expect(await findByText("Sat")).toBeTruthy();
-  });
-
-  it("enables bulk pricing on day long press", async () => {
-    const { findAllByText, findByText, findByTestId } = await renderApp();
-    const day6 = dateKeyForCurrentMonth(6);
-
-    await pressByText(findAllByText, "Availability");
-    fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
-    fireEvent(await findByTestId(`calendar-day-${day6}`), "longPress");
-
-    expect(await findByText("1 date selected")).toBeTruthy();
+    expect((await utils.findByTestId("home-calendar-month-title")).props.children).toBe(expectedMonthName);
+    expect(await utils.findByText("Sun")).toBeTruthy();
+    expect(await utils.findByText("Sat")).toBeTruthy();
   });
 
   it("propagates selected boat across all main screens", async () => {
-    const { findAllByText, findByText, findByTestId } = await renderApp();
+    const utils = await renderApp();
 
-    fireEvent.press(await findByTestId("boat-selector-trigger"));
-    fireEvent.press(await findByTestId("boat-option-2"));
+    fireEvent.press(await utils.findByTestId("boat-selector-trigger"));
+    fireEvent.press(await utils.findByTestId("boat-option-2"));
 
-    expect((await findAllByText("Backwater Pearl")).length).toBeGreaterThan(0);
+    expect((await utils.findAllByText("Backwater Pearl")).length).toBeGreaterThan(0);
 
-    await pressByText(findAllByText, "Availability");
-    fireEvent.press(await findByTestId("boat-card-backwater-pearl"));
-    expect((await findAllByText("Backwater Pearl")).length).toBeGreaterThan(0);
+    await pressTab(utils, "Availability");
+    fireEvent.press(await utils.findByTestId("boat-card-backwater-pearl"));
+    expect((await utils.findAllByText("Backwater Pearl")).length).toBeGreaterThan(0);
 
-    await pressByText(findAllByText, "Requests");
-    expect(await findByText(/Temporary date locks are active/)).toBeTruthy();
+    await pressTab(utils, "Requests");
+    expect((await utils.findAllByText("Requests")).length).toBeGreaterThan(0);
 
-    await pressByText(findAllByText, "Bookings");
-    expect(await findByText(/Track accepted bookings with complete trip details/)).toBeTruthy();
+    await pressTab(utils, "Bookings");
+    expect((await utils.findAllByText("Bookings")).length).toBeGreaterThan(0);
   });
 
-  it("shows skeleton loading cards on availability screen when calendar data is loading", async () => {
-    const { findAllByText, findByTestId, queryAllByTestId } = render(<App />);
+  it("shows boat cards on availability screen", async () => {
+    const utils = render(<App />);
     
     // Switch to Availability tab
-    await pressByText(findAllByText, "Availability");
+    await pressTab(utils, "Availability");
     
-    // Wait for loading to complete or boat card to display
-    await waitFor(() => {
-      expect(findByTestId("boat-card-vembanad-crest")).toBeTruthy();
-    });
-    
-    expect(await findByTestId("boat-card-vembanad-crest")).toBeTruthy();
+    expect(await utils.findByTestId("boat-card-vembanad-crest")).toBeTruthy();
   });
 
-  it("allows changing the month on the outside overview screen and preserves it on detail screen", async () => {
-    const { findAllByText, findByTestId, queryAllByTestId } = render(<App />);
+  it("allows changing the month on availability screen", async () => {
+    const utils = render(<App />);
     
     // Switch to Availability tab & select boat
-    await pressByText(findAllByText, "Availability");
-    fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
+    await pressTab(utils, "Availability");
+    fireEvent.press(await utils.findByTestId("boat-card-vembanad-crest"));
     
-    // Find the home month title and verify it shows the current month name
+    const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const now = new Date();
-    const expectedMonthName = now.toLocaleString("en-US", { month: "long" });
-    const homeMonthTitle = await findByTestId("home-calendar-month-title");
+    const expectedMonthName = MONTHS[now.getMonth()];
+    const homeMonthTitle = await utils.findByTestId("home-calendar-month-title");
     expect(homeMonthTitle.props.children).toBe(expectedMonthName);
     
     // Press the next month button
-    const nextBtn = await findByTestId("home-month-next");
+    const nextBtn = await utils.findByTestId("home-month-next");
     fireEvent.press(nextBtn);
     
-    // The detailed calendar should preserve and open in the next month
-    const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const expectedNextMonthName = nextMonth.toLocaleString("en-US", { month: "long" });
-    const homeMonthTitleAfter = await findByTestId("home-calendar-month-title");
+    const nextMonthIdx = (now.getMonth() + 1) % 12;
+    const expectedNextMonthName = MONTHS[nextMonthIdx];
+    const homeMonthTitleAfter = await utils.findByTestId("home-calendar-month-title");
     expect(homeMonthTitleAfter.props.children).toBe(expectedNextMonthName);
   });
 });

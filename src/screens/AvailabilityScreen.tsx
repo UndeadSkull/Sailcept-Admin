@@ -5,9 +5,29 @@ import { useBoat } from "../context/BoatContext";
 import { useNavigation } from "@react-navigation/native";
 import { fetchBookings, saveDirectBooking, deleteBooking, Booking, DietEntry, MONTHS, BOAT_BH_CONFIGS, BOAT_TOTAL_BH, SHARED_BOATS, SHARED_BOAT_TOTAL_UNITS, TRIP_TYPES, AVAILABILITY_TYPE_ICONS, getAvailabilityStatus, buildDefaultPricing, toISODate, fromISODate, formatDateRange, getMinimumRooms, getCotsMattresses, isContactUnlocked, dateOpenState as initialDateOpenState, blockedDates as initialBlockedDates, safeParseDate, isBookingCoveringDate } from "../services/bookings";
 import { COLORS } from "../styles";
+import {
+  fetchAvailabilityCalendar,
+  fetchAvailabilitySelection,
+  updateAvailabilityDateStatus,
+  updateAvailabilityRates,
+  updateAvailabilitySharedInventory,
+} from "../services/availability";
+import {
+  AvailabilityCalendarResponse,
+  AvailabilitySelectionResponse,
+  AvailabilityDay,
+  RateTierDto,
+} from "../data/availability";
 
 // Freeze reference date to June 18, 2026
 const now = new Date("2026-06-18T10:00:00");
+
+const toBackendCruiseType = (uiType: string): string => {
+  if (uiType === "Day Cruise") return "DAY";
+  if (uiType === "Night Stay") return "NIGHT";
+  if (uiType === "Overnight Stay") return "OVERNIGHT";
+  return uiType.toUpperCase();
+};
 
 export default function AvailabilityScreen() {
   const navigation = useNavigation();
@@ -29,6 +49,13 @@ export default function AvailabilityScreen() {
   const [localTripPricing, setLocalTripPricing] = useState<Record<string, any>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Backend Availability API state
+  const [calendarData, setCalendarData] = useState<AvailabilityCalendarResponse | null>(null);
+  const [selectionData, setSelectionData] = useState<AvailabilitySelectionResponse | null>(null);
+  const [isCalendarLoading, setIsCalendarLoading] = useState(false);
+  const [isSelectionLoading, setIsSelectionLoading] = useState(false);
+  const [isMutating, setIsMutating] = useState(false);
 
   // Calendar Selection State
   const today = new Date();
@@ -94,6 +121,45 @@ export default function AvailabilityScreen() {
     price: "",
   });
 
+  const selectedBoatObj = boats.find((b) => b.name === localBoatName);
+  const selectedBoatId = selectedBoatObj?.id ? Number(selectedBoatObj.id) : 1;
+  const currentMonthStr = `${availabilityMonth.year}-${String(availabilityMonth.month + 1).padStart(2, "0")}`;
+
+  // Fetch month calendar from backend API
+  const loadCalendar = useCallback(async () => {
+    if (!localBoatName) return;
+    setIsCalendarLoading(true);
+    try {
+      const res = await fetchAvailabilityCalendar(selectedBoatId, currentMonthStr);
+      if (res.data) {
+        setCalendarData(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load availability calendar:", err);
+    } finally {
+      setIsCalendarLoading(false);
+    }
+  }, [localBoatName, selectedBoatId, currentMonthStr]);
+
+  // Fetch range selection from backend API
+  const loadSelection = useCallback(async (minDay: number, maxDay: number) => {
+    if (!localBoatName) return;
+    const fromDateStr = `${availabilityMonth.year}-${String(availabilityMonth.month + 1).padStart(2, "0")}-${String(minDay).padStart(2, "0")}`;
+    const toDateStr = `${availabilityMonth.year}-${String(availabilityMonth.month + 1).padStart(2, "0")}-${String(maxDay).padStart(2, "0")}`;
+    
+    setIsSelectionLoading(true);
+    try {
+      const res = await fetchAvailabilitySelection(selectedBoatId, fromDateStr, toDateStr);
+      if (res.data) {
+        setSelectionData(res.data);
+      }
+    } catch (err) {
+      console.error("Failed to load availability selection:", err);
+    } finally {
+      setIsSelectionLoading(false);
+    }
+  }, [localBoatName, selectedBoatId, availabilityMonth]);
+
   const loadData = async () => {
     setIsLoading(true);
     try {
@@ -101,6 +167,7 @@ export default function AvailabilityScreen() {
       if (response.data) {
         setAllBookings(response.data);
       }
+      await loadCalendar();
     } catch (err) {
       console.error("Failed to load availability bookings:", err);
     } finally {
@@ -115,16 +182,33 @@ export default function AvailabilityScreen() {
       if (response.data) {
         setAllBookings(response.data);
       }
+      await loadCalendar();
+      if (availabilitySelection.length > 0) {
+        const min = Math.min(...availabilitySelection);
+        const max = Math.max(...availabilitySelection);
+        await loadSelection(min, max);
+      }
     } catch (err) {
       console.error("Failed to refresh availability bookings:", err);
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [loadCalendar, loadSelection, availabilitySelection]);
 
   useEffect(() => {
     loadData();
-  }, [localBoatName]);
+  }, [localBoatName, availabilityMonth]);
+
+  // Handle selection changes
+  useEffect(() => {
+    if (availabilitySelection.length > 0) {
+      const min = Math.min(...availabilitySelection);
+      const max = Math.max(...availabilitySelection);
+      loadSelection(min, max);
+    } else {
+      setSelectionData(null);
+    }
+  }, [availabilitySelection, loadSelection]);
 
   if (!localBoatName) {
     // Show Houseboats list to choose from (if global is "All")
@@ -188,8 +272,8 @@ export default function AvailabilityScreen() {
 
   // Active Boat Details
   const boat = localBoatName;
-  const isShared = SHARED_BOATS.has(boat);
-  const totalUnits = isShared ? SHARED_BOAT_TOTAL_UNITS[boat] : null;
+  const isShared = SHARED_BOATS.has(boat) || calendarData?.shared === true;
+  const totalUnits = calendarData?.physicalRoomCount ?? (isShared ? SHARED_BOAT_TOTAL_UNITS[boat] : null);
 
   // Calendar calculations
   const firstOfMonth = new Date(availabilityMonth.year, availabilityMonth.month, 1);
@@ -228,6 +312,12 @@ export default function AvailabilityScreen() {
   const dateStrFor = (day: number) => {
     const d = new Date(availabilityMonth.year, availabilityMonth.month, day);
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }).replace(/,/g, "");
+  };
+
+  const isoDateStrFor = (day: number) => {
+    const m = String(availabilityMonth.month + 1).padStart(2, "0");
+    const d = String(day).padStart(2, "0");
+    return `${availabilityMonth.year}-${m}-${d}`;
   };
 
   const handleDayTap = (day: number) => {
@@ -283,22 +373,6 @@ export default function AvailabilityScreen() {
     return `${dateStrFor(min)} to ${dateStrFor(max)}`;
   })();
 
-  const isCruiseTypeBooked = (boatName: string, dateStr: string, type: string) => {
-    const bookingTypeMap: Record<string, string> = {
-      "Day Cruise": "Day cruise",
-      "Overnight Stay": "Overnight stay",
-      "Night Stay": "Night stay",
-    };
-    const targetType = bookingTypeMap[type] || type;
-    const realBooked = allBookings.some(
-      (b) => b.boat === boatName && isBookingCoveringDate(b, dateStr) && (b.type === targetType || b.type === type)
-    );
-    const directBlocked = allBlockedDates.some(
-      (b) => b.boat === boatName && b.date === dateStr && b.reason === "direct" && b.tripType === type
-    );
-    return realBooked || directBlocked;
-  };
-
   // Resolve selection dates array
   const getSelectedDates = () => {
     if (availabilitySelection.length === 0) return [];
@@ -314,10 +388,163 @@ export default function AvailabilityScreen() {
 
   const selectedDates = getSelectedDates();
   const firstDateStr = selectedDates[0] || "";
-  const isDateOpen = firstDateStr ? localDateOpenState[`${boat}|${firstDateStr}`] === true : false;
-  const hasRealBookingOnSelection = selectedDates.some((dateStr) =>
-    allBookings.some((b) => b.boat === boat && isBookingCoveringDate(b, dateStr))
-  );
+
+  // Derive selection Date Open status from selectionData or fallback
+  const isDateOpen = selectionData
+    ? selectionData.manualSalesRangeState === "OPEN"
+    : firstDateStr ? localDateOpenState[`${boat}|${firstDateStr}`] === true : false;
+
+  const hasRealBookingOnSelection = selectionData
+    ? selectionData.allowedActions?.canClose === false
+    : selectedDates.some((dateStr) =>
+        allBookings.some((b) => b.boat === boat && isBookingCoveringDate(b, dateStr))
+      );
+
+  // Toggle Date Status (PUT /date-status)
+  const handleToggleDateStatus = async (newIsOpen: boolean) => {
+    if (availabilitySelection.length === 0) return;
+    const min = Math.min(...availabilitySelection);
+    const max = Math.max(...availabilitySelection);
+    const fromDate = isoDateStrFor(min);
+    const toDate = isoDateStrFor(max);
+
+    setIsMutating(true);
+    try {
+      const res = await updateAvailabilityDateStatus(selectedBoatId, {
+        fromDate,
+        toDate,
+        isOpen: newIsOpen,
+      });
+      if (res.data) {
+        setSelectionData(res.data);
+        await loadCalendar();
+      } else if (res.error) {
+        const errorMsg = typeof res.error === "string" ? res.error : (res.error as any)?.message || "Failed to update date status";
+        Alert.alert("Error", errorMsg);
+      }
+    } catch (err) {
+      console.error("Failed to update date status:", err);
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  // Submit Rates (PUT /rates)
+  const handleConfirmRates = async (type: string) => {
+    if (availabilitySelection.length === 0) return;
+    const min = Math.min(...availabilitySelection);
+    const max = Math.max(...availabilitySelection);
+    const fromDate = isoDateStrFor(min);
+    const toDate = isoDateStrFor(max);
+
+    const bhTiers = BOAT_BH_CONFIGS[boat] || [BOAT_TOTAL_BH[boat]];
+    const confirmedEntry = localTripPricing[`${boat}|${firstDateStr}|${type}`];
+
+    const tiersPayload: RateTierDto[] = bhTiers.map((bh, idx) => {
+      const draftKey = `${type}|${bh}`;
+      const existing = confirmedEntry?.tiers?.[bh];
+      const fallback = buildDefaultPricing(boat)[type]?.tiers?.[bh];
+      const draft = priceDrafts[draftKey] || {
+        base: existing?.base ?? fallback?.base ?? 0,
+        extraAdult: existing?.extraAdult ?? fallback?.extraAdult ?? 0,
+        extraChild: existing?.extraChild ?? fallback?.extraChild ?? 0,
+        open: existing?.open ?? false,
+      };
+
+      return {
+        boatConfigurationId: bh,
+        isOpen: draft.open,
+        basePrice: draft.base,
+        extraAdultPrice: draft.extraAdult,
+        extraChildPrice: draft.extraChild,
+      };
+    });
+
+    const isAnyOpen = tiersPayload.some((t) => t.isOpen);
+    if (!isAnyOpen) {
+      setConfirmRatesError(type);
+      return;
+    }
+
+    setIsMutating(true);
+    setConfirmRatesError(null);
+    try {
+      const res = await updateAvailabilityRates(selectedBoatId, {
+        fromDate,
+        toDate,
+        cruiseType: toBackendCruiseType(type),
+        tiers: tiersPayload,
+      });
+      if (res.data) {
+        setSelectionData(res.data);
+        await loadCalendar();
+        setConfirmRatesSuccess(type);
+        setTimeout(() => setConfirmRatesSuccess(null), 2500);
+
+        // Update local pricing cache
+        setLocalTripPricing((prev) => {
+          const next = { ...prev };
+          const tiersObj: Record<number, any> = {};
+          tiersPayload.forEach((t) => {
+            tiersObj[t.boatConfigurationId] = {
+              base: t.basePrice,
+              extraAdult: t.extraAdultPrice,
+              extraChild: t.extraChildPrice,
+              open: t.isOpen,
+            };
+          });
+          selectedDates.forEach((dateStr) => {
+            next[`${boat}|${dateStr}|${type}`] = { tiers: tiersObj };
+          });
+          return next;
+        });
+
+        // Clear drafts for this type
+        setPriceDrafts((prev) => {
+          const next = { ...prev };
+          delete next[`_editing_${type}`];
+          bhTiers.forEach((bh) => delete next[`${type}|${bh}`]);
+          return next;
+        });
+      } else if (res.error) {
+        const errorMsg = typeof res.error === "string" ? res.error : (res.error as any)?.message || "Failed to update rates";
+        setConfirmRatesError(errorMsg);
+      }
+    } catch (err) {
+      console.error("Failed to update rates:", err);
+    } finally {
+      setIsMutating(false);
+    }
+  };
+
+  // Set Shared Inventory Limit (PUT /shared-inventory)
+  const handleUpdateSharedInventory = async (limit: number) => {
+    if (availabilitySelection.length === 0) return;
+    const min = Math.min(...availabilitySelection);
+    const max = Math.max(...availabilitySelection);
+    const fromDate = isoDateStrFor(min);
+    const toDate = isoDateStrFor(max);
+
+    setIsMutating(true);
+    try {
+      const res = await updateAvailabilitySharedInventory(selectedBoatId, {
+        fromDate,
+        toDate,
+        sellableRoomLimit: limit,
+      });
+      if (res.data) {
+        setSelectionData(res.data);
+        await loadCalendar();
+      } else if (res.error) {
+        const errorMsg = typeof res.error === "string" ? res.error : (res.error as any)?.message || "Failed to update shared inventory";
+        Alert.alert("Error", errorMsg);
+      }
+    } catch (err) {
+      console.error("Failed to update shared inventory:", err);
+    } finally {
+      setIsMutating(false);
+    }
+  };
 
   const getFormattedNextDay = (dateStr: string) => {
     const d = safeParseDate(dateStr);
@@ -471,10 +698,10 @@ export default function AvailabilityScreen() {
           <Text style={{ fontSize: 26, fontWeight: "800", color: COLORS.navy }}>{boat}</Text>
         </View>
 
-        {isLoading ? (
+        {isLoading || isCalendarLoading ? (
           <View style={{ paddingVertical: 100, justifyContent: "center", alignItems: "center" }}>
             <ActivityIndicator size="large" color={COLORS.teal} />
-            <Text style={{ marginTop: 10, color: COLORS.muted, fontSize: 14 }}>Loading calendar state...</Text>
+            <Text style={{ marginTop: 10, color: COLORS.muted, fontSize: 14 }}>Loading availability calendar...</Text>
           </View>
         ) : (
           <>
@@ -526,18 +753,43 @@ export default function AvailabilityScreen() {
                     {row.map((day, cellIdx) => {
                       if (!day) return <View key={`blank-${rowIdx}-${cellIdx}`} style={{ flex: 1, aspectRatio: 1 }} />;
 
-                      const dateStr = dateStrFor(day);
-                      const result = getAvailabilityStatus(boat, dateStr, allBookings, allBlockedDates, localDateOpenState, localTripPricing);
+                      const isoDate = isoDateStrFor(day);
+                      const availDay = calendarData?.days?.find((d) => d.date === isoDate);
+                      const mockResult = getAvailabilityStatus(boat, dateStrFor(day), allBookings, allBlockedDates, localDateOpenState, localTripPricing);
+
                       const selected = isInSelection(day);
-                      const isClosed = result.status === "closed";
-                      
-                      let background = selected ? COLORS.tealMedium : isClosed ? "#E2E8F0" : result.status === "empty" ? STATUS_TINTS.empty : STATUS_TINTS[result.background ?? ""] || COLORS.white;
-                      const openDots = !isClosed && result.circles ? TRIP_TYPES.map(type => result.circles[type as keyof typeof result.circles]).filter(Boolean) : [];
+                      const isClosed = availDay ? availDay.manualSalesState === "CLOSED" : mockResult.status === "closed";
+                      const hasAddedBooking = availDay ? availDay.hasAddedBooking : mockResult.hasDirectBooking;
+
+                      let background = selected
+                        ? COLORS.tealMedium
+                        : isClosed
+                        ? "#E2E8F0"
+                        : mockResult.status === "empty"
+                        ? STATUS_TINTS.empty
+                        : STATUS_TINTS[mockResult.background ?? ""] || COLORS.white;
+
+                      // Derive dot indicators from API cruiseTypes if available
+                      const openDots: string[] = [];
+                      if (!isClosed && availDay?.cruiseTypes) {
+                        availDay.cruiseTypes.forEach((ct) => {
+                          if (ct.offered) {
+                            if (ct.inventoryState === "SOLD_OUT") openDots.push("red");
+                            else if (ct.effectiveSalesState === "SELLABLE") openDots.push("green");
+                            else openDots.push("amber");
+                          }
+                        });
+                      } else if (!isClosed && mockResult.circles) {
+                        TRIP_TYPES.forEach((type) => {
+                          const col = mockResult.circles[type as keyof typeof mockResult.circles];
+                          if (col) openDots.push(col);
+                        });
+                      }
 
                       return (
                         <Pressable
                           key={day}
-                          testID={`calendar-day-${toISODate(dateStr)}`}
+                          testID={`calendar-day-${isoDate}`}
                           onPress={() => handleDayTap(day)}
                           style={{
                             flex: 1,
@@ -550,7 +802,7 @@ export default function AvailabilityScreen() {
                             borderColor: isTodayDay(day) ? COLORS.navy : COLORS.border,
                           }}
                         >
-                          {!isClosed && result.hasDirectBooking && (
+                          {!isClosed && hasAddedBooking && (
                             <Text style={{ fontSize: 7, fontWeight: "800", color: selected ? COLORS.white : COLORS.navy, marginBottom: 1 }}>AB</Text>
                           )}
                           <Text
@@ -565,7 +817,7 @@ export default function AvailabilityScreen() {
                           {!isClosed && openDots.length > 0 && (
                             <View style={{ flexDirection: "row", gap: 2, marginTop: 2 }}>
                               {openDots.map((color, idx) => (
-                                <View key={idx} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: STATUS_COLORS[color ?? ""], borderWidth: selected ? 1 : 0, borderColor: COLORS.white }} />
+                                <View key={idx} style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: STATUS_COLORS[color] || COLORS.green, borderWidth: selected ? 1 : 0, borderColor: COLORS.white }} />
                               ))}
                             </View>
                           )}
@@ -619,484 +871,442 @@ export default function AvailabilityScreen() {
                   marginBottom: 16,
                 }}
               >
-                {/* Date Status toggle row */}
-                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border, marginBottom: 18 }}>
-                  <View style={{ flex: 1, marginRight: 10 }}>
-                    <Text style={{ fontSize: 15, fontWeight: "700", color: COLORS.navy }}>Date Status</Text>
-                    <Text style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }}>
-                      {hasRealBookingOnSelection ? "Has a confirmed booking — can't be closed" : "Closed by default until opened"}
-                    </Text>
-                  </View>
-
-                  <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                    <View style={{ backgroundColor: isDateOpen ? COLORS.tealLight : COLORS.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
-                      <Text style={{ fontSize: 11, fontWeight: "700", color: isDateOpen ? COLORS.teal : COLORS.muted }}>
-                        {isDateOpen ? "Open" : "Closed"}
-                      </Text>
-                    </View>
-                    <Switch
-                      value={isDateOpen}
-                      disabled={hasRealBookingOnSelection}
-                      onValueChange={(val) => {
-                        setLocalDateOpenState((prev) => {
-                          const next = { ...prev };
-                          selectedDates.forEach((dateStr) => {
-                            next[`${boat}|${dateStr}`] = val;
-                          });
-                          return next;
-                        });
-                      }}
-                      trackColor={{ false: COLORS.border, true: COLORS.teal }}
-                    />
-                  </View>
-                </View>
-
-                {/* Subtitle */}
-                <Text style={{ fontSize: 15, fontWeight: "700", color: COLORS.navy, marginBottom: 4 }}>Open/Close Cruise Types</Text>
-                <Text style={{ fontSize: 12, color: COLORS.muted, marginBottom: 16 }}>
-                  Choose which cruise types are open to booking for the selected dates.
-                </Text>
-
-                {/* Shared unit indicator */}
-                {isShared && isDateOpen && totalUnits && (() => {
-                  const bookedRoomsOnSelection = selectedDates.reduce((max, dateStr) => {
-                    const sum = allBookings
-                      .filter(b => b.boat === boat && isBookingCoveringDate(b, dateStr))
-                      .reduce((acc, b) => acc + (b.rooms || 1), 0);
-                    return Math.max(max, sum);
-                  }, 0);
-                  const maxAvailableUnits = Math.max(0, totalUnits - bookedRoomsOnSelection);
-                  const sharedKey = `${boat}|${firstDateStr}`;
-                  const currentAvailableUnits = localSharedUnits[sharedKey] ?? maxAvailableUnits;
-
-                  return (
-                    <View style={{ backgroundColor: COLORS.bg, borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: COLORS.border }}>
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                        <View>
-                          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy }}>Rooms available</Text>
-                          <Text style={{ fontSize: 11, color: COLORS.muted, marginTop: 2 }}>
-                            Configured: {totalUnits} · Booked: {bookedRoomsOnSelection}
-                          </Text>
-                        </View>
-                        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                          <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.teal }}>{currentAvailableUnits}</Text>
-                          <Pressable
-                            onPress={() => setUnitsEditingKey(unitsEditingKey === sharedKey ? null : sharedKey)}
-                            style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.teal, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}
-                          >
-                            <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.teal }}>
-                              {unitsEditingKey === sharedKey ? "Done" : "Edit"}
-                            </Text>
-                          </Pressable>
-                        </View>
+                {isSelectionLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.teal} style={{ paddingVertical: 20 }} />
+                ) : (
+                  <>
+                    {/* Blocking reasons alert banner if present */}
+                    {selectionData?.allowedActions?.blockingReasons && selectionData.allowedActions.blockingReasons.length > 0 && (
+                      <View style={{ backgroundColor: "#FEF2F2", borderWidth: 1, borderColor: "#FCA5A5", borderRadius: 12, padding: 10, marginBottom: 14 }}>
+                        {selectionData.allowedActions.blockingReasons.map((reason, idx) => (
+                          <Text key={idx} style={{ fontSize: 12, color: COLORS.red, fontWeight: "600" }}>• {reason}</Text>
+                        ))}
                       </View>
-
-                      {unitsEditingKey === sharedKey && (
-                        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.border }}>
-                          <Text style={{ fontSize: 12, color: COLORS.navy, fontWeight: "600" }}>Available units (Max {maxAvailableUnits}):</Text>
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-                            <Pressable
-                              onPress={() => {
-                                const val = Math.max(0, currentAvailableUnits - 1);
-                                setLocalSharedUnits(prev => {
-                                  const next = { ...prev };
-                                  selectedDates.forEach(d => { next[`${boat}|${d}`] = val; });
-                                  return next;
-                                });
-                              }}
-                              style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" }}
-                            >
-                              <Text style={{ fontSize: 16, fontWeight: "700", color: COLORS.navy }}>-</Text>
-                            </Pressable>
-                            <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.navy, minWidth: 20, textAlign: "center" }}>{currentAvailableUnits}</Text>
-                            <Pressable
-                              onPress={() => {
-                                const val = Math.min(maxAvailableUnits, currentAvailableUnits + 1);
-                                setLocalSharedUnits(prev => {
-                                  const next = { ...prev };
-                                  selectedDates.forEach(d => { next[`${boat}|${d}`] = val; });
-                                  return next;
-                                });
-                              }}
-                              style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" }}
-                            >
-                              <Text style={{ fontSize: 16, fontWeight: "700", color: COLORS.navy }}>+</Text>
-                            </Pressable>
-                          </View>
-                        </View>
-                      )}
-                    </View>
-                  );
-                })()}
-
-                {/* Trip pricing list */}
-                <View style={{ gap: 10, opacity: isDateOpen ? 1 : 0.5, pointerEvents: isDateOpen ? "auto" : "none" }}>
-                  {TRIP_TYPES.map((type) => {
-                    const isExpanded = expandedTripType === type;
-                    const bhTiers = BOAT_BH_CONFIGS[boat] || [BOAT_TOTAL_BH[boat]];
-                    const firstKey = `${boat}|${firstDateStr}|${type}`;
-                    const confirmedEntry = localTripPricing[firstKey];
-
-                    const isTypeOpen = bhTiers.some((bh) => {
-                      const dk = `${type}|${bh}`;
-                      if (priceDrafts[dk] !== undefined) return priceDrafts[dk].open;
-                      return confirmedEntry?.tiers?.[bh]?.open ?? false;
-                    });
-
-                    return (
-                      <View key={type} style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, overflow: "hidden" }}>
-                        {/* Header row */}
-                        <Pressable
-                          onPress={() => {
-                            if (!isDateOpen) return;
-                            setExpandedTripType(isExpanded ? null : type);
-                            setConfirmRatesError(null);
-                          }}
-                          style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12 }}
-                        >
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-                            <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.tealLight, alignItems: "center", justifyContent: "center" }}>
-                              {type === "Day Cruise" ? <Sun size={17} color={COLORS.teal} /> : type === "Overnight Stay" ? <Moon size={17} color={COLORS.teal} /> : <Sunrise size={17} color={COLORS.teal} />}
-                            </View>
-                            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-                              <Text style={{ fontSize: 14, fontWeight: "600", color: COLORS.navy }}>{type}</Text>
-                              {!isShared && (
-                                <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.muted }}>
-                                  {bhTiers.map((bh, idx) => {
-                                    const tierOpen = confirmedEntry?.tiers?.[bh]?.open === true;
-                                    return (
-                                      <Text key={bh}>
-                                        <Text style={{ color: tierOpen ? COLORS.teal : COLORS.muted }}>{bh}BH</Text>
-                                        {idx < bhTiers.length - 1 ? <Text style={{ color: COLORS.muted }}>/</Text> : null}
-                                      </Text>
-                                    );
-                                  })}
-                                </Text>
-                              )}
-                            </View>
-                          </View>
-
-                          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                            <View style={{ backgroundColor: isTypeOpen ? COLORS.tealLight : COLORS.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
-                              <Text style={{ fontSize: 11, fontWeight: "700", color: isTypeOpen ? COLORS.teal : COLORS.muted }}>
-                                {isTypeOpen ? "Open" : "Closed"}
-                              </Text>
-                            </View>
-                            {isExpanded ? <ChevronUp size={14} color={COLORS.muted} /> : <ChevronDown size={14} color={COLORS.muted} />}
-                          </View>
-                        </Pressable>
-
-                        {/* Expanded content */}
-                        {isExpanded && (
-                          <View style={{ paddingHorizontal: 12, paddingBottom: 14, borderTopWidth: 1, borderTopColor: COLORS.border }}>
-                            {/* Confirmed banner or Edit link */}
-                            {confirmedEntry && !priceDrafts[`_editing_${type}`] && (
-                              <View style={{ marginTop: 10, marginBottom: 10, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: COLORS.tealLight, borderRadius: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-                                <Text style={{ fontSize: 11, color: COLORS.teal, fontWeight: "600" }}>Confirmed rates set for this date</Text>
-                                <Pressable onPress={() => setPriceDrafts(prev => ({ ...prev, [`_editing_${type}`]: true }))}>
-                                  <Text style={{ fontSize: 11, color: COLORS.teal, fontWeight: "700", textDecorationLine: "underline" }}>Edit</Text>
-                                </Pressable>
-                              </View>
-                            )}
-
-                            {/* Per-BH tier rows */}
-                            {bhTiers.map((bh) => {
-                              const draftKey = `${type}|${bh}`;
-                              const existing = confirmedEntry?.tiers?.[bh];
-                              const fallback = buildDefaultPricing(boat)[type]?.tiers?.[bh];
-                              const draft = priceDrafts[draftKey] || {
-                                base: existing?.base ?? fallback?.base ?? 0,
-                                extraAdult: existing?.extraAdult ?? fallback?.extraAdult ?? 0,
-                                extraChild: existing?.extraChild ?? fallback?.extraChild ?? 0,
-                                open: existing?.open ?? false,
-                              };
-                              const showAsReadonly = confirmedEntry && !priceDrafts[`_editing_${type}`];
-                              const tierOpen = draft.open;
-                              const closingBlocked = tierOpen && isCruiseTypeBooked(boat, firstDateStr, type);
-
-                              return (
-                                <View
-                                  key={bh}
-                                  style={{
-                                    marginTop: 12,
-                                    paddingLeft: 10,
-                                    borderLeftWidth: 2,
-                                    borderLeftColor: tierOpen ? COLORS.teal : COLORS.border,
-                                  }}
-                                >
-                                  {/* BH label + open/close toggle */}
-                                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                                    <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.navy }}>
-                                      {isShared ? null : `${bh}BH`}
-                                    </Text>
-                                    {!showAsReadonly ? (
-                                      <Pressable
-                                        onPress={() => {
-                                          if (closingBlocked) {
-                                            setConfirmRatesError(`${type}|${bh}|booked`);
-                                            return;
-                                          }
-                                          const nextTierOpen = !tierOpen;
-                                          const willAllTiersBeClosed = bhTiers.every((obh) => {
-                                            if (obh === bh) return !nextTierOpen;
-                                            const otherDk = `${type}|${obh}`;
-                                            if (priceDrafts[otherDk] !== undefined) return !priceDrafts[otherDk].open;
-                                            return !(confirmedEntry?.tiers?.[obh]?.open ?? false);
-                                          });
-
-                                          if (willAllTiersBeClosed) {
-                                            setLocalTripPricing(prev => {
-                                              const next = { ...prev };
-                                              const tiers: Record<number, any> = {};
-                                              bhTiers.forEach((tbh) => {
-                                                const fallback = buildDefaultPricing(boat)[type]?.tiers?.[tbh];
-                                                const existing = confirmedEntry?.tiers?.[tbh];
-                                                tiers[tbh] = {
-                                                  base: existing?.base ?? fallback?.base ?? 0,
-                                                  extraAdult: existing?.extraAdult ?? fallback?.extraAdult ?? 0,
-                                                  extraChild: existing?.extraChild ?? fallback?.extraChild ?? 0,
-                                                  open: false,
-                                                };
-                                              });
-                                              selectedDates.forEach((dateStr) => {
-                                                next[`${boat}|${dateStr}|${type}`] = { tiers };
-                                              });
-                                              return next;
-                                            });
-                                            setPriceDrafts(prev => {
-                                              const next = { ...prev };
-                                              delete next[`_editing_${type}`];
-                                              bhTiers.forEach((tbh) => delete next[`${type}|${tbh}`]);
-                                              return next;
-                                            });
-                                            setConfirmRatesError(null);
-                                          } else {
-                                            setPriceDrafts(prev => ({ ...prev, [draftKey]: { ...draft, open: nextTierOpen } }));
-                                            if (nextTierOpen) setConfirmRatesError(null);
-                                          }
-                                        }}
-                                        style={{ flexDirection: "row", alignItems: "center", gap: 6, opacity: closingBlocked ? 0.6 : 1 }}
-                                      >
-                                        <Text style={{ fontSize: 10, fontWeight: "700", color: tierOpen ? COLORS.teal : COLORS.muted }}>
-                                          {tierOpen ? "Open" : "Closed"}
-                                        </Text>
-                                        <View style={{ width: 30, height: 18, borderRadius: 999, backgroundColor: tierOpen ? COLORS.teal : COLORS.border, position: "relative" }}>
-                                          <View
-                                            style={{
-                                              width: 13,
-                                              height: 13,
-                                              borderRadius: 7,
-                                              backgroundColor: COLORS.white,
-                                              position: "absolute",
-                                              top: 2.5,
-                                              left: tierOpen ? 14 : 2.5,
-                                            }}
-                                          />
-                                        </View>
-                                      </Pressable>
-                                    ) : (
-                                      <Text style={{ fontSize: 10, fontWeight: "700", color: tierOpen ? COLORS.teal : COLORS.muted }}>
-                                        {tierOpen ? "Open" : "Closed"}
-                                      </Text>
-                                    )}
-                                  </View>
-
-                                  {/* Closing blocked error */}
-                                  {confirmRatesError === `${type}|${bh}|booked` && (
-                                    <Text style={{ fontSize: 11, fontWeight: "600", color: COLORS.red, marginBottom: 8 }}>
-                                      This date already has a confirmed booking and can't be closed.
-                                    </Text>
-                                  )}
-
-                                  {/* Price fields */}
-                                  {([
-                                    { label: "Base Price", field: "base" },
-                                    { label: "Extra Adult Price", field: "extraAdult" },
-                                    { label: "Extra Child Price", field: "extraChild" },
-                                  ] as { label: string; field: "base" | "extraAdult" | "extraChild" }[]).map(({ label, field }) => (
-                                    <View key={field} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
-                                      <Text style={{ fontSize: 12, color: COLORS.muted }}>{label}</Text>
-                                      {showAsReadonly ? (
-                                        <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.navy }}>
-                                          ₹{(draft[field] as number).toLocaleString("en-IN")}
-                                        </Text>
-                                      ) : (
-                                        <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
-                                          <Text style={{ fontSize: 12, color: COLORS.muted }}>₹</Text>
-                                          <TextInput
-                                            keyboardType="numeric"
-                                            value={String(draft[field])}
-                                            onChangeText={(val) => {
-                                              const value = parseInt(val, 10) || 0;
-                                              setPriceDrafts(prev => ({ ...prev, [draftKey]: { ...draft, [field]: value } }));
-                                            }}
-                                            style={{
-                                              width: 90,
-                                              fontSize: 12,
-                                              fontWeight: "700",
-                                              color: COLORS.navy,
-                                              borderWidth: 1,
-                                              borderColor: COLORS.border,
-                                              borderRadius: 8,
-                                              paddingHorizontal: 8,
-                                              paddingVertical: 4,
-                                              textAlign: "right",
-                                            }}
-                                          />
-                                        </View>
-                                      )}
-                                    </View>
-                                  ))}
-                                </View>
-                              );
-                            })}
-
-                            {/* Confirm Rates button */}
-                            {(!confirmedEntry || priceDrafts[`_editing_${type}`]) && (
-                              <>
-                                {confirmRatesError === type && (
-                                  <Text style={{ marginTop: 10, fontSize: 12, fontWeight: "600", color: COLORS.red }}>
-                                    To confirm rates, you must open at least 1 configuration.
-                                  </Text>
-                                )}
-                                <Pressable
-                                  onPress={() => {
-                                    if (!isTypeOpen) { setConfirmRatesError(type); return; }
-                                    const willBeOpen = bhTiers.some((bh) => {
-                                      const dk = `${type}|${bh}`;
-                                      const existing = confirmedEntry?.tiers?.[bh];
-                                      const d = priceDrafts[dk] || { open: existing?.open ?? false };
-                                      return d.open;
-                                    });
-                                    if (!willBeOpen) { setConfirmRatesError(type); return; }
-                                    setConfirmRatesError(null);
-                                    // Commit drafts to localTripPricing
-                                    setLocalTripPricing(prev => {
-                                      const next = { ...prev };
-                                      const tiers: Record<number, any> = {};
-                                      bhTiers.forEach((bh) => {
-                                        const dk = `${type}|${bh}`;
-                                        const fallback = buildDefaultPricing(boat)[type]?.tiers?.[bh];
-                                        const existing = confirmedEntry?.tiers?.[bh];
-                                        const d = priceDrafts[dk] || {
-                                          base: existing?.base ?? fallback?.base ?? 0,
-                                          extraAdult: existing?.extraAdult ?? fallback?.extraAdult ?? 0,
-                                          extraChild: existing?.extraChild ?? fallback?.extraChild ?? 0,
-                                          open: existing?.open ?? false,
-                                        };
-                                        tiers[bh] = d;
-                                      });
-                                      selectedDates.forEach((dateStr) => {
-                                        next[`${boat}|${dateStr}|${type}`] = { tiers };
-                                      });
-                                      return next;
-                                    });
-                                    // Clear drafts for this type
-                                    setPriceDrafts(prev => {
-                                      const next = { ...prev };
-                                      delete next[`_editing_${type}`];
-                                      bhTiers.forEach((bh) => delete next[`${type}|${bh}`]);
-                                      return next;
-                                    });
-                                    setConfirmRatesSuccess(type);
-                                    setTimeout(() => setConfirmRatesSuccess(null), 2500);
-                                  }}
-                                  style={{
-                                    marginTop: 14,
-                                    backgroundColor: confirmRatesSuccess === type ? COLORS.green : isTypeOpen ? COLORS.teal : COLORS.border,
-                                    borderRadius: 10,
-                                    paddingVertical: 10,
-                                    flexDirection: "row",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    gap: 6,
-                                  }}
-                                >
-                                  {confirmRatesSuccess === type ? (
-                                    <>
-                                      <CheckCircle size={15} color={COLORS.white} />
-                                      <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.white }}>Rates Confirmed!</Text>
-                                    </>
-                                  ) : (
-                                    <Text style={{ fontSize: 13, fontWeight: "700", color: isTypeOpen ? COLORS.white : COLORS.muted }}>
-                                      Confirm Rates
-                                    </Text>
-                                  )}
-                                </Pressable>
-                              </>
-                            )}
-                          </View>
-                        )}
-                      </View>
-                    );
-                  })}
-                </View>
-
-                {/* Add/Modify Booking actions */}
-                {isDateOpen && (
-                  <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
-                    {/* Modify Booking button if there is a direct booking */}
-                    {allBookings.filter((b) => b.boat === boat && b.isDirect && b.status !== "cancelled" && b.status !== "deleted" && selectedDates.includes(b.date)).length > 0 && (
-                      <Pressable
-                        onPress={() => {
-                          setModifySelectedBookingId(null);
-                          setModifyBookingListOpen(true);
-                        }}
-                        style={{
-                          flex: 1,
-                          backgroundColor: COLORS.bg,
-                          borderWidth: 1,
-                          borderColor: COLORS.border,
-                          borderRadius: 14,
-                          padding: 14,
-                          alignItems: "center",
-                          gap: 6,
-                        }}
-                      >
-                        <Pencil size={18} color={COLORS.navy} />
-                        <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy }}>Modify Booking</Text>
-                      </Pressable>
                     )}
 
-                    <Pressable
-                      onPress={() => {
-                        const firstDate = selectedDates[0];
+                    {/* Date Status toggle row */}
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border, marginBottom: 18 }}>
+                      <View style={{ flex: 1, marginRight: 10 }}>
+                        <Text style={{ fontSize: 15, fontWeight: "700", color: COLORS.navy }}>Date Status</Text>
+                        <Text style={{ fontSize: 12, color: COLORS.muted, marginTop: 2 }}>
+                          {hasRealBookingOnSelection ? "Has a confirmed booking — can't be closed" : "Closed by default until opened"}
+                        </Text>
+                      </View>
+
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                        <View style={{ backgroundColor: isDateOpen ? COLORS.tealLight : COLORS.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+                          <Text style={{ fontSize: 11, fontWeight: "700", color: isDateOpen ? COLORS.teal : COLORS.muted }}>
+                            {isDateOpen ? "Open" : "Closed"}
+                          </Text>
+                        </View>
+                        <Switch
+                          value={isDateOpen}
+                          disabled={hasRealBookingOnSelection || isMutating || (selectionData?.allowedActions ? (!isDateOpen && !selectionData.allowedActions.canOpen) || (isDateOpen && !selectionData.allowedActions.canClose) : false)}
+                          onValueChange={(val) => {
+                            handleToggleDateStatus(val);
+                            setLocalDateOpenState((prev) => {
+                              const next = { ...prev };
+                              selectedDates.forEach((dateStr) => {
+                                next[`${boat}|${dateStr}`] = val;
+                              });
+                              return next;
+                            });
+                          }}
+                          trackColor={{ false: COLORS.border, true: COLORS.teal }}
+                        />
+                      </View>
+                    </View>
+
+                    {/* Subtitle */}
+                    <Text style={{ fontSize: 15, fontWeight: "700", color: COLORS.navy, marginBottom: 4 }}>Open/Close Cruise Types</Text>
+                    <Text style={{ fontSize: 12, color: COLORS.muted, marginBottom: 16 }}>
+                      Choose which cruise types are open to booking for the selected dates.
+                    </Text>
+
+                    {/* Shared unit indicator */}
+                    {isShared && isDateOpen && totalUnits && (() => {
+                      const firstDateData = selectionData?.dates?.[0];
+                      const firstCt = firstDateData?.cruiseTypes?.[0];
+                      const bookedRoomsOnSelection = firstCt?.bookedRooms ?? selectedDates.reduce((max, dateStr) => {
+                        const sum = allBookings
+                          .filter(b => b.boat === boat && isBookingCoveringDate(b, dateStr))
+                          .reduce((acc, b) => acc + (b.rooms || 1), 0);
+                        return Math.max(max, sum);
+                      }, 0);
+
+                      const sellableLimit = firstCt?.sellableRoomLimit ?? Math.max(0, totalUnits - bookedRoomsOnSelection);
+                      const sharedKey = `${boat}|${firstDateStr}`;
+                      const currentAvailableUnits = localSharedUnits[sharedKey] ?? sellableLimit;
+
+                      return (
+                        <View style={{ backgroundColor: COLORS.bg, borderRadius: 14, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: COLORS.border }}>
+                          <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                            <View>
+                              <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy }}>Rooms available</Text>
+                              <Text style={{ fontSize: 11, color: COLORS.muted, marginTop: 2 }}>
+                                Configured: {totalUnits} · Booked: {bookedRoomsOnSelection}
+                              </Text>
+                            </View>
+                            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                              <Text style={{ fontSize: 20, fontWeight: "800", color: COLORS.teal }}>{currentAvailableUnits}</Text>
+                              <Pressable
+                                onPress={() => setUnitsEditingKey(unitsEditingKey === sharedKey ? null : sharedKey)}
+                                style={{ backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.teal, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 }}
+                              >
+                                <Text style={{ fontSize: 11, fontWeight: "700", color: COLORS.teal }}>
+                                  {unitsEditingKey === sharedKey ? "Done" : "Edit"}
+                                </Text>
+                              </Pressable>
+                            </View>
+                          </View>
+
+                          {unitsEditingKey === sharedKey && (
+                            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, paddingTop: 10, borderTopWidth: 1, borderTopColor: COLORS.border }}>
+                              <Text style={{ fontSize: 12, color: COLORS.navy, fontWeight: "600" }}>Available units (Max {totalUnits}):</Text>
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+                                <Pressable
+                                  onPress={() => {
+                                    const val = Math.max(0, currentAvailableUnits - 1);
+                                    setLocalSharedUnits(prev => ({ ...prev, [sharedKey]: val }));
+                                    handleUpdateSharedInventory(val);
+                                  }}
+                                  style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" }}
+                                >
+                                  <Text style={{ fontSize: 16, fontWeight: "700", color: COLORS.navy }}>-</Text>
+                                </Pressable>
+                                <Text style={{ fontSize: 15, fontWeight: "800", color: COLORS.navy, minWidth: 20, textAlign: "center" }}>{currentAvailableUnits}</Text>
+                                <Pressable
+                                  onPress={() => {
+                                    const val = Math.min(totalUnits, currentAvailableUnits + 1);
+                                    setLocalSharedUnits(prev => ({ ...prev, [sharedKey]: val }));
+                                    handleUpdateSharedInventory(val);
+                                  }}
+                                  style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: COLORS.white, borderWidth: 1, borderColor: COLORS.border, alignItems: "center", justifyContent: "center" }}
+                                >
+                                  <Text style={{ fontSize: 16, fontWeight: "700", color: COLORS.navy }}>+</Text>
+                                </Pressable>
+                              </View>
+                            </View>
+                          )}
+                        </View>
+                      );
+                    })()}
+
+                    {/* Trip pricing list */}
+                    <View style={{ gap: 10, opacity: isDateOpen ? 1 : 0.5, pointerEvents: isDateOpen ? "auto" : "none" }}>
+                      {TRIP_TYPES.map((type) => {
+                        const isExpanded = expandedTripType === type;
                         const bhTiers = BOAT_BH_CONFIGS[boat] || [BOAT_TOTAL_BH[boat]];
-                        setAddBookingForm({
-                          editingBookingId: undefined,
-                          source: "Direct Booking",
-                          guest: "",
-                          boat,
-                          rooms: bhTiers[0],
-                          type: "Day Cruise",
-                          checkIn: firstDate,
-                          checkOut: firstDate,
-                          adults: 2,
-                          children: 0,
-                          kids: 0,
-                          cots: 0,
-                          dietBreakdown: [{ type: "Veg", count: 2 }],
-                          phone: "",
-                          specialRequests: "",
-                          price: "18500",
-                        });
-                        setAddBookingFormOpen(true);
-                      }}
-                      style={{
-                        flex: 1,
-                        backgroundColor: COLORS.bg,
-                        borderWidth: 1,
-                        borderColor: COLORS.border,
-                        borderRadius: 14,
-                        padding: 14,
-                        alignItems: "center",
-                        gap: 6,
-                      }}
-                    >
-                      <Calendar size={18} color={COLORS.navy} />
-                      <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy }}>Add Booking</Text>
-                    </Pressable>
-                  </View>
+                        const firstKey = `${boat}|${firstDateStr}|${type}`;
+                        const confirmedEntry = localTripPricing[firstKey];
+
+                        const backendCt = selectionData?.dates?.[0]?.cruiseTypes?.find(
+                          (ct) => ct.cruiseType.toUpperCase() === toBackendCruiseType(type)
+                        );
+
+                        const isTypeOpen = backendCt
+                          ? backendCt.pricingState === "OPEN"
+                          : bhTiers.some((bh) => {
+                              const dk = `${type}|${bh}`;
+                              if (priceDrafts[dk] !== undefined) return priceDrafts[dk].open;
+                              return confirmedEntry?.tiers?.[bh]?.open ?? false;
+                            });
+
+                        return (
+                          <View key={type} style={{ borderWidth: 1, borderColor: COLORS.border, borderRadius: 14, overflow: "hidden" }}>
+                            {/* Header row */}
+                            <Pressable
+                              onPress={() => {
+                                if (!isDateOpen) return;
+                                setExpandedTripType(isExpanded ? null : type);
+                                setConfirmRatesError(null);
+                              }}
+                              style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", padding: 12 }}
+                            >
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+                                <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: COLORS.tealLight, alignItems: "center", justifyContent: "center" }}>
+                                  {type === "Day Cruise" ? <Sun size={17} color={COLORS.teal} /> : type === "Overnight Stay" ? <Moon size={17} color={COLORS.teal} /> : <Sunrise size={17} color={COLORS.teal} />}
+                                </View>
+                                <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                                  <Text style={{ fontSize: 14, fontWeight: "600", color: COLORS.navy }}>{type}</Text>
+                                  {!isShared && (
+                                    <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.muted }}>
+                                      {bhTiers.map((bh, idx) => {
+                                        const tierOpen = confirmedEntry?.tiers?.[bh]?.open === true || isTypeOpen;
+                                        return (
+                                          <Text key={bh}>
+                                            <Text style={{ color: tierOpen ? COLORS.teal : COLORS.muted }}>{bh}BH</Text>
+                                            {idx < bhTiers.length - 1 ? <Text style={{ color: COLORS.muted }}>/</Text> : null}
+                                          </Text>
+                                        );
+                                      })}
+                                    </Text>
+                                  )}
+                                </View>
+                              </View>
+
+                              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                                <View style={{ backgroundColor: isTypeOpen ? COLORS.tealLight : COLORS.border, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3 }}>
+                                  <Text style={{ fontSize: 11, fontWeight: "700", color: isTypeOpen ? COLORS.teal : COLORS.muted }}>
+                                    {isTypeOpen ? "Open" : "Closed"}
+                                  </Text>
+                                </View>
+                                {isExpanded ? <ChevronUp size={14} color={COLORS.muted} /> : <ChevronDown size={14} color={COLORS.muted} />}
+                              </View>
+                            </Pressable>
+
+                            {/* Expanded content */}
+                            {isExpanded && (
+                              <View style={{ paddingHorizontal: 12, paddingBottom: 14, borderTopWidth: 1, borderTopColor: COLORS.border }}>
+                                {/* Confirmed banner or Edit link */}
+                                {confirmedEntry && !priceDrafts[`_editing_${type}`] && (
+                                  <View style={{ marginTop: 10, marginBottom: 10, paddingHorizontal: 10, paddingVertical: 8, backgroundColor: COLORS.tealLight, borderRadius: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                                    <Text style={{ fontSize: 11, color: COLORS.teal, fontWeight: "600" }}>Confirmed rates set for this date</Text>
+                                    <Pressable onPress={() => setPriceDrafts(prev => ({ ...prev, [`_editing_${type}`]: true }))}>
+                                      <Text style={{ fontSize: 11, color: COLORS.teal, fontWeight: "700", textDecorationLine: "underline" }}>Edit</Text>
+                                    </Pressable>
+                                  </View>
+                                )}
+
+                                {/* Per-BH tier rows */}
+                                {bhTiers.map((bh) => {
+                                  const draftKey = `${type}|${bh}`;
+                                  const existing = confirmedEntry?.tiers?.[bh];
+                                  const fallback = buildDefaultPricing(boat)[type]?.tiers?.[bh];
+                                  const draft = priceDrafts[draftKey] || {
+                                    base: existing?.base ?? fallback?.base ?? 0,
+                                    extraAdult: existing?.extraAdult ?? fallback?.extraAdult ?? 0,
+                                    extraChild: existing?.extraChild ?? fallback?.extraChild ?? 0,
+                                    open: existing?.open ?? false,
+                                  };
+                                  const showAsReadonly = confirmedEntry && !priceDrafts[`_editing_${type}`];
+                                  const tierOpen = draft.open;
+                                  const closingBlocked = tierOpen && hasRealBookingOnSelection;
+
+                                  return (
+                                    <View
+                                      key={bh}
+                                      style={{
+                                        marginTop: 12,
+                                        paddingLeft: 10,
+                                        borderLeftWidth: 2,
+                                        borderLeftColor: tierOpen ? COLORS.teal : COLORS.border,
+                                      }}
+                                    >
+                                      {/* BH label + open/close toggle */}
+                                      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                                        <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.navy }}>
+                                          {isShared ? null : `${bh}BH`}
+                                        </Text>
+                                        {!showAsReadonly ? (
+                                          <Pressable
+                                            onPress={() => {
+                                              if (closingBlocked) {
+                                                setConfirmRatesError(`${type}|${bh}|booked`);
+                                                return;
+                                              }
+                                              const nextTierOpen = !tierOpen;
+                                              setPriceDrafts(prev => ({ ...prev, [draftKey]: { ...draft, open: nextTierOpen } }));
+                                              if (nextTierOpen) setConfirmRatesError(null);
+                                            }}
+                                            style={{ flexDirection: "row", alignItems: "center", gap: 6, opacity: closingBlocked ? 0.6 : 1 }}
+                                          >
+                                            <Text style={{ fontSize: 10, fontWeight: "700", color: tierOpen ? COLORS.teal : COLORS.muted }}>
+                                              {tierOpen ? "Open" : "Closed"}
+                                            </Text>
+                                            <View style={{ width: 30, height: 18, borderRadius: 999, backgroundColor: tierOpen ? COLORS.teal : COLORS.border, position: "relative" }}>
+                                              <View
+                                                style={{
+                                                  width: 13,
+                                                  height: 13,
+                                                  borderRadius: 7,
+                                                  backgroundColor: COLORS.white,
+                                                  position: "absolute",
+                                                  top: 2.5,
+                                                  left: tierOpen ? 14 : 2.5,
+                                                }}
+                                              />
+                                            </View>
+                                          </Pressable>
+                                        ) : (
+                                          <Text style={{ fontSize: 10, fontWeight: "700", color: tierOpen ? COLORS.teal : COLORS.muted }}>
+                                            {tierOpen ? "Open" : "Closed"}
+                                          </Text>
+                                        )}
+                                      </View>
+
+                                      {/* Closing blocked error */}
+                                      {confirmRatesError === `${type}|${bh}|booked` && (
+                                        <Text style={{ fontSize: 11, fontWeight: "600", color: COLORS.red, marginBottom: 8 }}>
+                                          This date already has a confirmed booking and can't be closed.
+                                        </Text>
+                                      )}
+
+                                      {/* Price fields */}
+                                      {([
+                                        { label: "Base Price", field: "base" },
+                                        { label: "Extra Adult Price", field: "extraAdult" },
+                                        { label: "Extra Child Price", field: "extraChild" },
+                                      ] as { label: string; field: "base" | "extraAdult" | "extraChild" }[]).map(({ label, field }) => (
+                                        <View key={field} style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 6 }}>
+                                          <Text style={{ fontSize: 12, color: COLORS.muted }}>{label}</Text>
+                                          {showAsReadonly ? (
+                                            <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.navy }}>
+                                              ₹{(draft[field] as number).toLocaleString("en-IN")}
+                                            </Text>
+                                          ) : (
+                                            <View style={{ flexDirection: "row", alignItems: "center", gap: 2 }}>
+                                              <Text style={{ fontSize: 12, color: COLORS.muted }}>₹</Text>
+                                              <TextInput
+                                                keyboardType="numeric"
+                                                value={String(draft[field])}
+                                                onChangeText={(val) => {
+                                                  const value = parseInt(val, 10) || 0;
+                                                  setPriceDrafts(prev => ({ ...prev, [draftKey]: { ...draft, [field]: value } }));
+                                                }}
+                                                style={{
+                                                  width: 90,
+                                                  fontSize: 12,
+                                                  fontWeight: "700",
+                                                  color: COLORS.navy,
+                                                  borderWidth: 1,
+                                                  borderColor: COLORS.border,
+                                                  borderRadius: 8,
+                                                  paddingHorizontal: 8,
+                                                  paddingVertical: 4,
+                                                  textAlign: "right",
+                                                }}
+                                              />
+                                            </View>
+                                          )}
+                                        </View>
+                                      ))}
+                                    </View>
+                                  );
+                                })}
+
+                                {/* Confirm Rates button */}
+                                {(!confirmedEntry || priceDrafts[`_editing_${type}`]) && (
+                                  <>
+                                    {confirmRatesError === type && (
+                                      <Text style={{ marginTop: 10, fontSize: 12, fontWeight: "600", color: COLORS.red }}>
+                                        To confirm rates, you must open at least 1 configuration.
+                                      </Text>
+                                    )}
+                                    <Pressable
+                                      onPress={() => handleConfirmRates(type)}
+                                      disabled={isMutating}
+                                      style={{
+                                        marginTop: 14,
+                                        backgroundColor: confirmRatesSuccess === type ? COLORS.green : COLORS.teal,
+                                        borderRadius: 10,
+                                        paddingVertical: 10,
+                                        flexDirection: "row",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        gap: 6,
+                                      }}
+                                    >
+                                      {confirmRatesSuccess === type ? (
+                                        <>
+                                          <CheckCircle size={15} color={COLORS.white} />
+                                          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.white }}>Rates Confirmed!</Text>
+                                        </>
+                                      ) : (
+                                        <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.white }}>
+                                          {isMutating ? "Saving..." : "Confirm Rates"}
+                                        </Text>
+                                      )}
+                                    </Pressable>
+                                  </>
+                                )}
+                              </View>
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+
+                    {/* Overlapping Added Bookings list from API */}
+                    {selectionData?.addedBookings && selectionData.addedBookings.length > 0 && (
+                      <View style={{ marginTop: 16, paddingTop: 14, borderTopWidth: 1, borderTopColor: COLORS.border }}>
+                        <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy, marginBottom: 8 }}>Added Bookings</Text>
+                        {selectionData.addedBookings.map((b) => (
+                          <View key={b.bookingId} style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 6 }}>
+                            <Text style={{ fontSize: 12, fontWeight: "600", color: COLORS.navy }}>{b.guestName} ({b.bookingCode})</Text>
+                            <Text style={{ fontSize: 11, color: COLORS.muted }}>{b.cruiseTypeLabel || b.cruiseType}</Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
+
+                    {/* Add/Modify Booking actions */}
+                    {isDateOpen && (
+                      <View style={{ flexDirection: "row", gap: 10, marginTop: 18 }}>
+                        {/* Modify Booking button if there is a direct booking */}
+                        {allBookings.filter((b) => b.boat === boat && b.isDirect && b.status !== "cancelled" && b.status !== "deleted" && selectedDates.includes(b.date)).length > 0 && (
+                          <Pressable
+                            onPress={() => {
+                              setModifySelectedBookingId(null);
+                              setModifyBookingListOpen(true);
+                            }}
+                            style={{
+                              flex: 1,
+                              backgroundColor: COLORS.bg,
+                              borderWidth: 1,
+                              borderColor: COLORS.border,
+                              borderRadius: 14,
+                              padding: 14,
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <Pencil size={18} color={COLORS.navy} />
+                            <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy }}>Modify Booking</Text>
+                          </Pressable>
+                        )}
+
+                        <Pressable
+                          onPress={() => {
+                            const firstDate = selectedDates[0];
+                            const bhTiers = BOAT_BH_CONFIGS[boat] || [BOAT_TOTAL_BH[boat]];
+                            setAddBookingForm({
+                              editingBookingId: undefined,
+                              source: "Direct Booking",
+                              guest: "",
+                              boat,
+                              rooms: bhTiers[0],
+                              type: "Day Cruise",
+                              checkIn: firstDate,
+                              checkOut: firstDate,
+                              adults: 2,
+                              children: 0,
+                              kids: 0,
+                              cots: 0,
+                              dietBreakdown: [{ type: "Veg", count: 2 }],
+                              phone: "",
+                              specialRequests: "",
+                              price: "18500",
+                            });
+                            setAddBookingFormOpen(true);
+                          }}
+                          style={{
+                            flex: 1,
+                            backgroundColor: COLORS.bg,
+                            borderWidth: 1,
+                            borderColor: COLORS.border,
+                            borderRadius: 14,
+                            padding: 14,
+                            alignItems: "center",
+                            gap: 6,
+                          }}
+                        >
+                          <Calendar size={18} color={COLORS.navy} />
+                          <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.navy }}>Add Booking</Text>
+                        </Pressable>
+                      </View>
+                    )}
+                  </>
                 )}
               </View>
             )}
