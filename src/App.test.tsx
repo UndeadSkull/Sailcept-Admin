@@ -135,12 +135,12 @@ describe("App", () => {
   it("shows current month title and weekday headers", async () => {
     const { findAllByText, findByText, findByTestId } = await renderApp();
     const now = new Date();
-    const expectedMonth = now.toLocaleString("en-US", { month: "long", year: "numeric" });
+    const expectedMonthName = now.toLocaleString("en-US", { month: "long" });
 
     await pressByText(findAllByText, "Availability");
     fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
 
-    expect((await findByTestId("calendar-month-title")).props.children).toBe(expectedMonth);
+    expect((await findByTestId("home-calendar-month-title")).props.children).toBe(expectedMonthName);
     expect(await findByText("Sun")).toBeTruthy();
     expect(await findByText("Sat")).toBeTruthy();
   });
@@ -196,11 +196,11 @@ describe("App", () => {
     await pressByText(findAllByText, "Availability");
     fireEvent.press(await findByTestId("boat-card-vembanad-crest"));
     
-    // Find the home month title and verify it shows the current month
+    // Find the home month title and verify it shows the current month name
     const now = new Date();
-    const expectedMonth = now.toLocaleString("en-US", { month: "long", year: "numeric" });
+    const expectedMonthName = now.toLocaleString("en-US", { month: "long" });
     const homeMonthTitle = await findByTestId("home-calendar-month-title");
-    expect(homeMonthTitle.props.children).toBe(expectedMonth);
+    expect(homeMonthTitle.props.children).toBe(expectedMonthName);
     
     // Press the next month button
     const nextBtn = await findByTestId("home-month-next");
@@ -208,8 +208,8 @@ describe("App", () => {
     
     // The detailed calendar should preserve and open in the next month
     const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const expectedNextMonth = nextMonth.toLocaleString("en-US", { month: "long", year: "numeric" });
-    const calendarMonthTitle = await findByTestId("calendar-month-title");
-    expect(calendarMonthTitle.props.children).toBe(expectedNextMonth);
+    const expectedNextMonthName = nextMonth.toLocaleString("en-US", { month: "long" });
+    const homeMonthTitleAfter = await findByTestId("home-calendar-month-title");
+    expect(homeMonthTitleAfter.props.children).toBe(expectedNextMonthName);
   });
 });

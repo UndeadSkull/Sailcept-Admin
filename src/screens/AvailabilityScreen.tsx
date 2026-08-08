@@ -497,11 +497,11 @@ export default function AvailabilityScreen() {
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <Calendar size={15} color={COLORS.teal} />
                   <Pressable onPress={() => { setAvailabilityMonthPickerOpen(!availabilityMonthPickerOpen); setAvailabilityYearPickerOpen(false); }} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                    <Text testID="home-calendar-month-title" style={{ fontSize: 14, fontWeight: "700", color: COLORS.navy }}>{`${MONTHS[availabilityMonth.month]} ${availabilityMonth.year}`}</Text>
+                    <Text testID="home-calendar-month-title" style={{ fontSize: 14, fontWeight: "700", color: COLORS.navy }}>{MONTHS[availabilityMonth.month]}</Text>
                     <ChevronDown size={12} color={COLORS.muted} />
                   </Pressable>
                   <Pressable onPress={() => { setAvailabilityYearPickerOpen(!availabilityYearPickerOpen); setAvailabilityMonthPickerOpen(false); }} style={{ flexDirection: "row", alignItems: "center", gap: 3 }}>
-                    <Text testID="calendar-month-title" style={{ fontSize: 14, fontWeight: "700", color: COLORS.navy }}>{`${MONTHS[availabilityMonth.month]} ${availabilityMonth.year}`}</Text>
+                    <Text testID="calendar-month-title" style={{ fontSize: 14, fontWeight: "700", color: COLORS.navy }}>{availabilityMonth.year}</Text>
                     <ChevronDown size={12} color={COLORS.muted} />
                   </Pressable>
                 </View>
