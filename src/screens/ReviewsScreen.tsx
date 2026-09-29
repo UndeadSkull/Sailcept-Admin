@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Pressable, ScrollView, Text, View, ActivityIndicator, RefreshControl } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { ArrowLeft, Star } from "lucide-react-native";
+import { ArrowLeft, Star, ChevronDown, ChevronUp } from "lucide-react-native";
 import { Card, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
 import { fetchReviews } from "../services/reviews";
+import { MONTHS, safeParseDate } from "../services/bookings";
 import { COLORS } from "../styles";
 
 export default function ReviewsScreen() {
@@ -16,6 +17,13 @@ export default function ReviewsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [starFilter, setStarFilter] = useState<number | null>(null);
+
+  // Month & Year filter state (Section 13)
+  const [reviewsMonth, setReviewsMonth] = useState<number>(new Date().getMonth());
+  const [reviewsYear, setReviewsYear] = useState<number>(new Date().getFullYear());
+  const [reviewsMonthOpen, setReviewsMonthOpen] = useState(false);
+  const [reviewsYearOpen, setReviewsYearOpen] = useState(false);
+  const [reviewsFilterDropdownOpen, setReviewsFilterDropdownOpen] = useState(false);
 
   const loadReviews = async () => {
     setIsLoading(true);
@@ -56,8 +64,18 @@ export default function ReviewsScreen() {
     loadReviews();
   }, [selectedBoat]); // Reload when selected boat changes
 
-  // Filter reviews
+  // Filter reviews by date, star, and search
   const filteredReviews = reviewsList.filter((r) => {
+    // Month / Year filter (applies to all views - both All and per-boat)
+    if (r.date) {
+      const d = safeParseDate(r.date);
+      if (!isNaN(d.getTime())) {
+        if (d.getMonth() !== reviewsMonth || d.getFullYear() !== reviewsYear) {
+          return false;
+        }
+      }
+    }
+
     // Star filter
     if (starFilter !== null && r.rating !== starFilter) return false;
 
@@ -122,53 +140,210 @@ export default function ReviewsScreen() {
         <BoatSelector selectedBoat={selectedBoat} setSelectedBoat={setSelectedBoat} />
       </View>
 
+      {/* Row 2: Month picker | Year picker | Star filter (all flex:1) per Section 13 */}
+      <View style={{ flexDirection: "row", gap: 8, marginBottom: 16 }}>
+        {/* Month picker pill */}
+        <Pressable
+          onPress={() => {
+            setReviewsMonthOpen(!reviewsMonthOpen);
+            setReviewsYearOpen(false);
+            setReviewsFilterDropdownOpen(false);
+          }}
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 12,
+            paddingVertical: 7,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: COLORS.border,
+            backgroundColor: COLORS.white,
+          }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.navy }}>{MONTHS[reviewsMonth]}</Text>
+          <ChevronDown size={12} color={COLORS.muted} />
+        </Pressable>
+
+        {/* Year picker pill */}
+        <Pressable
+          onPress={() => {
+            setReviewsYearOpen(!reviewsYearOpen);
+            setReviewsMonthOpen(false);
+            setReviewsFilterDropdownOpen(false);
+          }}
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 12,
+            paddingVertical: 7,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: COLORS.border,
+            backgroundColor: COLORS.white,
+          }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: "700", color: COLORS.navy }}>{reviewsYear}</Text>
+          <ChevronDown size={12} color={COLORS.muted} />
+        </Pressable>
+
+        {/* Star filter pill */}
+        <Pressable
+          onPress={() => {
+            setReviewsFilterDropdownOpen(!reviewsFilterDropdownOpen);
+            setReviewsMonthOpen(false);
+            setReviewsYearOpen(false);
+          }}
+          style={{
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingHorizontal: 12,
+            paddingVertical: 7,
+            borderRadius: 999,
+            borderWidth: 1,
+            borderColor: starFilter !== null ? COLORS.teal : COLORS.border,
+            backgroundColor: starFilter !== null ? COLORS.tealLight : COLORS.white,
+          }}
+        >
+          <Text style={{ fontSize: 12, fontWeight: "700", color: starFilter !== null ? COLORS.teal : COLORS.navy }}>
+            {starFilter !== null ? `${starFilter} Star${starFilter > 1 ? "s" : ""}` : "All Stars"}
+          </Text>
+          <ChevronDown size={12} color={starFilter !== null ? COLORS.teal : COLORS.muted} />
+        </Pressable>
+      </View>
+
+      {/* Month Picker Dropdown Modal */}
+      {reviewsMonthOpen && (
+        <View style={{ backgroundColor: COLORS.white, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, padding: 8, marginBottom: 16, flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+          {MONTHS.map((m, idx) => (
+            <Pressable
+              key={m}
+              onPress={() => {
+                setReviewsMonth(idx);
+                setReviewsMonthOpen(false);
+              }}
+              style={{
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                borderRadius: 8,
+                backgroundColor: reviewsMonth === idx ? COLORS.tealLight : "transparent",
+              }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: reviewsMonth === idx ? "700" : "500", color: reviewsMonth === idx ? COLORS.teal : COLORS.navy }}>
+                {m}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {/* Year Picker Dropdown Modal */}
+      {reviewsYearOpen && (
+        <View style={{ backgroundColor: COLORS.white, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, padding: 8, marginBottom: 16, flexDirection: "row", gap: 8 }}>
+          {[2024, 2025, 2026, 2027, 2028].map((y) => (
+            <Pressable
+              key={y}
+              onPress={() => {
+                setReviewsYear(y);
+                setReviewsYearOpen(false);
+              }}
+              style={{
+                flex: 1,
+                paddingVertical: 8,
+                alignItems: "center",
+                borderRadius: 8,
+                backgroundColor: reviewsYear === y ? COLORS.tealLight : "transparent",
+              }}
+            >
+              <Text style={{ fontSize: 13, fontWeight: reviewsYear === y ? "700" : "500", color: reviewsYear === y ? COLORS.teal : COLORS.navy }}>
+                {y}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {/* Star Filter Dropdown Modal */}
+      {reviewsFilterDropdownOpen && (
+        <View style={{ backgroundColor: COLORS.white, borderRadius: 14, borderWidth: 1, borderColor: COLORS.border, padding: 8, marginBottom: 16, flexDirection: "row", justifyContent: "space-around" }}>
+          <Pressable
+            onPress={() => {
+              setStarFilter(null);
+              setReviewsFilterDropdownOpen(false);
+            }}
+            style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: starFilter === null ? COLORS.tealLight : "transparent" }}
+          >
+            <Text style={{ fontSize: 12, fontWeight: starFilter === null ? "700" : "500", color: starFilter === null ? COLORS.teal : COLORS.navy }}>All</Text>
+          </Pressable>
+          {[5, 4, 3, 2, 1].map((s) => (
+            <Pressable
+              key={s}
+              onPress={() => {
+                setStarFilter(starFilter === s ? null : s);
+                setReviewsFilterDropdownOpen(false);
+              }}
+              style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: starFilter === s ? COLORS.tealLight : "transparent" }}
+            >
+              <Text style={{ fontSize: 12, fontWeight: starFilter === s ? "700" : "500", color: starFilter === s ? COLORS.teal : COLORS.navy }}>{s} ★</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
+
       {isLoading ? (
         <View style={{ paddingVertical: 100, justifyContent: "center", alignItems: "center" }}>
           <ActivityIndicator size="large" color={COLORS.teal} />
         </View>
       ) : (
         <View style={{ gap: 16 }}>
-          {/* Summary Card */}
-          <Card>
-            <View style={{ flexDirection: "row", gap: 18, alignItems: "center" }}>
-              <View style={{ alignItems: "center", minWidth: 70 }}>
-                <Text style={{ fontSize: 40, fontWeight: "800", color: COLORS.navy, lineHeight: 44 }}>
-                  {averageRating}
-                </Text>
-                <View style={{ marginTop: 6 }}>
-                  {renderStars(Math.round(Number(averageRating)), 12)}
+          {/* Rating Summary Card: Only shown when a specific boat is selected (Section 13) */}
+          {selectedBoat > 0 && (
+            <Card>
+              <View style={{ flexDirection: "row", gap: 18, alignItems: "center" }}>
+                <View style={{ alignItems: "center", minWidth: 70 }}>
+                  <Text style={{ fontSize: 40, fontWeight: "800", color: COLORS.navy, lineHeight: 44 }}>
+                    {averageRating}
+                  </Text>
+                  <View style={{ marginTop: 6 }}>
+                    {renderStars(Math.round(Number(averageRating)), 12)}
+                  </View>
+                  <Text style={{ fontSize: 11, color: COLORS.muted, marginTop: 4 }}>
+                    {totalReviews} review{totalReviews !== 1 ? "s" : ""}
+                  </Text>
                 </View>
-                <Text style={{ fontSize: 11, color: COLORS.muted, marginTop: 4 }}>
-                  {totalReviews} review{totalReviews !== 1 ? "s" : ""}
-                </Text>
-              </View>
 
-              {/* Vertical Divider */}
-              <View style={{ width: 1, backgroundColor: COLORS.border, alignSelf: "stretch" }} />
+                {/* Vertical Divider */}
+                <View style={{ width: 1, backgroundColor: COLORS.border, alignSelf: "stretch" }} />
 
-              {/* Breakdown Bars */}
-              <View style={{ flex: 1, gap: 5 }}>
-                {dist.map(({ star, count, pct }) => (
-                  <Pressable
-                    key={star}
-                    onPress={() => setStarFilter(starFilter === star ? null : star)}
-                    style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
-                  >
-                    <Text style={{ fontSize: 11, fontWeight: "600", color: COLORS.muted, width: 12 }}>
-                      {star}
-                    </Text>
-                    <Star size={10} color={COLORS.amber} fill={COLORS.amber} />
-                    <View style={{ flex: 1, height: 6, backgroundColor: COLORS.border, borderRadius: 999, overflow: "hidden" }}>
-                      <View style={{ width: `${pct}%`, height: "100%", backgroundColor: COLORS.amber, borderRadius: 999 }} />
-                    </View>
-                    <Text style={{ fontSize: 11, color: COLORS.muted, width: 18, textAlign: "right" }}>
-                      {count}
-                    </Text>
-                  </Pressable>
-                ))}
+                {/* Breakdown Bars */}
+                <View style={{ flex: 1, gap: 5 }}>
+                  {dist.map(({ star, count, pct }) => (
+                    <Pressable
+                      key={star}
+                      onPress={() => setStarFilter(starFilter === star ? null : star)}
+                      style={{ flexDirection: "row", alignItems: "center", gap: 8 }}
+                    >
+                      <Text style={{ fontSize: 11, fontWeight: "600", color: COLORS.muted, width: 12 }}>
+                        {star}
+                      </Text>
+                      <Star size={10} color={COLORS.amber} fill={COLORS.amber} />
+                      <View style={{ flex: 1, height: 6, backgroundColor: COLORS.border, borderRadius: 999, overflow: "hidden" }}>
+                        <View style={{ width: `${pct}%`, height: "100%", backgroundColor: COLORS.amber, borderRadius: 999 }} />
+                      </View>
+                      <Text style={{ fontSize: 11, color: COLORS.muted, width: 18, textAlign: "right" }}>
+                        {count}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
               </View>
-            </View>
-          </Card>
+            </Card>
+          )}
 
           {/* List Title */}
           <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>

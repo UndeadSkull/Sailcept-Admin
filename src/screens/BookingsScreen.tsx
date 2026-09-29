@@ -3,7 +3,7 @@ import { Pressable, ScrollView, Text, View, ActivityIndicator, Modal, StyleSheet
 import { Calendar, ChevronDown, ChevronUp, ArrowLeft, ArrowRight, ClipboardList } from "lucide-react-native";
 import { BookingCard, BoatSelector } from "../components";
 import { useBoat } from "../context/BoatContext";
-import { fetchBookings, Booking, MONTHS, safeParseDate, BOAT_ID_MAP } from "../services/bookings";
+import { fetchBookings, Booking, MONTHS, safeParseDate, BOAT_ID_MAP, isBookingCoveringDate } from "../services/bookings";
 import type { MainTabScreenProps } from "../navigation/types";
 import { COLORS } from "../styles";
 
@@ -121,10 +121,14 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
     return guestMatch || idMatch || boatMatch;
   });
 
-  // Today's trips (June 18, 2026)
-  const todayStr = "18 Jun 2026";
+  // Today's trips
+  const isTripToday = (b: Booking) => {
+    const d = safeParseDate(b.date);
+    const now = getTodayDate();
+    return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+  };
   const todaysTrips = searchFilteredBookings.filter(
-    (b) => b.date === todayStr && b.status !== "cancelled" && b.status !== "deleted"
+    (b) => isTripToday(b) && b.status !== "cancelled" && b.status !== "deleted"
   );
 
   // Month filtered bookings
@@ -144,7 +148,7 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
     );
   });
 
-  // Apply status filter
+  // Apply status filter per Section 6.2
   const applyBookingsStatusFilter = (list: Booking[]) => {
     if (!bookingsStatusFilter) return list;
     if (bookingsStatusFilter === "confirmed") {
@@ -154,7 +158,7 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
       return list.filter((b) => b.status === "cancelled");
     }
     if (bookingsStatusFilter === "updated") {
-      return list.filter((b) => b.isUpdated);
+      return list.filter((b) => b.isUpdated && b.status !== "cancelled");
     }
     if (bookingsStatusFilter === "added") {
       return list.filter((b) => b.isDirect && b.status !== "deleted" && b.status !== "cancelled");
@@ -177,18 +181,19 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
 
   const activeList = getActiveList();
 
-  // Calendar logic
-  const bookedDatesInMonth = new Set(
-    monthFilteredBookings
-      .filter((b) => b.status !== "cancelled" && b.status !== "deleted")
-      .map((b) => {
-        const d = safeParseDate(b.date);
-        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      })
-  );
-
+  // Calendar logic with multi-day coverage
   const firstOfMonth = new Date(calendarMonth.year, calendarMonth.month, 1);
   const daysInMonth = new Date(calendarMonth.year, calendarMonth.month + 1, 0).getDate();
+  const bookedDaysInMonth = new Set<number>();
+  for (let day = 1; day <= daysInMonth; day++) {
+    const testDate = new Date(calendarMonth.year, calendarMonth.month, day);
+    const dateStr = testDate.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }).replace(/,/g, "");
+    const hasActiveBooking = searchFilteredBookings.some((b) => isBookingCoveringDate(b, dateStr));
+    if (hasActiveBooking) {
+      bookedDaysInMonth.add(day);
+    }
+  }
+
   const firstWeekday = (firstOfMonth.getDay() + 6) % 7; // Monday start
   const cells: (number | null)[] = [];
   for (let i = 0; i < firstWeekday; i++) cells.push(null);
@@ -213,7 +218,7 @@ export default function BookingsScreen({ route, navigation }: MainTabScreenProps
   };
 
   const hasBooking = (day: number) => {
-    return bookedDatesInMonth.has(`${calendarMonth.year}-${calendarMonth.month}-${day}`);
+    return bookedDaysInMonth.has(day);
   };
 
   const MIN_MONTH = 5; // June

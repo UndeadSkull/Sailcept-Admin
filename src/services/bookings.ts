@@ -186,17 +186,22 @@ export function isBookingCoveringDate(b: Booking, dateStr: string): boolean {
   if (b.status === "cancelled" || b.status === "deleted") return false;
   const targetDate = safeParseDate(dateStr);
   if (isNaN(targetDate.getTime())) return false;
+  targetDate.setHours(0, 0, 0, 0);
 
   const startDate = safeParseDate(b.date);
   if (isNaN(startDate.getTime())) return false;
+  startDate.setHours(0, 0, 0, 0);
 
   if (b.type === "Overnight stay" || b.type === "Overnight Stay") {
     const endDate = safeParseDate(b.dateEnd);
-    if (!isNaN(endDate.getTime()) && endDate > startDate) {
-      const t = targetDate.getTime();
-      const s = startDate.getTime();
-      const e = endDate.getTime();
-      return t >= s && t < e;
+    if (!isNaN(endDate.getTime())) {
+      endDate.setHours(0, 0, 0, 0);
+      if (endDate > startDate) {
+        const t = targetDate.getTime();
+        const s = startDate.getTime();
+        const e = endDate.getTime();
+        return t >= s && t < e;
+      }
     }
   }
   return targetDate.getTime() === startDate.getTime();
@@ -258,9 +263,12 @@ export function formatWaitingTime(hours: number) {
 }
 
 export function getCotsMattresses(b: Booking) {
-  if (typeof b.cots === "number") return b.cots;
-  const countableGuests = b.adults + b.children;
-  return Math.max(0, countableGuests - b.rooms * 2);
+  const countableGuests = (b.adults || 0) + (b.children || 0);
+  const minRequired = Math.max(0, countableGuests - (b.rooms || 1) * 2);
+  if (typeof b.cots === "number") {
+    return Math.max(b.cots, minRequired);
+  }
+  return minRequired;
 }
 
 export function getMinimumRooms(b: { adults: number; children: number }) {
@@ -284,11 +292,14 @@ function parseLocalYMD(dateStr: string): Date {
 }
 
 export function isContactUnlocked(
-  bookingOrDate: string | { date?: string; contactUnlockDate?: string; contactAvailable?: boolean },
+  bookingOrDate: string | { date?: string; contactUnlockDate?: string; contactAvailable?: boolean; status?: string; outcome?: string },
   contactUnlockDate?: string,
   contactAvailable?: boolean
 ): boolean {
   if (typeof bookingOrDate === "object" && bookingOrDate !== null) {
+    if (bookingOrDate.status === "declined" || bookingOrDate.outcome === "declined") {
+      return false;
+    }
     if (bookingOrDate.contactAvailable !== undefined) {
       return bookingOrDate.contactAvailable;
     }
@@ -524,9 +535,29 @@ export async function submitRequestOutcome(
   }
 
   if (outcome === "accepted") {
-    return acceptRequestApi(requestId);
+    const res = await acceptRequestApi(requestId);
+    const req = requests.find(r => String(r.id) === requestId || r.bookingId === requestId);
+    if (req) {
+      requests = requests.filter(r => r.id !== req.id);
+      const confirmedBooking: Booking = {
+        ...req,
+        status: "confirmed",
+        isDirect: false,
+        bookingSource: "Sailcept",
+      };
+      bookings.push(confirmedBooking);
+      dateOpenState[`${req.boat}|${req.date}`] = true;
+      requestHistory.push({ ...req, outcome: "accepted", decidedAt: new Date() });
+    }
+    return res;
   } else {
-    return declineRequestApi(requestId);
+    const res = await declineRequestApi(requestId);
+    const req = requests.find(r => String(r.id) === requestId || r.bookingId === requestId);
+    if (req) {
+      requests = requests.filter(r => r.id !== req.id);
+      requestHistory.push({ ...req, status: "declined", outcome: "declined", decidedAt: new Date() });
+    }
+    return res;
   }
 }
 

@@ -142,6 +142,7 @@ const styles = StyleSheet.create({
   pill: {
     flexDirection: "row",
     alignItems: "center",
+    justifyContent: "center",
     gap: 6,
     borderWidth: 1,
     borderRadius: 999,
@@ -185,9 +186,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: "500",
     color: COLORS.navy,
+    textAlign: "center",
   },
   dropdownItemTextActive: {
     fontWeight: "700",
     color: COLORS.teal,
+    textAlign: "center",
   },
 });

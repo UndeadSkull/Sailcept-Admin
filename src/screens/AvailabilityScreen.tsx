@@ -410,6 +410,22 @@ export default function AvailabilityScreen() {
 
     setIsMutating(true);
     try {
+      setLocalDateOpenState((prev) => {
+        const next = { ...prev };
+        selectedDates.forEach((dateStr) => {
+          const isBooked = allBookings.some((b) => b.boat === boat && isBookingCoveringDate(b, dateStr));
+          if (newIsOpen) {
+            next[`${boat}|${dateStr}`] = true;
+          } else {
+            // Keep dates with confirmed bookings open; close unbooked dates
+            if (!isBooked) {
+              next[`${boat}|${dateStr}`] = false;
+            }
+          }
+        });
+        return next;
+      });
+
       const res = await updateAvailabilityDateStatus(selectedBoatId, {
         fromDate,
         toDate,
@@ -620,6 +636,17 @@ export default function AvailabilityScreen() {
       return;
     }
     const totalCountable = addBookingForm.adults + addBookingForm.children;
+    const minRooms = Math.max(1, Math.ceil(totalCountable / 3));
+    if (addBookingForm.rooms < minRooms) {
+      Alert.alert("Rooms Error", `Needs at least ${minRooms} room${minRooms > 1 ? "s" : ""} for ${totalCountable} guest${totalCountable > 1 ? "s" : ""}`);
+      return;
+    }
+    const minCots = Math.max(0, totalCountable - addBookingForm.rooms * 2);
+    if (addBookingForm.cots < minCots) {
+      Alert.alert("Cot/Mattress Error", `Requires at least ${minCots} cot/mattress for ${totalCountable} guests in ${addBookingForm.rooms} room${addBookingForm.rooms > 1 ? "s" : ""}`);
+      return;
+    }
+
     const dietTotal = addBookingForm.dietBreakdown.reduce((sum, d) => sum + d.count, 0);
     if (dietTotal !== totalCountable) {
       Alert.alert("Diet Mismatch", `Diet breakdown sum (${dietTotal}) must equal total guests (${totalCountable})`);
@@ -1106,7 +1133,70 @@ export default function AvailabilityScreen() {
                                                 return;
                                               }
                                               const nextTierOpen = !tierOpen;
-                                              setPriceDrafts(prev => ({ ...prev, [draftKey]: { ...draft, open: nextTierOpen } }));
+
+                                              // Rule 9.4: Check if closing this tier leaves ALL tiers closed
+                                              const willAllTiersBeClosed = bhTiers.every((otherBh) => {
+                                                if (otherBh === bh) return !nextTierOpen;
+                                                const dk = `${type}|${otherBh}`;
+                                                const otherDraft = priceDrafts[dk];
+                                                if (otherDraft !== undefined) return !otherDraft.open;
+                                                return !(confirmedEntry?.tiers?.[otherBh]?.open ?? false);
+                                              });
+
+                                              if (willAllTiersBeClosed) {
+                                                // Immediate auto-save: persist all tiers closed for this cruise type
+                                                const tiersObj: Record<number, any> = {};
+                                                bhTiers.forEach((otherBh) => {
+                                                  const dk = `${type}|${otherBh}`;
+                                                  const existingOther = confirmedEntry?.tiers?.[otherBh];
+                                                  const fallbackOther = buildDefaultPricing(boat)[type]?.tiers?.[otherBh];
+                                                  tiersObj[otherBh] = {
+                                                    base: existingOther?.base ?? fallbackOther?.base ?? 0,
+                                                    extraAdult: existingOther?.extraAdult ?? fallbackOther?.extraAdult ?? 0,
+                                                    extraChild: existingOther?.extraChild ?? fallbackOther?.extraChild ?? 0,
+                                                    open: false,
+                                                  };
+                                                });
+
+                                                setLocalTripPricing((prev) => {
+                                                  const next = { ...prev };
+                                                  selectedDates.forEach((dateStr) => {
+                                                    next[`${boat}|${dateStr}|${type}`] = { tiers: tiersObj };
+                                                  });
+                                                  return next;
+                                                });
+
+                                                // Clear drafts for this type
+                                                setPriceDrafts((prev) => {
+                                                  const next = { ...prev };
+                                                  delete next[`_editing_${type}`];
+                                                  bhTiers.forEach((otherBh) => delete next[`${type}|${otherBh}`]);
+                                                  return next;
+                                                });
+                                                setConfirmRatesError(null);
+
+                                                // Call backend if active
+                                                if (selectedBoatId > 0 && availabilitySelection.length > 0) {
+                                                  const min = Math.min(...availabilitySelection);
+                                                  const max = Math.max(...availabilitySelection);
+                                                  const tiersPayload: RateTierDto[] = bhTiers.map((otherBh) => ({
+                                                    boatConfigurationId: otherBh,
+                                                    isOpen: false,
+                                                    basePrice: tiersObj[otherBh].base,
+                                                    extraAdultPrice: tiersObj[otherBh].extraAdult,
+                                                    extraChildPrice: tiersObj[otherBh].extraChild,
+                                                  }));
+                                                  updateAvailabilityRates(selectedBoatId, {
+                                                    fromDate: isoDateStrFor(min),
+                                                    toDate: isoDateStrFor(max),
+                                                    cruiseType: toBackendCruiseType(type),
+                                                    tiers: tiersPayload,
+                                                  }).then(() => loadCalendar()).catch(console.error);
+                                                }
+                                                return;
+                                              }
+
+                                              setPriceDrafts((prev) => ({ ...prev, [draftKey]: { ...draft, open: nextTierOpen } }));
                                               if (nextTierOpen) setConfirmRatesError(null);
                                             }}
                                             style={{ flexDirection: "row", alignItems: "center", gap: 6, opacity: closingBlocked ? 0.6 : 1 }}
@@ -1194,17 +1284,18 @@ export default function AvailabilityScreen() {
                                       </Text>
                                     )}
                                     <Pressable
-                                      onPress={() => handleConfirmRates(type)}
-                                      disabled={isMutating}
+                                      onPress={() => isTypeOpen && handleConfirmRates(type)}
+                                      disabled={!isTypeOpen || isMutating}
                                       style={{
                                         marginTop: 14,
-                                        backgroundColor: confirmRatesSuccess === type ? COLORS.green : COLORS.teal,
+                                        backgroundColor: confirmRatesSuccess === type ? COLORS.green : isTypeOpen ? COLORS.teal : COLORS.border,
                                         borderRadius: 10,
                                         paddingVertical: 10,
                                         flexDirection: "row",
                                         alignItems: "center",
                                         justifyContent: "center",
                                         gap: 6,
+                                        opacity: isTypeOpen ? 1 : 0.6,
                                       }}
                                     >
                                       {confirmRatesSuccess === type ? (
@@ -1213,7 +1304,7 @@ export default function AvailabilityScreen() {
                                           <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.white }}>Rates Confirmed!</Text>
                                         </>
                                       ) : (
-                                        <Text style={{ fontSize: 13, fontWeight: "700", color: COLORS.white }}>
+                                        <Text style={{ fontSize: 13, fontWeight: "700", color: isTypeOpen ? COLORS.white : COLORS.muted }}>
                                           {isMutating ? "Saving..." : "Confirm Rates"}
                                         </Text>
                                       )}
